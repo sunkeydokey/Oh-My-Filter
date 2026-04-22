@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>$(API_KEY)</string>
+  <key>HTTP_HOST</key>
+  <string>$(HTTP_HOST)</string>
+  <key>HTTP_PORT</key>
+  <string>$(HTTP_PORT)</string>
+  <key>API_VERSION</key>
+  <string>$(API_VERSION)</string>
+  <key>NSAppTransportSecurity</key>
+  <dict>
+      <key>NSExceptionDomains</key>
+      <dict>
+          <key>$(HTTP_HOST)</key>
+          <dict>
+              <key>NSExceptionAllowsInsecureHTTPLoads</key>
+              <true/>
+          </dict>
+      </dict>
+  </dict>
+</dict>
+</plist>
