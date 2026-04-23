@@ -108,5 +108,5 @@ xcuserdata
 
 Secrets.xcconfig
 AGENTS.md
+skills/*.md
 *.pen
-skills/*
