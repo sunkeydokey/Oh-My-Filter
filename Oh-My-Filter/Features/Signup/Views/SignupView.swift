@@ -30,19 +30,22 @@ struct SignupView: View {
         AuthCard {
           AuthFieldSection(
             title: "이메일",
-            message: viewModel.emailErrorMessage ?? viewModel.emailSuccessMessage,
-            isSuccess: viewModel.emailSuccessMessage != nil
+            message: viewModel.state.emailErrorMessage ?? viewModel.state.emailSuccessMessage,
+            isSuccess: viewModel.state.emailSuccessMessage != nil
           ) {
-            TextField("you@example.com", text: $viewModel.email)
+            TextField(
+              "you@example.com",
+              text: Binding(
+                get: { viewModel.state.email },
+                set: { viewModel.send(.emailChanged($0)) }
+              )
+            )
               .keyboardType(.emailAddress)
               .textInputAutocapitalization(.never)
               .autocorrectionDisabled()
-              .onChange(of: viewModel.email, initial: false) { oldValue, newValue in
-                viewModel.emailChanged(from: oldValue, to: newValue)
-              }
           }
 
-          if case .checking = viewModel.emailCheckState {
+          if case .checking = viewModel.state.emailCheckState {
             ProgressView("이메일 확인 중…")
               .font(TypographyToken.pretendardCaption1.font)
               .foregroundStyle(ColorToken.grayScale60.color)
@@ -51,23 +54,34 @@ struct SignupView: View {
           AuthFieldSection(
             title: "비밀번호",
             description: "8자 이상, 영문자/숫자/특수문자를 각각 1개 이상 포함해야 해요.",
-            message: viewModel.passwordErrorMessage
+            message: viewModel.state.passwordErrorMessage
           ) {
-            SecureField("••••••••", text: $viewModel.password)
+            SecureField(
+              "••••••••",
+              text: Binding(
+                get: { viewModel.state.password },
+                set: { viewModel.send(.passwordChanged($0)) }
+              )
+            )
               .textInputAutocapitalization(.never)
               .autocorrectionDisabled()
           }
 
           AuthFieldSection(
             title: "비밀번호 확인",
-            description: viewModel.passwordConfirmationErrorMessage == nil
+            description: viewModel.state.passwordConfirmationErrorMessage == nil
               ? "비밀번호가 일치하는지 확인해 주세요."
               : nil,
-            message: viewModel.passwordConfirmationErrorMessage,
-            isSuccess: viewModel.passwordConfirmationErrorMessage == nil
-              && SignupValidator.normalized(viewModel.passwordConfirmation).isEmpty == false
+            message: viewModel.state.passwordConfirmationErrorMessage,
+            isSuccess: viewModel.state.isPasswordConfirmationSuccess
           ) {
-            SecureField("••••••••", text: $viewModel.passwordConfirmation)
+            SecureField(
+              "••••••••",
+              text: Binding(
+                get: { viewModel.state.passwordConfirmation },
+                set: { viewModel.send(.passwordConfirmationChanged($0)) }
+              )
+            )
               .textInputAutocapitalization(.never)
               .autocorrectionDisabled()
           }
@@ -75,19 +89,29 @@ struct SignupView: View {
           AuthFieldSection(
             title: "닉네임",
             description: "닉네임에는 - . , ? * @ + ^ $ { } ( ) | [ ] \\ 문자를 사용할 수 없어요.",
-            message: viewModel.nickErrorMessage
+            message: viewModel.state.nickErrorMessage
           ) {
-            TextField("ohmyfilter_user", text: $viewModel.nick)
+            TextField(
+              "ohmyfilter_user",
+              text: Binding(
+                get: { viewModel.state.nick },
+                set: { viewModel.send(.nickChanged($0)) }
+              )
+            )
               .textInputAutocapitalization(.never)
               .autocorrectionDisabled()
           }
 
           AuthSubmitSection(
             title: "회원가입",
-            isSubmitting: viewModel.isSubmitting,
-            isEnabled: viewModel.canSubmit,
-            message: viewModel.submissionMessage,
-            submitAction: viewModel.submit
+            isSubmitting: viewModel.state.isSubmitting,
+            isEnabled: viewModel.state.canSubmit,
+            message: viewModel.state.submissionMessage,
+            submitAction: {
+              if let task = viewModel.send(.submitTapped) {
+                await task.value
+              }
+            }
           )
         }
 
@@ -103,14 +127,20 @@ struct SignupView: View {
     .scrollIndicators(.hidden)
     .background(ColorToken.grayScale100.color.ignoresSafeArea())
     .overlay {
-      if viewModel.isShowingSignupCompletionAlert {
+      if viewModel.state.isShowingSignupCompletionAlert {
         CustomAlertView(
           title: "회원가입이 완료되었습니다!",
           message: "프로필을 작성할까요?",
           cancelTitle: "나중에 할래요",
           confirmTitle: "지금 할래요",
-          onCancel: onProfileLater,
-          onConfirm: onProfileNow
+          onCancel: {
+            viewModel.send(.completionAlertDismissed)
+            onProfileLater()
+          },
+          onConfirm: {
+            viewModel.send(.completionAlertDismissed)
+            onProfileNow()
+          }
         )
       }
     }

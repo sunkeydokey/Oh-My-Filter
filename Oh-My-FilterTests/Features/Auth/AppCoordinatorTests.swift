@@ -51,10 +51,10 @@ struct AppCoordinatorTests {
       signupService: PassiveSignupService()
     )
     coordinator.showSignup()
-    coordinator.loginViewModel.email = " sesac@sesac.com "
-    coordinator.loginViewModel.password = " password123! "
+    coordinator.loginViewModel.send(.emailChanged(" sesac@sesac.com "))
+    coordinator.loginViewModel.send(.passwordChanged(" password123! "))
 
-    await coordinator.loginViewModel.submit()
+    await coordinator.loginViewModel.send(.submitTapped)?.value
 
     #expect(coordinator.scene == .authenticated)
     #expect(coordinator.authPath.isEmpty)

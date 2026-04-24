@@ -14,14 +14,13 @@ struct SignupViewModelTests {
       debounceDuration: .milliseconds(20)
     )
 
-    viewModel.email = "sesac@sesac.com"
-    viewModel.emailChanged(from: "", to: viewModel.email)
+    let task = viewModel.send(.emailChanged("sesac@sesac.com"))
 
-    #expect(viewModel.emailCheckState == .checking)
+    #expect(viewModel.state.emailCheckState == .checking)
 
-    try await Task.sleep(for: .milliseconds(60))
+    await task?.value
 
-    #expect(viewModel.emailCheckState == .available("사용 가능한 이메일이에요."))
+    #expect(viewModel.state.emailCheckState == .available("사용 가능한 이메일이에요."))
     #expect(await service.validateEmailCallCount == 1)
     #expect(await service.lastValidatedEmail == "sesac@sesac.com")
   }
@@ -34,10 +33,9 @@ struct SignupViewModelTests {
       debounceDuration: .milliseconds(20)
     )
 
-    viewModel.email = "wrong-email"
-    viewModel.emailChanged(from: "", to: viewModel.email)
+    viewModel.send(.emailChanged("wrong-email"))
 
-    #expect(viewModel.emailCheckState == .invalidFormat("올바른 이메일 형식을 입력해 주세요."))
+    #expect(viewModel.state.emailCheckState == .invalidFormat("올바른 이메일 형식을 입력해 주세요."))
     #expect(await service.validateEmailCallCount == 0)
   }
 
@@ -51,22 +49,20 @@ struct SignupViewModelTests {
       debounceDuration: .milliseconds(10)
     )
 
-    viewModel.email = " sesac@sesac.com "
-    viewModel.emailChanged(from: "", to: viewModel.email)
-    try? await Task.sleep(for: .milliseconds(40))
+    await viewModel.send(.emailChanged(" sesac@sesac.com "))?.value
 
-    viewModel.password = "sesac1234@"
-    viewModel.passwordConfirmation = " sesac1234@ "
-    viewModel.nick = "새싹이Abc12"
+    viewModel.send(.passwordChanged("sesac1234@"))
+    viewModel.send(.passwordConfirmationChanged(" sesac1234@ "))
+    viewModel.send(.nickChanged("새싹이Abc12"))
 
-    await viewModel.submit()
+    await viewModel.send(.submitTapped)?.value
 
     let request = await service.lastJoinRequest
     #expect(request?.email == "sesac@sesac.com")
     #expect(request?.password == "sesac1234@")
     #expect(request?.nick == "새싹이Abc12")
-    #expect(viewModel.submissionMessage == nil)
-    #expect(viewModel.isShowingSignupCompletionAlert)
+    #expect(viewModel.state.submissionMessage == nil)
+    #expect(viewModel.state.isShowingSignupCompletionAlert)
   }
 
   @Test("failed signup keeps inline error and skips completion alert")
@@ -75,27 +71,28 @@ struct SignupViewModelTests {
     await service.setJoinResult(.failure(SignupServiceError.serverError))
 
     let viewModel = SignupViewModel(service: service)
-    viewModel.emailCheckState = .available("사용 가능한 이메일이에요.")
-    viewModel.email = "sesac@sesac.com"
-    viewModel.password = "sesac1234@"
-    viewModel.passwordConfirmation = "sesac1234@"
-    viewModel.nick = "새싹이Abc12"
+    viewModel.state.emailCheckState = .available("사용 가능한 이메일이에요.")
+    viewModel.send(.emailChanged("sesac@sesac.com"))
+    viewModel.state.emailCheckState = .available("사용 가능한 이메일이에요.")
+    viewModel.send(.passwordChanged("sesac1234@"))
+    viewModel.send(.passwordConfirmationChanged("sesac1234@"))
+    viewModel.send(.nickChanged("새싹이Abc12"))
 
-    await viewModel.submit()
+    await viewModel.send(.submitTapped)?.value
 
-    #expect(viewModel.submissionMessage == SignupServiceError.serverError.errorDescription)
-    #expect(viewModel.isShowingSignupCompletionAlert == false)
+    #expect(viewModel.state.submissionMessage == SignupServiceError.serverError.errorDescription)
+    #expect(viewModel.state.isShowingSignupCompletionAlert == false)
   }
 
   @Test("completion alert can be dismissed")
   func dismissCompletionAlert() {
     let service = MockSignupService()
     let viewModel = SignupViewModel(service: service)
-    viewModel.isShowingSignupCompletionAlert = true
+    viewModel.state.isShowingSignupCompletionAlert = true
 
-    viewModel.dismissSignupCompletionAlert()
+    viewModel.send(.completionAlertDismissed)
 
-    #expect(viewModel.isShowingSignupCompletionAlert == false)
+    #expect(viewModel.state.isShowingSignupCompletionAlert == false)
   }
 
   @Test("submit stays disabled until email is confirmed")
@@ -103,12 +100,12 @@ struct SignupViewModelTests {
     let service = MockSignupService()
     let viewModel = SignupViewModel(service: service)
 
-    viewModel.email = "sesac@sesac.com"
-    viewModel.password = "sesac1234@"
-    viewModel.passwordConfirmation = "sesac1234@"
-    viewModel.nick = "새싹이Abc12"
+    viewModel.send(.emailChanged("sesac@sesac.com"))
+    viewModel.send(.passwordChanged("sesac1234@"))
+    viewModel.send(.passwordConfirmationChanged("sesac1234@"))
+    viewModel.send(.nickChanged("새싹이Abc12"))
 
-    #expect(viewModel.canSubmit == false)
+    #expect(viewModel.state.canSubmit == false)
   }
 
   @Test("submit stays disabled when password confirmation mismatches")
@@ -116,14 +113,14 @@ struct SignupViewModelTests {
     let service = MockSignupService()
     let viewModel = SignupViewModel(service: service)
 
-    viewModel.emailCheckState = .available("사용 가능한 이메일이에요.")
-    viewModel.email = "sesac@sesac.com"
-    viewModel.password = "sesac1234@"
-    viewModel.passwordConfirmation = "other1234@"
-    viewModel.nick = "새싹이Abc12"
+    viewModel.send(.emailChanged("sesac@sesac.com"))
+    viewModel.state.emailCheckState = .available("사용 가능한 이메일이에요.")
+    viewModel.send(.passwordChanged("sesac1234@"))
+    viewModel.send(.passwordConfirmationChanged("other1234@"))
+    viewModel.send(.nickChanged("새싹이Abc12"))
 
-    #expect(viewModel.passwordConfirmationErrorMessage == "비밀번호가 일치하지 않아요.")
-    #expect(viewModel.canSubmit == false)
+    #expect(viewModel.state.passwordConfirmationErrorMessage == "비밀번호가 일치하지 않아요.")
+    #expect(viewModel.state.canSubmit == false)
   }
 
   @Test("stale email validation response is ignored")
@@ -134,12 +131,10 @@ struct SignupViewModelTests {
       debounceDuration: .milliseconds(10)
     )
 
-    viewModel.email = "first@sesac.com"
-    viewModel.emailChanged(from: "", to: viewModel.email)
+    viewModel.send(.emailChanged("first@sesac.com"))
     try? await Task.sleep(for: .milliseconds(30))
 
-    viewModel.email = "second@sesac.com"
-    viewModel.emailChanged(from: "first@sesac.com", to: viewModel.email)
+    viewModel.send(.emailChanged("second@sesac.com"))
     try? await Task.sleep(for: .milliseconds(30))
 
     await service.resumeValidation(
@@ -147,7 +142,7 @@ struct SignupViewModelTests {
       with: .success(.available)
     )
 
-    #expect(viewModel.emailCheckState == .checking)
+    #expect(viewModel.state.emailCheckState == .checking)
 
     await service.resumeValidation(
       at: 1,
@@ -156,7 +151,7 @@ struct SignupViewModelTests {
 
     try? await Task.sleep(for: .milliseconds(10))
 
-    #expect(viewModel.emailCheckState == .duplicate("이미 사용 중인 이메일입니다."))
+    #expect(viewModel.state.emailCheckState == .duplicate("이미 사용 중인 이메일입니다."))
   }
 
   @Test("duplicate email keeps submit disabled")
@@ -168,16 +163,14 @@ struct SignupViewModelTests {
       service: service,
       debounceDuration: .milliseconds(10)
     )
-    viewModel.email = "sesac@sesac.com"
-    viewModel.emailChanged(from: "", to: viewModel.email)
-    try? await Task.sleep(for: .milliseconds(40))
+    await viewModel.send(.emailChanged("sesac@sesac.com"))?.value
 
-    viewModel.password = "sesac1234@"
-    viewModel.passwordConfirmation = "sesac1234@"
-    viewModel.nick = "새싹이Abc12"
+    viewModel.send(.passwordChanged("sesac1234@"))
+    viewModel.send(.passwordConfirmationChanged("sesac1234@"))
+    viewModel.send(.nickChanged("새싹이Abc12"))
 
-    #expect(viewModel.emailCheckState == .duplicate("이미 사용 중인 이메일입니다."))
-    #expect(viewModel.canSubmit == false)
+    #expect(viewModel.state.emailCheckState == .duplicate("이미 사용 중인 이메일입니다."))
+    #expect(viewModel.state.canSubmit == false)
   }
 
   @Test("email validation failure shows retry guidance")
@@ -190,12 +183,10 @@ struct SignupViewModelTests {
       debounceDuration: .milliseconds(10)
     )
 
-    viewModel.email = "sesac@sesac.com"
-    viewModel.emailChanged(from: "", to: viewModel.email)
-    try? await Task.sleep(for: .milliseconds(40))
+    await viewModel.send(.emailChanged("sesac@sesac.com"))?.value
 
-    #expect(viewModel.emailCheckState == .failed("이메일 확인 중 문제가 발생했어요. 다시 시도해 주세요."))
-    #expect(viewModel.canSubmit == false)
+    #expect(viewModel.state.emailCheckState == .failed("이메일 확인 중 문제가 발생했어요. 다시 시도해 주세요."))
+    #expect(viewModel.state.canSubmit == false)
   }
 }
 

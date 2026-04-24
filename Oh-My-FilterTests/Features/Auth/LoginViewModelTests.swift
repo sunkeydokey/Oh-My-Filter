@@ -7,20 +7,29 @@ struct LoginViewModelTests {
   func submitShowsLoadingState() async {
     let service = ControlledLoginService()
     let viewModel = LoginViewModel(service: service)
-    viewModel.email = "sesac@sesac.com"
-    viewModel.password = "password123!"
+    viewModel.send(.emailChanged("sesac@sesac.com"))
+    viewModel.send(.passwordChanged("password123!"))
 
-    let task = Task {
-      await viewModel.submit()
-    }
+    let task = viewModel.send(.submitTapped)
 
-    try? await Task.sleep(for: .milliseconds(20))
-    #expect(viewModel.isSubmitting)
+    #expect(viewModel.state.isSubmitting)
 
     await service.setResult(.success(.fixture))
-    await task.value
+    await task?.value
 
-    #expect(viewModel.isSubmitting == false)
+    #expect(viewModel.state.isSubmitting == false)
+  }
+
+  @Test("action-based input updates canSubmit")
+  func actionBasedInputUpdatesCanSubmit() {
+    let viewModel = LoginViewModel(service: ControlledLoginService())
+
+    #expect(viewModel.state.canSubmit == false)
+
+    viewModel.send(.emailChanged("sesac@sesac.com"))
+    viewModel.send(.passwordChanged("password123!"))
+
+    #expect(viewModel.state.canSubmit)
   }
 
   @Test("successful login normalizes credentials and forwards session")
@@ -32,14 +41,14 @@ struct LoginViewModelTests {
     let viewModel = LoginViewModel(service: service) { session in
       receivedSession = session
     }
-    viewModel.email = " sesac@sesac.com "
-    viewModel.password = " password123! "
+    viewModel.send(.emailChanged(" sesac@sesac.com "))
+    viewModel.send(.passwordChanged(" password123! "))
 
-    await viewModel.submit()
+    await viewModel.send(.submitTapped)?.value
 
     #expect(await service.lastRequest == LoginRequest(email: "sesac@sesac.com", password: "password123!"))
     #expect(receivedSession == .fixture)
-    #expect(viewModel.submissionMessage == nil)
+    #expect(viewModel.state.submissionMessage == nil)
   }
 
   @Test("400 error shows inline validation message")
@@ -48,13 +57,13 @@ struct LoginViewModelTests {
     await service.setResult(.failure(LoginServiceError.invalidRequest("필수값을 채워주세요.")))
 
     let viewModel = LoginViewModel(service: service)
-    viewModel.email = "sesac@sesac.com"
-    viewModel.password = "password123!"
+    viewModel.send(.emailChanged("sesac@sesac.com"))
+    viewModel.send(.passwordChanged("password123!"))
 
-    await viewModel.submit()
+    await viewModel.send(.submitTapped)?.value
 
-    #expect(viewModel.submissionMessage == "필수값을 채워주세요.")
-    #expect(viewModel.isSubmitting == false)
+    #expect(viewModel.state.submissionMessage == "필수값을 채워주세요.")
+    #expect(viewModel.state.isSubmitting == false)
   }
 
   @Test("401 error shows account guidance")
@@ -63,12 +72,12 @@ struct LoginViewModelTests {
     await service.setResult(.failure(LoginServiceError.unauthorized("계정을 확인해주세요.")))
 
     let viewModel = LoginViewModel(service: service)
-    viewModel.email = "sesac@sesac.com"
-    viewModel.password = "password123!"
+    viewModel.send(.emailChanged("sesac@sesac.com"))
+    viewModel.send(.passwordChanged("password123!"))
 
-    await viewModel.submit()
+    await viewModel.send(.submitTapped)?.value
 
-    #expect(viewModel.submissionMessage == "계정을 확인해주세요.")
+    #expect(viewModel.state.submissionMessage == "계정을 확인해주세요.")
   }
 
   @Test("transport failure is retryable")
@@ -77,13 +86,13 @@ struct LoginViewModelTests {
     await service.setResult(.failure(LoginServiceError.transport))
 
     let viewModel = LoginViewModel(service: service)
-    viewModel.email = "sesac@sesac.com"
-    viewModel.password = "password123!"
+    viewModel.send(.emailChanged("sesac@sesac.com"))
+    viewModel.send(.passwordChanged("password123!"))
 
-    await viewModel.submit()
+    await viewModel.send(.submitTapped)?.value
 
-    #expect(viewModel.submissionMessage == "네트워크 상태를 확인한 뒤 다시 시도해 주세요.")
-    #expect(viewModel.isSubmitting == false)
+    #expect(viewModel.state.submissionMessage == "네트워크 상태를 확인한 뒤 다시 시도해 주세요.")
+    #expect(viewModel.state.isSubmitting == false)
   }
 }
 

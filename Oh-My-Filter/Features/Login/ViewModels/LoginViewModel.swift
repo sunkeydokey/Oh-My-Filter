@@ -4,10 +4,7 @@ import Observation
 @MainActor
 @Observable
 final class LoginViewModel {
-  var email = ""
-  var password = ""
-  var submissionMessage: String?
-  var isSubmitting = false
+  var state = LoginState()
 
   private let service: LoginServicing
   var onLoginSucceeded: @MainActor (LoginSession) -> Void
@@ -20,37 +17,45 @@ final class LoginViewModel {
     self.onLoginSucceeded = onLoginSucceeded
   }
 
-  var canSubmit: Bool {
-    SignupValidator.normalized(email).isEmpty == false
-      && SignupValidator.normalized(password).isEmpty == false
-      && isSubmitting == false
+  @discardableResult
+  func send(_ action: LoginAction) -> Task<Void, Never>? {
+    switch action {
+    case let .emailChanged(email):
+      state.email = email
+      state.submissionMessage = nil
+      return nil
+    case let .passwordChanged(password):
+      state.password = password
+      state.submissionMessage = nil
+      return nil
+    case .submitTapped:
+      return submit()
+    }
   }
 
-  var loginRequest: LoginRequest {
-    LoginRequest(
-      email: SignupValidator.normalized(email),
-      password: SignupValidator.normalized(password)
-    )
-  }
+  private func submit() -> Task<Void, Never>? {
+    state.submissionMessage = nil
 
-  func submit() async {
-    submissionMessage = nil
-
-    guard canSubmit else {
-      submissionMessage = "필수값을 채워주세요."
-      return
+    guard state.canSubmit else {
+      state.submissionMessage = "필수값을 채워주세요."
+      return nil
     }
 
-    isSubmitting = true
-    defer { isSubmitting = false }
+    state.isSubmitting = true
+    let request = state.loginRequest
 
-    do {
-      let session = try await service.login(request: loginRequest)
-      onLoginSucceeded(session)
-    } catch let error as LoginServiceError {
-      submissionMessage = error.errorDescription
-    } catch {
-      submissionMessage = "로그인 중 문제가 발생했어요. 다시 시도해 주세요."
+    return Task {
+      do {
+        let session = try await service.login(request: request)
+        state.isSubmitting = false
+        onLoginSucceeded(session)
+      } catch let error as LoginServiceError {
+        state.submissionMessage = error.errorDescription
+        state.isSubmitting = false
+      } catch {
+        state.submissionMessage = "로그인 중 문제가 발생했어요. 다시 시도해 주세요."
+        state.isSubmitting = false
+      }
     }
   }
 }

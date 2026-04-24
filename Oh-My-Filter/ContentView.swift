@@ -22,14 +22,8 @@ struct ContentView: View {
             SignupView(
               viewModel: coordinator.signupViewModel,
               onLoginTap: coordinator.returnToLogin,
-              onProfileLater: {
-                coordinator.signupViewModel.dismissSignupCompletionAlert()
-                coordinator.finishAuthentication()
-              },
-              onProfileNow: {
-                coordinator.signupViewModel.dismissSignupCompletionAlert()
-                coordinator.finishAuthentication()
-              }
+              onProfileLater: coordinator.finishAuthentication,
+              onProfileNow: coordinator.finishAuthentication
             )
           }
         }

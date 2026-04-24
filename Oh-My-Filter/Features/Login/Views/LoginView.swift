@@ -33,24 +33,40 @@ struct LoginView: View {
 
         AuthCard {
           AuthFieldSection(title: "이메일") {
-            TextField("you@example.com", text: $viewModel.email)
+            TextField(
+              "you@example.com",
+              text: Binding(
+                get: { viewModel.state.email },
+                set: { viewModel.send(.emailChanged($0)) }
+              )
+            )
               .keyboardType(.emailAddress)
               .textInputAutocapitalization(.never)
               .autocorrectionDisabled()
           }
 
           AuthFieldSection(title: "비밀번호") {
-            SecureField("••••••••", text: $viewModel.password)
+            SecureField(
+              "••••••••",
+              text: Binding(
+                get: { viewModel.state.password },
+                set: { viewModel.send(.passwordChanged($0)) }
+              )
+            )
               .textInputAutocapitalization(.never)
               .autocorrectionDisabled()
           }
 
           AuthSubmitSection(
             title: "로그인",
-            isSubmitting: viewModel.isSubmitting,
-            isEnabled: viewModel.canSubmit,
-            message: viewModel.submissionMessage,
-            submitAction: viewModel.submit
+            isSubmitting: viewModel.state.isSubmitting,
+            isEnabled: viewModel.state.canSubmit,
+            message: viewModel.state.submissionMessage,
+            submitAction: {
+              if let task = viewModel.send(.submitTapped) {
+                await task.value
+              }
+            }
           )
         }
 

@@ -4,14 +4,7 @@ import Observation
 @MainActor
 @Observable
 final class SignupViewModel {
-  var email = ""
-  var password = ""
-  var passwordConfirmation = ""
-  var nick = ""
-  var emailCheckState: EmailCheckState = .idle
-  var submissionMessage: String?
-  var isSubmitting = false
-  var isShowingSignupCompletionAlert = false
+  var state = SignupState()
 
   private let service: SignupServicing
   private let debounceDuration: Duration
@@ -25,66 +18,39 @@ final class SignupViewModel {
     self.debounceDuration = debounceDuration
   }
 
-  var emailErrorMessage: String? {
-    switch emailCheckState {
-    case let .invalidFormat(message),
-      let .invalid(message),
-      let .duplicate(message),
-      let .failed(message):
-      message
-    case .idle, .checking, .available:
-      nil
+  @discardableResult
+  func send(_ action: SignupAction) -> Task<Void, Never>? {
+    switch action {
+    case let .emailChanged(email):
+      guard state.email != email else { return nil }
+      state.email = email
+      return validateEmailAfterChange(email)
+    case let .passwordChanged(password):
+      state.password = password
+      state.submissionMessage = nil
+      return nil
+    case let .passwordConfirmationChanged(passwordConfirmation):
+      state.passwordConfirmation = passwordConfirmation
+      state.submissionMessage = nil
+      return nil
+    case let .nickChanged(nick):
+      state.nick = nick
+      state.submissionMessage = nil
+      return nil
+    case .submitTapped:
+      return submit()
+    case .completionAlertDismissed:
+      state.isShowingSignupCompletionAlert = false
+      return nil
     }
   }
 
-  var emailSuccessMessage: String? {
-    if case let .available(message) = emailCheckState {
-      message
-    } else {
-      nil
-    }
-  }
-
-  var passwordErrorMessage: String? {
-    SignupValidator.passwordErrorMessage(for: password)
-  }
-
-  var passwordConfirmationErrorMessage: String? {
-    SignupValidator.passwordConfirmationErrorMessage(
-      password: password,
-      confirmation: passwordConfirmation
-    )
-  }
-
-  var nickErrorMessage: String? {
-    SignupValidator.nickErrorMessage(for: nick)
-  }
-
-  var canSubmit: Bool {
-    requiredFieldsAreFilled
-      && emailCheckState.isSuccess
-      && passwordErrorMessage == nil
-      && passwordConfirmationErrorMessage == nil
-      && nickErrorMessage == nil
-      && isSubmitting == false
-  }
-
-  var joinRequest: SignupRequest {
-    SignupRequest(
-      email: SignupValidator.normalized(email),
-      password: SignupValidator.normalized(password),
-      nick: SignupValidator.normalized(nick)
-    )
-  }
-
-  func emailChanged(from oldValue: String, to newValue: String) {
-    guard oldValue != newValue else { return }
-
-    submissionMessage = nil
+  private func validateEmailAfterChange(_ email: String) -> Task<Void, Never>? {
+    state.submissionMessage = nil
     emailValidationTask?.cancel()
 
-    let normalizedEmail = SignupValidator.normalized(newValue)
-    guard prepareEmailValidation(for: normalizedEmail) else { return }
+    let normalizedEmail = SignupValidator.normalized(email)
+    guard prepareEmailValidation(for: normalizedEmail) else { return nil }
 
     emailValidationTask = Task { [service, debounceDuration, normalizedEmail] in
       do {
@@ -105,53 +71,49 @@ final class SignupViewModel {
         }
       }
     }
+
+    return emailValidationTask
   }
 
-  func submit() async {
-    submissionMessage = nil
-    isShowingSignupCompletionAlert = false
+  private func submit() -> Task<Void, Never>? {
+    state.submissionMessage = nil
+    state.isShowingSignupCompletionAlert = false
 
-    guard canSubmit else {
-      submissionMessage = "입력값을 다시 확인해 주세요."
-      return
+    guard state.canSubmit else {
+      state.submissionMessage = "입력값을 다시 확인해 주세요."
+      return nil
     }
 
-    isSubmitting = true
-    defer { isSubmitting = false }
+    state.isSubmitting = true
+    let request = state.joinRequest
 
-    do {
-      try await service.join(request: joinRequest)
-      isShowingSignupCompletionAlert = true
-    } catch let error as SignupServiceError {
-      submissionMessage = error.errorDescription
-    } catch {
-      submissionMessage = "회원가입 중 문제가 발생했어요. 다시 시도해 주세요."
+    return Task {
+      do {
+        try await service.join(request: request)
+        state.isShowingSignupCompletionAlert = true
+        state.isSubmitting = false
+      } catch let error as SignupServiceError {
+        state.submissionMessage = error.errorDescription
+        state.isSubmitting = false
+      } catch {
+        state.submissionMessage = "회원가입 중 문제가 발생했어요. 다시 시도해 주세요."
+        state.isSubmitting = false
+      }
     }
-  }
-
-  func dismissSignupCompletionAlert() {
-    isShowingSignupCompletionAlert = false
-  }
-
-  private var requiredFieldsAreFilled: Bool {
-    SignupValidator.normalized(email).isEmpty == false
-      && SignupValidator.normalized(password).isEmpty == false
-      && SignupValidator.normalized(passwordConfirmation).isEmpty == false
-      && SignupValidator.normalized(nick).isEmpty == false
   }
 
   private func prepareEmailValidation(for normalizedEmail: String) -> Bool {
     guard normalizedEmail.isEmpty == false else {
-      emailCheckState = .idle
+      state.emailCheckState = .idle
       return false
     }
 
     guard SignupValidator.isValidEmail(normalizedEmail) else {
-      emailCheckState = .invalidFormat("올바른 이메일 형식을 입력해 주세요.")
+      state.emailCheckState = .invalidFormat("올바른 이메일 형식을 입력해 주세요.")
       return false
     }
 
-    emailCheckState = .checking
+    state.emailCheckState = .checking
     return true
   }
 
@@ -162,8 +124,8 @@ final class SignupViewModel {
     guard Task.isCancelled == false else { return }
 
     await MainActor.run {
-      guard SignupValidator.normalized(self.email) == email else { return }
-      self.emailCheckState = state()
+      guard SignupValidator.normalized(self.state.email) == email else { return }
+      self.state.emailCheckState = state()
     }
   }
 
