@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct SignupStatusMessageView: View {
+struct AuthStatusMessageView: View {
   let message: String
   let isSuccess: Bool
 

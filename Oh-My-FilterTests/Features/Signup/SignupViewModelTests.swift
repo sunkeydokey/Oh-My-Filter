@@ -125,6 +125,78 @@ struct SignupViewModelTests {
     #expect(viewModel.passwordConfirmationErrorMessage == "비밀번호가 일치하지 않아요.")
     #expect(viewModel.canSubmit == false)
   }
+
+  @Test("stale email validation response is ignored")
+  func staleEmailValidationResponseIsIgnored() async {
+    let service = ControlledSignupService()
+    let viewModel = SignupViewModel(
+      service: service,
+      debounceDuration: .milliseconds(10)
+    )
+
+    viewModel.email = "first@sesac.com"
+    viewModel.emailChanged(from: "", to: viewModel.email)
+    try? await Task.sleep(for: .milliseconds(30))
+
+    viewModel.email = "second@sesac.com"
+    viewModel.emailChanged(from: "first@sesac.com", to: viewModel.email)
+    try? await Task.sleep(for: .milliseconds(30))
+
+    await service.resumeValidation(
+      at: 0,
+      with: .success(.available)
+    )
+
+    #expect(viewModel.emailCheckState == .checking)
+
+    await service.resumeValidation(
+      at: 1,
+      with: .success(.duplicate)
+    )
+
+    try? await Task.sleep(for: .milliseconds(10))
+
+    #expect(viewModel.emailCheckState == .duplicate("이미 사용 중인 이메일입니다."))
+  }
+
+  @Test("duplicate email keeps submit disabled")
+  func duplicateEmailKeepsSubmitDisabled() async {
+    let service = MockSignupService()
+    await service.setEmailValidationResult(.duplicate)
+
+    let viewModel = SignupViewModel(
+      service: service,
+      debounceDuration: .milliseconds(10)
+    )
+    viewModel.email = "sesac@sesac.com"
+    viewModel.emailChanged(from: "", to: viewModel.email)
+    try? await Task.sleep(for: .milliseconds(40))
+
+    viewModel.password = "sesac1234@"
+    viewModel.passwordConfirmation = "sesac1234@"
+    viewModel.nick = "새싹이Abc12"
+
+    #expect(viewModel.emailCheckState == .duplicate("이미 사용 중인 이메일입니다."))
+    #expect(viewModel.canSubmit == false)
+  }
+
+  @Test("email validation failure shows retry guidance")
+  func emailValidationFailureShowsRetryGuidance() async {
+    let service = MockSignupService()
+    await service.setEmailValidationError(SignupServiceError.serverError)
+
+    let viewModel = SignupViewModel(
+      service: service,
+      debounceDuration: .milliseconds(10)
+    )
+
+    viewModel.email = "sesac@sesac.com"
+    viewModel.emailChanged(from: "", to: viewModel.email)
+    try? await Task.sleep(for: .milliseconds(40))
+
+    #expect(viewModel.emailCheckState == .failed("이메일 확인 중 문제가 발생했어요. 다시 시도해 주세요."))
+    #expect(viewModel.canSubmit == false)
+  }
 }
 
 actor MockSignupService: SignupServicing {
@@ -136,6 +208,10 @@ actor MockSignupService: SignupServicing {
 
   func setEmailValidationResult(_ status: EmailValidationStatus) {
     emailValidationResult = .success(status)
+  }
+
+  func setEmailValidationError(_ error: Error) {
+    emailValidationResult = .failure(error)
   }
 
   func setJoinResult(_ result: Result<Void, Error>) {
@@ -151,5 +227,24 @@ actor MockSignupService: SignupServicing {
   func join(request: SignupRequest) async throws {
     lastJoinRequest = request
     try joinResult.get()
+  }
+}
+
+actor ControlledSignupService: SignupServicing {
+  private var continuations: [CheckedContinuation<EmailValidationStatus, Error>] = []
+
+  func validateEmail(_ email: String) async throws -> EmailValidationStatus {
+    try await withCheckedThrowingContinuation { continuation in
+      continuations.append(continuation)
+    }
+  }
+
+  func join(request: SignupRequest) async throws {}
+
+  func resumeValidation(
+    at index: Int,
+    with result: Result<EmailValidationStatus, Error>
+  ) {
+    continuations[index].resume(with: result)
   }
 }

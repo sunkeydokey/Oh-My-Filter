@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct SignupTextFieldSection<Field: View>: View {
+struct AuthFieldSection<Field: View>: View {
   let title: String
   let description: String?
   let message: String?
@@ -36,7 +36,7 @@ struct SignupTextFieldSection<Field: View>: View {
       .padding(.horizontal, 12)
       .padding(.vertical, 10)
       .background(ColorToken.brandDeepSprout.color)
-      .clipShape(.rect(cornerRadius: 15))
+      .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
 
       if let description {
         Text(description)
@@ -46,7 +46,7 @@ struct SignupTextFieldSection<Field: View>: View {
 
       Group {
         if let message {
-          SignupStatusMessageView(message: message, isSuccess: isSuccess)
+          AuthStatusMessageView(message: message, isSuccess: isSuccess)
         } else {
           Text(" ")
             .font(TypographyToken.pretendardCaption1.font)

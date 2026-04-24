@@ -8,7 +8,7 @@
 import Foundation
 
 enum Server {
-  static func apiKey() -> String {
+  nonisolated static func apiKey() -> String {
     guard let key = Bundle.main.object(
       forInfoDictionaryKey: "API_KEY"
     ) as? String else { return "NO API KEY" }
@@ -16,7 +16,7 @@ enum Server {
     return key
   }
 
-  static func baseUrl() -> String {
+  nonisolated static func baseUrl() -> String {
     guard let host = Bundle.main.object(
       forInfoDictionaryKey: "HTTP_HOST"
     ) as? String else { return "HTTP 도메인을 찾을 수 없음" }

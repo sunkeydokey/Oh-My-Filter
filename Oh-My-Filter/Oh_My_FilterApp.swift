@@ -9,9 +9,14 @@ import SwiftUI
 
 @main
 struct OhMyFilterApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+  @State private var coordinator = AppCoordinator(
+    loginService: LiveLoginService(),
+    signupService: LiveSignupService()
+  )
+
+  var body: some Scene {
+    WindowGroup {
+      ContentView(coordinator: coordinator)
     }
+  }
 }

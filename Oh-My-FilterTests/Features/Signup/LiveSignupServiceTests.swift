@@ -6,7 +6,7 @@ struct LiveSignupServiceTests {
   @Test("email validation maps status codes to domain states")
   func validateEmailMapsStatusCodes() async throws {
     let manager = MockBaseNetworkManager()
-    let service = LiveSignupService(networkManager: manager)
+    let service = await LiveSignupService(networkManager: manager)
 
     await manager.enqueueResponse(NetworkResponse(data: Data(), statusCode: 200))
     let available = try await service.validateEmail("sesac@sesac.com")
@@ -24,7 +24,7 @@ struct LiveSignupServiceTests {
   @Test("signup maps status codes to service errors")
   func joinMapsStatusCodes() async throws {
     let manager = MockBaseNetworkManager()
-    let service = LiveSignupService(networkManager: manager)
+    let service = await LiveSignupService(networkManager: manager)
     let request = SignupRequest(email: "sesac@sesac.com", password: "1234Abcd!", nick: "새싹이")
 
     await manager.enqueueResponse(NetworkResponse(data: Data(), statusCode: 400))
@@ -51,7 +51,7 @@ struct LiveSignupServiceTests {
   @Test("network failures map to signup service errors")
   func joinMapsNetworkFailures() async throws {
     let manager = MockBaseNetworkManager()
-    let service = LiveSignupService(networkManager: manager)
+    let service = await LiveSignupService(networkManager: manager)
     let request = SignupRequest(email: "sesac@sesac.com", password: "1234Abcd!", nick: "새싹이")
 
     await manager.enqueueFailure(NetworkError.transport)
