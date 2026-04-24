@@ -15,6 +15,8 @@ struct OhMyFilterApp: App {
     signupService: LiveSignupService()
   )
 
+  @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+
   init() {
     TabBarAppearance.configure()
   }
@@ -40,7 +42,7 @@ private enum TabBarAppearance {
     for layoutAppearance in [
       appearance.stackedLayoutAppearance,
       appearance.inlineLayoutAppearance,
-      appearance.compactInlineLayoutAppearance
+      appearance.compactInlineLayoutAppearance,
     ] {
       layoutAppearance.selected.iconColor = selectedColor
       layoutAppearance.selected.titleTextAttributes = [.foregroundColor: selectedColor]

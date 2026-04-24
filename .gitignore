@@ -111,3 +111,5 @@ xcuserdata
 Secrets.xcconfig
 AGENTS.md
 *.pen
+GoogleService-Info.plist
+*.p8
