@@ -1,88 +1,65 @@
 import Foundation
 
 struct LiveSignupService: SignupServicing {
-  private let session: URLSession
-  private let encoder: JSONEncoder
+  private let networkManager: any BaseNetworkManaging
 
-  init(
-    session: URLSession = .shared,
-    encoder: JSONEncoder = JSONEncoder()
-  ) {
-    self.session = session
-    self.encoder = encoder
+  init(networkManager: any BaseNetworkManaging = BaseNetworkManager()) {
+    self.networkManager = networkManager
   }
 
   func validateEmail(_ email: String) async throws -> EmailValidationStatus {
-    let requestBody = EmailValidationRequest(email: email)
-    let request = try makeRequest(
-      path: "users/validation/email",
-      body: requestBody
-    )
+    let response: NetworkResponse
 
     do {
-      let (_, response) = try await session.data(for: request)
-      guard let httpResponse = response as? HTTPURLResponse else {
-        throw SignupServiceError.invalidResponse
-      }
+      response = try await networkManager.request(
+        UserApiRouter.validate,
+        body: EmailValidationRequest(email: email)
+      )
+    } catch let error as NetworkError {
+      throw mappedServiceError(error)
+    }
 
-      switch httpResponse.statusCode {
-      case 200 ..< 300:
-        return .available
-      case 400:
-        return .invalid
-      case 409:
-        return .duplicate
-      default:
-        throw SignupServiceError.serverError
-      }
-    } catch let error as SignupServiceError {
-      throw error
-    } catch {
-      throw SignupServiceError.transport
+    switch response.statusCode {
+    case 200 ..< 300:
+      return .available
+    case 400:
+      return .invalid
+    case 409:
+      return .duplicate
+    default:
+      throw SignupServiceError.serverError
     }
   }
 
   func join(request: SignupRequest) async throws {
-    let request = try makeRequest(path: "users/join", body: request)
+    let response: NetworkResponse
 
     do {
-      let (_, response) = try await session.data(for: request)
-      guard let httpResponse = response as? HTTPURLResponse else {
-        throw SignupServiceError.invalidResponse
-      }
-
-      switch httpResponse.statusCode {
-      case 200 ..< 300:
-        return
-      case 400:
-        throw SignupServiceError.invalidRequest
-      case 409:
-        throw SignupServiceError.duplicateEmail
-      default:
-        throw SignupServiceError.serverError
-      }
-    } catch let error as SignupServiceError {
-      throw error
-    } catch {
-      throw SignupServiceError.transport
+      response = try await networkManager.request(UserApiRouter.signUp, body: request)
+    } catch let error as NetworkError {
+      throw mappedServiceError(error)
     }
-  }
 
-  private func makeRequest<T: Encodable>(path: String, body: T) throws -> URLRequest {
-    guard let url = URL(string: Server.baseUrl())?.appending(path: path) else {
+    switch response.statusCode {
+    case 200 ..< 300:
+      return
+    case 400:
       throw SignupServiceError.invalidRequest
+    case 409:
+      throw SignupServiceError.duplicateEmail
+    default:
+      throw SignupServiceError.serverError
     }
-
-    var request = URLRequest(url: url)
-    request.httpMethod = "POST"
-    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    request.setValue("application/json", forHTTPHeaderField: "Accept")
-    request.setValue(Server.apiKey(), forHTTPHeaderField: "SeSACKey")
-    request.httpBody = try encoder.encode(body)
-    return request
   }
-}
 
-private struct EmailValidationRequest: Encodable, Sendable {
-  let email: String
+  private func mappedServiceError(_ error: NetworkError) -> SignupServiceError {
+    switch error {
+    case .invalidRequest:
+      .invalidRequest
+    case .invalidResponse:
+      .invalidResponse
+    case .transport:
+      .transport
+    }
+  }
 }
