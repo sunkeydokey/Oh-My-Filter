@@ -3,13 +3,19 @@ import SwiftUI
 struct MainView: View {
   @State private var viewModel = MainViewModel()
   @State private var didLoad = false
+  let navigate: (MainRoute) -> Void
+
+  init(navigate: @escaping (MainRoute) -> Void = { _ in }) {
+    self.navigate = navigate
+  }
 
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
         MainTodayFilterSectionView(
           state: viewModel.state.todayFilter,
-          retryAction: retryTodayFilter
+          retryAction: retryTodayFilter,
+          selectionAction: showFilterDetail
         )
 
         VStack(alignment: .leading, spacing: 32) {
@@ -20,12 +26,14 @@ struct MainView: View {
 
           MainHotTrendSectionView(
             state: viewModel.state.hotTrendFilters,
-            retryAction: retryHotTrendFilters
+            retryAction: retryHotTrendFilters,
+            selectionAction: showFilterDetail
           )
 
           MainTodayAuthorSectionView(
             state: viewModel.state.todayAuthor,
-            retryAction: retryTodayAuthor
+            retryAction: retryTodayAuthor,
+            selectionAction: showFilterDetail
           )
         }
         .padding(.top, 24)
@@ -66,5 +74,9 @@ struct MainView: View {
     Task {
       await viewModel.send(.retryTodayAuthor)
     }
+  }
+
+  private func showFilterDetail(filterID: String) {
+    navigate(.filterDetail(filterID: filterID))
   }
 }

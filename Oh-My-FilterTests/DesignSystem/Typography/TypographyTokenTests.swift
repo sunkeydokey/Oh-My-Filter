@@ -8,7 +8,7 @@ struct TypographyTokenTests {
     #expect(TypographyToken.allCases.count == 10)
     #expect(TypographyToken.pretendardTitle1.pointSize == CGFloat(20))
     #expect(TypographyToken.pretendardCaption3.pointSize == CGFloat(8))
-    #expect(TypographyToken.mulgyeolTitle1.fontName == "HakgyoansimMulgyeolB")
+    #expect(TypographyToken.mulgyeolTitle1.fontName == "TTHakgyoansimMulgyeolR")
   }
 
   @Test(arguments: TypographyToken.allCases)

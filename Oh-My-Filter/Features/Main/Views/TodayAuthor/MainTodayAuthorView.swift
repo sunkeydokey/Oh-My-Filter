@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MainTodayAuthorView: View {
   let todayAuthor: MainTodayAuthor
+  let selectionAction: (String) -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
@@ -57,7 +58,7 @@ struct MainTodayAuthorView: View {
         Spacer(minLength: 0)
       }
 
-      MainTodayAuthorGalleryView(todayAuthor: todayAuthor)
+      MainTodayAuthorGalleryView(todayAuthor: todayAuthor, selectionAction: selectionAction)
 
       MainTodayAuthorTagRowView(hashTags: todayAuthor.hashTags)
     }

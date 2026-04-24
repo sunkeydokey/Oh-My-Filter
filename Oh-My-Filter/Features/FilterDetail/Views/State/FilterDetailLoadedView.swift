@@ -1,0 +1,53 @@
+import SwiftUI
+
+struct FilterDetailLoadedView: View {
+  let detail: FilterDetail
+  let previewState: FilterDetailPreviewState
+  let action: () -> Void
+
+  var body: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 24) {
+        FilterImageComparisonView(
+          previewState: previewState
+        )
+
+        FilterDetailPriceView(detail: detail)
+        FilterDetailStatsView(detail: detail)
+        FilterDetailMetadataView(metadata: detail.metadata)
+        FilterDetailValuesView(
+          values: detail.filterValues,
+          isLocked: detail.isDownloaded == false
+        )
+
+        Button(detail.buttonTitle, action: action)
+          .font(TypographyToken.pretendardBody1.font)
+          .bold()
+          .foregroundStyle(detail.isDownloaded ? ColorToken.grayScale0.color : ColorToken.grayScale60.color)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 12)
+          .background(
+            detail.isDownloaded ? ColorToken.sesacFilterDeepTurquoise.color : ColorToken.grayScale75.color,
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+          )
+
+        Divider()
+          .overlay(ColorToken.grayScale90.color)
+
+        FilterDetailCreatorView(detail: detail)
+        FilterDetailHashTagView(hashTags: detail.hashTags)
+
+        Text(detail.description)
+          .font(TypographyToken.pretendardBody3.font)
+          .lineSpacing(5)
+          .foregroundStyle(ColorToken.grayScale45.color)
+          .fixedSize(horizontal: false, vertical: true)
+
+        FilterDetailCommentsView(comments: detail.comments)
+      }
+      .padding(.horizontal, 20)
+      .padding(.bottom, 40)
+    }
+    .scrollIndicators(.hidden)
+  }
+}

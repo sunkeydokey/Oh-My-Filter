@@ -2,6 +2,8 @@ import Foundation
 import Testing
 @testable import Oh_My_Filter
 
+@Suite(.serialized)
+@MainActor
 struct BaseNetworkManagerTests {
   @Test("body request uses router metadata and encodes JSON payload")
   func requestWithBodyBuildsExpectedURLRequest() async throws {
@@ -15,9 +17,11 @@ struct BaseNetworkManagerTests {
       #expect(request.value(forHTTPHeaderField: "Content-Type") == ContentType.json.rawValue)
       #expect(request.value(forHTTPHeaderField: "Accept") == ContentType.json.rawValue)
 
-      let body = try #require(request.httpBody)
-      let payload = try JSONDecoder().decode(SignupRequest.self, from: body)
-      #expect(payload == SignupRequest(email: "sesac@sesac.com", password: "1234Abcd!", nick: "새싹이"))
+      let body = try #require(requestBodyData(from: request))
+      let payload = try #require(JSONSerialization.jsonObject(with: body) as? [String: String])
+      #expect(payload["email"] == "sesac@sesac.com")
+      #expect(payload["password"] == "1234Abcd!")
+      #expect(payload["nick"] == "새싹이")
 
       return TestURLProtocol.StubResponse(statusCode: 200)
     }
@@ -80,7 +84,7 @@ struct BaseNetworkManagerTests {
     defer { TestURLProtocol.reset() }
 
     TestURLProtocol.setRequestHandler { request in
-      #expect(request.value(forHTTPHeaderField: "SeSACKey") == "test-api-key")
+      #expect(request.value(forHTTPHeaderField: "SeSACKey") == Server.apiKey())
       #expect(request.value(forHTTPHeaderField: "Authorization") == "stored-access-token")
       return TestURLProtocol.StubResponse(statusCode: 200)
     }
@@ -99,7 +103,7 @@ struct BaseNetworkManagerTests {
     defer { TestURLProtocol.reset() }
 
     TestURLProtocol.setRequestHandler { request in
-      #expect(request.value(forHTTPHeaderField: "SeSACKey") == "test-api-key")
+      #expect(request.value(forHTTPHeaderField: "SeSACKey") == Server.apiKey())
       #expect(request.value(forHTTPHeaderField: "Authorization") == "stored-access-token")
       return TestURLProtocol.StubResponse(statusCode: 200)
     }
@@ -136,6 +140,30 @@ struct BaseNetworkManagerTests {
   }
 }
 
+private nonisolated func requestBodyData(from request: URLRequest) -> Data? {
+  if let body = request.httpBody {
+    return body
+  }
+
+  guard let stream = request.httpBodyStream else {
+    return nil
+  }
+
+  stream.open()
+  defer { stream.close() }
+
+  var data = Data()
+  var buffer = [UInt8](repeating: 0, count: 1_024)
+
+  while stream.hasBytesAvailable {
+    let count = stream.read(&buffer, maxLength: buffer.count)
+    guard count > 0 else { break }
+    data.append(buffer, count: count)
+  }
+
+  return data
+}
+
 private enum TestRouter: ApiRouter {
   case join
   case search
@@ -160,6 +188,10 @@ private enum TestRouter: ApiRouter {
 
   var contentType: ContentType {
     .json
+  }
+
+  var requiresAuthorizationHeader: Bool {
+    true
   }
 }
 
@@ -187,7 +219,7 @@ private extension StoredAuthTokens {
   static let fixture = StoredAuthTokens(
     accessToken: "stored-access-token",
     refreshToken: "stored-refresh-token",
-    accessTokenExpiresAt: Date(timeIntervalSinceReferenceDate: 1_000),
-    refreshTokenExpiresAt: Date(timeIntervalSinceReferenceDate: 2_000)
+    accessTokenExpiresAt: .distantFuture,
+    refreshTokenExpiresAt: .distantFuture
   )
 }

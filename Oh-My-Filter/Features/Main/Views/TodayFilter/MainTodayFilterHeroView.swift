@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MainTodayFilterHeroView: View {
   let todayFilter: MainTodayFilter
+  let selectionAction: (String) -> Void
 
   var body: some View {
     ZStack(alignment: .bottomLeading) {
@@ -37,20 +38,22 @@ struct MainTodayFilterHeroView: View {
         HStack {
           Spacer(minLength: 0)
 
-          Text("사용해보기")
-            .font(.custom(TypographyToken.pretendardBody3.fontName, size: 12, relativeTo: .caption))
-            .foregroundStyle(ColorToken.grayScale60.color)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(
-              ColorToken.grayScale75.color.opacity(0.5),
-              in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-            )
-            .overlay(
-              RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(ColorToken.grayScale75.color.opacity(0.85), lineWidth: 1)
-            )
-            .padding(.top, 64)
+          Button("사용해보기") {
+            selectionAction(todayFilter.id)
+          }
+          .font(.custom(TypographyToken.pretendardBody3.fontName, size: 12, relativeTo: .caption))
+          .foregroundStyle(ColorToken.grayScale60.color)
+          .padding(.horizontal, 12)
+          .padding(.vertical, 7)
+          .background(
+            ColorToken.grayScale75.color.opacity(0.5),
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+          )
+          .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+              .stroke(ColorToken.grayScale75.color.opacity(0.85), lineWidth: 1)
+          )
+          .padding(.top, 64)
         }
 
         Spacer()

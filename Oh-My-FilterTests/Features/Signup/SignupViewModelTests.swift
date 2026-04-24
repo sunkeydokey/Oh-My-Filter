@@ -135,10 +135,10 @@ struct SignupViewModelTests {
     )
 
     viewModel.send(.emailChanged("first@sesac.com"))
-    try? await Task.sleep(for: .milliseconds(30))
+    await service.waitForValidationCount(1)
 
     viewModel.send(.emailChanged("second@sesac.com"))
-    try? await Task.sleep(for: .milliseconds(30))
+    await service.waitForValidationCount(2)
 
     await service.resumeValidation(
       at: 0,
@@ -242,6 +242,12 @@ actor ControlledSignupService: SignupServicing {
     with result: Result<EmailValidationStatus, Error>
   ) {
     continuations[index].resume(with: result)
+  }
+
+  func waitForValidationCount(_ count: Int) async {
+    while continuations.count < count {
+      await Task.yield()
+    }
   }
 }
 
