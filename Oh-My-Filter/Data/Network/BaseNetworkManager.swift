@@ -1,6 +1,6 @@
 import Foundation
 
-struct BaseNetworkManager: BaseNetworkManaging {
+nonisolated struct BaseNetworkManager: BaseNetworkManaging {
   private let session: URLSession
   private let encoder: JSONEncoder
 
@@ -14,14 +14,16 @@ struct BaseNetworkManager: BaseNetworkManaging {
 
   func request<Router: ApiRouter>(
     _ router: Router,
+    headers: [String: String],
     parameters: RequestQuery
   ) async throws -> NetworkResponse {
-    try await performRequest(router: router, parameters: parameters, body: nil)
+    try await performRequest(router: router, headers: headers, parameters: parameters, body: nil)
   }
 
   func request<Router: ApiRouter, Body: Encodable>(
     _ router: Router,
     body: Body,
+    headers: [String: String],
     parameters: RequestQuery
   ) async throws -> NetworkResponse {
     let requestBody: Data
@@ -32,15 +34,21 @@ struct BaseNetworkManager: BaseNetworkManaging {
       throw NetworkError.invalidRequest
     }
 
-    return try await performRequest(router: router, parameters: parameters, body: requestBody)
+    return try await performRequest(
+      router: router,
+      headers: headers,
+      parameters: parameters,
+      body: requestBody
+    )
   }
 
   private func performRequest<Router: ApiRouter>(
     router: Router,
+    headers: [String: String],
     parameters: RequestQuery,
     body: Data?
   ) async throws -> NetworkResponse {
-    let request = try makeRequest(router: router, parameters: parameters, body: body)
+    let request = try makeRequest(router: router, headers: headers, parameters: parameters, body: body)
 
     do {
       let (data, response) = try await session.data(for: request)
@@ -58,6 +66,7 @@ struct BaseNetworkManager: BaseNetworkManaging {
 
   private func makeRequest<Router: ApiRouter>(
     router: Router,
+    headers: [String: String],
     parameters: RequestQuery,
     body: Data?
   ) throws -> URLRequest {
@@ -80,6 +89,9 @@ struct BaseNetworkManager: BaseNetworkManaging {
     request.setValue(router.contentType.rawValue, forHTTPHeaderField: "Content-Type")
     request.setValue(ContentType.json.rawValue, forHTTPHeaderField: "Accept")
     request.setValue(Server.apiKey(), forHTTPHeaderField: "SeSACKey")
+    for (field, value) in headers {
+      request.setValue(value, forHTTPHeaderField: field)
+    }
     request.httpBody = body
     return request
   }

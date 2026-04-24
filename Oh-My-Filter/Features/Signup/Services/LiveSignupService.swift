@@ -2,9 +2,20 @@ import Foundation
 
 struct LiveSignupService: SignupServicing {
   private let networkManager: any BaseNetworkManaging
+  private let tokenStore: any AuthTokenStoring
+  private let decoder: JSONDecoder
+  private let now: @Sendable () -> Date
 
-  init(networkManager: any BaseNetworkManaging = BaseNetworkManager()) {
+  init(
+    networkManager: any BaseNetworkManaging = BaseNetworkManager(),
+    tokenStore: any AuthTokenStoring = KeychainAuthTokenStore(),
+    decoder: JSONDecoder = JSONDecoder(),
+    now: @escaping @Sendable () -> Date = { .now }
+  ) {
     self.networkManager = networkManager
+    self.tokenStore = tokenStore
+    self.decoder = decoder
+    self.now = now
   }
 
   func validateEmail(_ email: String) async throws -> EmailValidationStatus {
@@ -31,7 +42,7 @@ struct LiveSignupService: SignupServicing {
     }
   }
 
-  func join(request: SignupRequest) async throws {
+  func join(request: SignupRequest) async throws -> LoginSession {
     let response: NetworkResponse
 
     do {
@@ -42,7 +53,13 @@ struct LiveSignupService: SignupServicing {
 
     switch response.statusCode {
     case 200 ..< 300:
-      return
+      do {
+        let decodedResponse = try decoder.decode(LoginResponseDTO.self, from: response.data)
+        try await tokenStore.save(decodedResponse.tokenPayload(now: now()))
+        return decodedResponse.session
+      } catch {
+        throw SignupServiceError.invalidResponse
+      }
     case 400:
       throw SignupServiceError.invalidRequest
     case 409:

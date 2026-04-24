@@ -9,13 +9,16 @@ final class SignupViewModel {
   private let service: SignupServicing
   private let debounceDuration: Duration
   private var emailValidationTask: Task<Void, Never>?
+  var onSignupSucceeded: @MainActor (LoginSession) -> Void
 
   init(
     service: SignupServicing,
-    debounceDuration: Duration = .seconds(2)
+    debounceDuration: Duration = .seconds(2),
+    onSignupSucceeded: @escaping @MainActor (LoginSession) -> Void = { _ in }
   ) {
     self.service = service
     self.debounceDuration = debounceDuration
+    self.onSignupSucceeded = onSignupSucceeded
   }
 
   @discardableResult
@@ -89,9 +92,10 @@ final class SignupViewModel {
 
     return Task {
       do {
-        try await service.join(request: request)
+        let session = try await service.join(request: request)
         state.isShowingSignupCompletionAlert = true
         state.isSubmitting = false
+        onSignupSucceeded(session)
       } catch let error as SignupServiceError {
         state.submissionMessage = error.errorDescription
         state.isSubmitting = false

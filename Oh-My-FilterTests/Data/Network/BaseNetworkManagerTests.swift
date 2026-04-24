@@ -51,6 +51,26 @@ struct BaseNetworkManagerTests {
     #expect(response.statusCode == 200)
   }
 
+  @Test("request applies custom headers")
+  func requestAppliesCustomHeaders() async throws {
+    let session = makeSession()
+    let manager = BaseNetworkManager(session: session)
+    defer { TestURLProtocol.reset() }
+
+    TestURLProtocol.setRequestHandler { request in
+      #expect(request.value(forHTTPHeaderField: "RefreshToken") == "refresh-token")
+      return TestURLProtocol.StubResponse(statusCode: 200)
+    }
+
+    let response = try await manager.request(
+      TestRouter.search,
+      headers: ["RefreshToken": "refresh-token"],
+      parameters: .empty
+    )
+
+    #expect(response.statusCode == 200)
+  }
+
   @Test("transport failures map to network transport error")
   func requestMapsTransportFailure() async {
     let session = makeSession()

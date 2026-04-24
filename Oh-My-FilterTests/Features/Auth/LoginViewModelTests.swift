@@ -128,8 +128,6 @@ private extension LoginSession {
     userID: "66115b1197488f90d3e7e6e5",
     email: "sesac@sesac.com",
     nick: "새싹이Abc12",
-    profileImage: "/data/profiles/1712413657554.png",
-    accessToken: "access-token",
-    refreshToken: "refresh-token"
+    profileImage: "/data/profiles/1712413657554.png"
   )
 }

@@ -1,0 +1,15 @@
+import Foundation
+
+nonisolated struct TokenRefreshResponseDTO: Codable, Sendable {
+  let accessToken: String
+  let refreshToken: String
+
+  func tokenPayload(now: Date = .now) -> StoredAuthTokens {
+    StoredAuthTokens(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      accessTokenExpiresAt: now.addingTimeInterval(120 * 60),
+      refreshTokenExpiresAt: now.addingTimeInterval(12_000 * 60)
+    )
+  }
+}

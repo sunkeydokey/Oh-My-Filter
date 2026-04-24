@@ -2,14 +2,20 @@ import Foundation
 
 struct LiveLoginService: LoginServicing {
   private let networkManager: any BaseNetworkManaging
+  private let tokenStore: any AuthTokenStoring
   private let decoder: JSONDecoder
+  private let now: @Sendable () -> Date
 
   init(
     networkManager: any BaseNetworkManaging = BaseNetworkManager(),
-    decoder: JSONDecoder = JSONDecoder()
+    tokenStore: any AuthTokenStoring = KeychainAuthTokenStore(),
+    decoder: JSONDecoder = JSONDecoder(),
+    now: @escaping @Sendable () -> Date = { .now }
   ) {
     self.networkManager = networkManager
+    self.tokenStore = tokenStore
     self.decoder = decoder
+    self.now = now
   }
 
   func login(request: LoginRequest) async throws -> LoginSession {
@@ -29,6 +35,7 @@ struct LiveLoginService: LoginServicing {
     case 200 ..< 300:
       do {
         let decodedResponse = try decoder.decode(LoginResponseDTO.self, from: response.data)
+        try await tokenStore.save(decodedResponse.tokenPayload(now: now()))
         return decodedResponse.session
       } catch {
         throw LoginServiceError.invalidResponse
@@ -78,35 +85,6 @@ struct LiveLoginService: LoginServicing {
     case .transport:
       .transport
     }
-  }
-}
-
-private struct LoginResponseDTO: Codable, Sendable {
-  let userID: String
-  let email: String
-  let nick: String
-  let profileImage: String?
-  let accessToken: String
-  let refreshToken: String
-
-  enum CodingKeys: String, CodingKey {
-    case userID = "user_id"
-    case email
-    case nick
-    case profileImage
-    case accessToken
-    case refreshToken
-  }
-
-  var session: LoginSession {
-    LoginSession(
-      userID: userID,
-      email: email,
-      nick: nick,
-      profileImage: profileImage,
-      accessToken: accessToken,
-      refreshToken: refreshToken
-    )
   }
 }
 

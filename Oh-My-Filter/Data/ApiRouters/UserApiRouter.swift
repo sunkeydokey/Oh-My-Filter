@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum UserApiRouter: ApiRouter {
+nonisolated enum UserApiRouter: ApiRouter {
   case validate
   case signUp
   case signIn

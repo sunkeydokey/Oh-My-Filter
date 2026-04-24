@@ -7,7 +7,7 @@
 
 import Foundation
 
-protocol ApiRouter {
+nonisolated protocol ApiRouter {
   var url: String { get }
   var method: HttpMethod { get }
   var contentType: ContentType { get }

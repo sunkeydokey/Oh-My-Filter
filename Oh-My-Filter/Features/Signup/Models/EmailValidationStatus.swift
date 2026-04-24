@@ -1,12 +1,12 @@
 import Foundation
 
-enum EmailValidationStatus: Equatable, Sendable {
+nonisolated enum EmailValidationStatus: Equatable, Sendable {
   case available
   case invalid
   case duplicate
 }
 
-enum EmailCheckState: Equatable, Sendable {
+nonisolated enum EmailCheckState: Equatable, Sendable {
   case idle
   case invalidFormat(String)
   case checking

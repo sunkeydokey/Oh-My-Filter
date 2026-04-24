@@ -44,9 +44,11 @@ struct SignupViewModelTests {
     let service = MockSignupService()
     await service.setEmailValidationResult(.available)
 
+    var receivedSession: LoginSession?
     let viewModel = SignupViewModel(
       service: service,
-      debounceDuration: .milliseconds(10)
+      debounceDuration: .milliseconds(10),
+      onSignupSucceeded: { receivedSession = $0 }
     )
 
     await viewModel.send(.emailChanged(" sesac@sesac.com "))?.value
@@ -63,6 +65,7 @@ struct SignupViewModelTests {
     #expect(request?.nick == "새싹이Abc12")
     #expect(viewModel.state.submissionMessage == nil)
     #expect(viewModel.state.isShowingSignupCompletionAlert)
+    #expect(receivedSession == .fixture)
   }
 
   @Test("failed signup keeps inline error and skips completion alert")
@@ -192,7 +195,7 @@ struct SignupViewModelTests {
 
 actor MockSignupService: SignupServicing {
   private var emailValidationResult: Result<EmailValidationStatus, Error> = .success(.available)
-  private var joinResult: Result<Void, Error> = .success(())
+  private var joinResult: Result<LoginSession, Error> = .success(.fixture)
   private(set) var validateEmailCallCount = 0
   private(set) var lastValidatedEmail: String?
   private(set) var lastJoinRequest: SignupRequest?
@@ -205,7 +208,7 @@ actor MockSignupService: SignupServicing {
     emailValidationResult = .failure(error)
   }
 
-  func setJoinResult(_ result: Result<Void, Error>) {
+  func setJoinResult(_ result: Result<LoginSession, Error>) {
     joinResult = result
   }
 
@@ -215,9 +218,9 @@ actor MockSignupService: SignupServicing {
     return try emailValidationResult.get()
   }
 
-  func join(request: SignupRequest) async throws {
+  func join(request: SignupRequest) async throws -> LoginSession {
     lastJoinRequest = request
-    try joinResult.get()
+    return try joinResult.get()
   }
 }
 
@@ -230,7 +233,9 @@ actor ControlledSignupService: SignupServicing {
     }
   }
 
-  func join(request: SignupRequest) async throws {}
+  func join(request: SignupRequest) async throws -> LoginSession {
+    .fixture
+  }
 
   func resumeValidation(
     at index: Int,
@@ -238,4 +243,13 @@ actor ControlledSignupService: SignupServicing {
   ) {
     continuations[index].resume(with: result)
   }
+}
+
+private extension LoginSession {
+  static let fixture = LoginSession(
+    userID: "66115b1197488f90d3e7e6e5",
+    email: "sesac@sesac.com",
+    nick: "새싹이Abc12",
+    profileImage: "/data/profiles/1712413657554.png"
+  )
 }

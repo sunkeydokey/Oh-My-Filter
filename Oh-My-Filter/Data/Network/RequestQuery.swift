@@ -1,6 +1,6 @@
 import Foundation
 
-struct RequestQuery: ExpressibleByDictionaryLiteral, Sendable {
+nonisolated struct RequestQuery: ExpressibleByDictionaryLiteral, Sendable {
   static let empty = RequestQuery()
 
   private let values: [String: String]

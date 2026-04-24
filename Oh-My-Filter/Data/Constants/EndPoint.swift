@@ -7,10 +7,14 @@
 
 import Foundation
 
-enum EndPoint {
+nonisolated enum EndPoint {
   private static let baseUrl = Server.baseUrl()
 
-  enum User {
+  nonisolated enum Auth {
+    static let refresh = "\(EndPoint.baseUrl)/auth/refresh"
+  }
+
+  nonisolated enum User {
     static let validateEmail = "\(EndPoint.baseUrl)/users/validation/email"
     static let signUp = "\(EndPoint.baseUrl)/users/join"
     static let signIn = "\(EndPoint.baseUrl)/users/login"

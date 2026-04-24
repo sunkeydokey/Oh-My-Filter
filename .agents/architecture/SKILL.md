@@ -157,6 +157,7 @@ This project uses a feature-oriented SwiftUI architecture built on top of MVVM, 
   - socket connection state changes
 - UI tests should cover only critical flows when unit tests are insufficient, consistent with the project rules. :contentReference[oaicite:6]{index=6}
 - Avoid putting important behavior exclusively in Views where it cannot be easily unit tested. :contentReference[oaicite:7]{index=7}
+- Never build UI tests module if Project Module is empty (If No UI Testing File or method)
 
 ## SwiftUI architecture style constraints
 
