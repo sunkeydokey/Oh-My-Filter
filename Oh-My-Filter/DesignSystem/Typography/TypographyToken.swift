@@ -56,16 +56,16 @@ enum TypographyToken: String, CaseIterable, Sendable {
   var fontName: String {
     switch self {
     case .pretendardTitle1:
-      "Pretendard-SemiBold"
+      "PretendardVariable-SemiBold"
     case .pretendardBody1,
       .pretendardBody2,
       .pretendardBody3,
       .pretendardCaption1,
       .pretendardCaption2,
       .pretendardCaption3:
-      "Pretendard-Regular"
+      "PretendardVariable-Regular"
     case .mulgyeolTitle1, .mulgyeolBody1, .mulgyeolCaption1:
-      "HakgyoansimMulgyeolB"
+      "TTHakgyoansimMulgyeolR"
     }
   }
 

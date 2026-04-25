@@ -15,5 +15,10 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>pretendard.ttf</string>
+		<string>mulgyeol.ttf</string>
+	</array>
 </dict>
 </plist>
