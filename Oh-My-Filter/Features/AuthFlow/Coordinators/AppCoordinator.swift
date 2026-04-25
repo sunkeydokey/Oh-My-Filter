@@ -19,13 +19,26 @@ final class AppCoordinator {
   init(
     loginService: any LoginServicing,
     signupService: any SignupServicing,
-    authSessionRefresher: any AuthSessionRefreshing = LiveAuthSessionRefreshService(),
-    tokenStore: any AuthTokenStoring = KeychainAuthTokenStore()
+    authSessionRefresher: any AuthSessionRefreshing,
+    tokenStore: any AuthTokenStoring
   ) {
     self.loginService = loginService
     self.signupService = signupService
     self.authSessionRefresher = authSessionRefresher
     self.tokenStore = tokenStore
+  }
+
+  @MainActor
+  convenience init(
+    loginService: any LoginServicing,
+    signupService: any SignupServicing
+  ) {
+    self.init(
+      loginService: loginService,
+      signupService: signupService,
+      authSessionRefresher: LiveAuthSessionRefreshService(),
+      tokenStore: KeychainAuthTokenStore()
+    )
   }
 
   @discardableResult

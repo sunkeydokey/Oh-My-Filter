@@ -8,7 +8,7 @@ nonisolated struct LiveAuthSessionRefreshService: AuthSessionRefreshing {
 
   init(
     networkManager: any BaseNetworkManaging = BaseNetworkManager(),
-    tokenStore: any AuthTokenStoring = KeychainAuthTokenStore(),
+    tokenStore: any AuthTokenStoring,
     decoder: JSONDecoder = JSONDecoder(),
     now: @escaping @Sendable () -> Date = { .now }
   ) {
@@ -16,6 +16,20 @@ nonisolated struct LiveAuthSessionRefreshService: AuthSessionRefreshing {
     self.tokenStore = tokenStore
     self.decoder = decoder
     self.now = now
+  }
+
+  @MainActor
+  init(
+    networkManager: any BaseNetworkManaging = BaseNetworkManager(),
+    decoder: JSONDecoder = JSONDecoder(),
+    now: @escaping @Sendable () -> Date = { .now }
+  ) {
+    self.init(
+      networkManager: networkManager,
+      tokenStore: KeychainAuthTokenStore(),
+      decoder: decoder,
+      now: now
+    )
   }
 
   func refreshSession() async throws -> StoredAuthTokens {

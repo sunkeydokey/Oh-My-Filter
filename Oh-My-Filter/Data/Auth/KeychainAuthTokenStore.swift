@@ -2,18 +2,20 @@ import Foundation
 import Security
 
 actor KeychainAuthTokenStore: AuthTokenStoring {
+  private static let defaultService = "Oh-My-Filter"
+
   private let service: String
   private let account: String
   private let encoder: JSONEncoder
   private let decoder: JSONDecoder
 
   init(
-    service: String = Bundle.main.bundleIdentifier ?? "Oh-My-Filter",
+    service: String? = nil,
     account: String = "authTokens",
     encoder: JSONEncoder = JSONEncoder(),
     decoder: JSONDecoder = JSONDecoder()
   ) {
-    self.service = service
+    self.service = service ?? Self.defaultService
     self.account = account
     self.encoder = encoder
     self.decoder = decoder
