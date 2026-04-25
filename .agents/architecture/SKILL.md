@@ -155,16 +155,16 @@ This project uses a feature-oriented SwiftUI architecture built on top of MVVM, 
   - retry behavior
   - token refresh behavior
   - socket connection state changes
-- UI tests should cover only critical flows when unit tests are insufficient, consistent with the project rules. :contentReference[oaicite:6]{index=6}
-- Avoid putting important behavior exclusively in Views where it cannot be easily unit tested. :contentReference[oaicite:7]{index=7}
+- UI tests should cover only critical flows when unit tests are insufficient, consistent with the project rules.
+- Avoid putting important behavior exclusively in Views where it cannot be easily unit tested.
 - Never build UI tests module if Project Module is empty (If No UI Testing File or method)
 
 ## SwiftUI architecture style constraints
 
-- Use `NavigationStack` and `navigationDestination(for:)` for stack-based navigation. :contentReference[oaicite:8]{index=8}
-- Avoid UIKit-based coordinators or navigation wrappers unless explicitly required. :contentReference[oaicite:9]{index=9}
-- Keep Views small by extracting child Views into separate `View` structs rather than large computed subviews. :contentReference[oaicite:10]{index=10}
-- Place testable view logic into ViewModels or adjacent presentation models. :contentReference[oaicite:11]{index=11}
+- Use `NavigationStack` and `navigationDestination(for:)` for stack-based navigation.
+- Avoid UIKit-based coordinators or navigation wrappers unless explicitly required. 
+- Keep Views small by extracting child Views into separate `View` structs rather than large computed subviews.
+- Place testable view logic into ViewModels or adjacent presentation models. 
 
 ## Default recommendation for new screens
 
