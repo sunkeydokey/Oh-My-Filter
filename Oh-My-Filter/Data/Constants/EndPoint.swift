@@ -36,4 +36,13 @@ nonisolated enum EndPoint {
 
     static let searchUser = "\(EndPoint.baseUrl)/users/search"
   }
+
+  nonisolated enum Filters {
+    static let today = "\(EndPoint.baseUrl)/filters/today-filter"
+    static let hotTrend = "\(EndPoint.baseUrl)/filters/hot-trend"
+  }
+
+  nonisolated enum Banners {
+    static let main = "\(EndPoint.baseUrl)/banners/main"
+  }
 }

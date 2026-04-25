@@ -70,4 +70,13 @@ nonisolated enum UserApiRouter: ApiRouter {
       .json
     }
   }
+
+  var requiresAuthorizationHeader: Bool {
+    switch self {
+    case .validate, .signUp, .signIn, .kakaoLogin, .appleLogin:
+      false
+    case .logout, .updateDeviceToken, .getUserInfo, .uploadProfileImage, .getOwnProfile, .editUserProfile, .getTodayAuthorInfo, .searchUser:
+      true
+    }
+  }
 }

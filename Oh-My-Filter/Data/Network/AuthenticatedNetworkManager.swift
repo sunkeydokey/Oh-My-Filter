@@ -6,7 +6,7 @@ nonisolated struct AuthenticatedNetworkManager: AuthenticatedNetworkManaging {
   private let authSessionRefresher: any AuthSessionRefreshing
 
   init(
-    networkManager: any BaseNetworkManaging = BaseNetworkManager(),
+    networkManager: any BaseNetworkManaging,
     tokenStore: any AuthTokenStoring,
     authSessionRefresher: (any AuthSessionRefreshing)? = nil
   ) {
@@ -15,18 +15,6 @@ nonisolated struct AuthenticatedNetworkManager: AuthenticatedNetworkManaging {
     self.authSessionRefresher = authSessionRefresher ?? LiveAuthSessionRefreshService(
       networkManager: networkManager,
       tokenStore: tokenStore
-    )
-  }
-
-  @MainActor
-  init(
-    networkManager: any BaseNetworkManaging = BaseNetworkManager(),
-    authSessionRefresher: (any AuthSessionRefreshing)? = nil
-  ) {
-    self.init(
-      networkManager: networkManager,
-      tokenStore: KeychainAuthTokenStore(),
-      authSessionRefresher: authSessionRefresher
     )
   }
 

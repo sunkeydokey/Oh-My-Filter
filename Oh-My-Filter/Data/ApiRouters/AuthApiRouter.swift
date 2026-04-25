@@ -20,4 +20,8 @@ nonisolated enum AuthApiRouter: ApiRouter {
   var contentType: ContentType {
     .json
   }
+
+  var requiresAuthorizationHeader: Bool {
+    false
+  }
 }

@@ -7,7 +7,7 @@ struct LiveSignupService: SignupServicing {
   private let now: @Sendable () -> Date
 
   init(
-    networkManager: any BaseNetworkManaging = BaseNetworkManager(),
+    networkManager: any BaseNetworkManaging,
     tokenStore: any AuthTokenStoring,
     decoder: JSONDecoder = JSONDecoder(),
     now: @escaping @Sendable () -> Date = { .now }
@@ -20,12 +20,11 @@ struct LiveSignupService: SignupServicing {
 
   @MainActor
   init(
-    networkManager: any BaseNetworkManaging = BaseNetworkManager(),
     decoder: JSONDecoder = JSONDecoder(),
     now: @escaping @Sendable () -> Date = { .now }
   ) {
     self.init(
-      networkManager: networkManager,
+      networkManager: BaseNetworkManager(),
       tokenStore: KeychainAuthTokenStore(),
       decoder: decoder,
       now: now
