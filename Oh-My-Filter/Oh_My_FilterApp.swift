@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 @main
 struct OhMyFilterApp: App {
@@ -14,9 +15,43 @@ struct OhMyFilterApp: App {
     signupService: LiveSignupService()
   )
 
+  init() {
+    TabBarAppearance.configure()
+  }
+
   var body: some Scene {
     WindowGroup {
       ContentView(coordinator: coordinator)
+        .preferredColorScheme(.dark)
     }
+  }
+}
+
+private enum TabBarAppearance {
+  static func configure() {
+    let selectedColor = UIColor(ColorToken.sesacFilterBrightTurquoise.color)
+    let normalColor = UIColor(ColorToken.grayScale60.color)
+    let backgroundColor = UIColor(ColorToken.brandBlackSprout.color)
+
+    let appearance = UITabBarAppearance()
+    appearance.configureWithOpaqueBackground()
+    appearance.backgroundColor = backgroundColor
+
+    for layoutAppearance in [
+      appearance.stackedLayoutAppearance,
+      appearance.inlineLayoutAppearance,
+      appearance.compactInlineLayoutAppearance
+    ] {
+      layoutAppearance.selected.iconColor = selectedColor
+      layoutAppearance.selected.titleTextAttributes = [.foregroundColor: selectedColor]
+      layoutAppearance.normal.iconColor = normalColor
+      layoutAppearance.normal.titleTextAttributes = [.foregroundColor: normalColor]
+    }
+
+    let tabBar = UITabBar.appearance()
+    tabBar.standardAppearance = appearance
+    tabBar.scrollEdgeAppearance = appearance
+    tabBar.tintColor = selectedColor
+    tabBar.unselectedItemTintColor = normalColor
   }
 }

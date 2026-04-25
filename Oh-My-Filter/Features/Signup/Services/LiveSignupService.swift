@@ -8,7 +8,7 @@ struct LiveSignupService: SignupServicing {
 
   init(
     networkManager: any BaseNetworkManaging = BaseNetworkManager(),
-    tokenStore: any AuthTokenStoring = KeychainAuthTokenStore(),
+    tokenStore: any AuthTokenStoring,
     decoder: JSONDecoder = JSONDecoder(),
     now: @escaping @Sendable () -> Date = { .now }
   ) {
@@ -16,6 +16,20 @@ struct LiveSignupService: SignupServicing {
     self.tokenStore = tokenStore
     self.decoder = decoder
     self.now = now
+  }
+
+  @MainActor
+  init(
+    networkManager: any BaseNetworkManaging = BaseNetworkManager(),
+    decoder: JSONDecoder = JSONDecoder(),
+    now: @escaping @Sendable () -> Date = { .now }
+  ) {
+    self.init(
+      networkManager: networkManager,
+      tokenStore: KeychainAuthTokenStore(),
+      decoder: decoder,
+      now: now
+    )
   }
 
   func validateEmail(_ email: String) async throws -> EmailValidationStatus {
