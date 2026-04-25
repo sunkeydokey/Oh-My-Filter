@@ -2,8 +2,6 @@ import Foundation
 import Security
 
 actor KeychainAuthTokenStore: AuthTokenStoring {
-  private static let defaultService = "Oh-My-Filter"
-
   private let service: String
   private let account: String
   private let encoder: JSONEncoder
@@ -15,7 +13,7 @@ actor KeychainAuthTokenStore: AuthTokenStoring {
     encoder: JSONEncoder = JSONEncoder(),
     decoder: JSONDecoder = JSONDecoder()
   ) {
-    self.service = service ?? Self.defaultService
+    self.service = service ?? "Oh-My-Filter"
     self.account = account
     self.encoder = encoder
     self.decoder = decoder
@@ -73,6 +71,31 @@ actor KeychainAuthTokenStore: AuthTokenStoring {
     guard status == errSecSuccess || status == errSecItemNotFound else {
       throw KeychainAuthTokenStoreError.unhandledStatus(status)
     }
+  }
+
+  nonisolated static func currentAccessToken(
+    service: String? = nil,
+    account: String = "authTokens"
+  ) -> String? {
+    let resolvedService = service ?? "Oh-My-Filter"
+    let query: [String: Any] = [
+      kSecClass as String: kSecClassGenericPassword,
+      kSecAttrService as String: resolvedService,
+      kSecAttrAccount as String: account,
+      kSecReturnData as String: true,
+      kSecMatchLimit as String: kSecMatchLimitOne,
+    ]
+
+    var item: CFTypeRef?
+    let status = SecItemCopyMatching(query as CFDictionary, &item)
+
+    guard status == errSecSuccess,
+          let data = item as? Data,
+          let tokens = try? JSONDecoder().decode(StoredAuthTokens.self, from: data) else {
+      return nil
+    }
+
+    return tokens.accessToken
   }
 
   private var baseQuery: [String: Any] {

@@ -11,4 +11,11 @@ nonisolated protocol ApiRouter {
   var url: String { get }
   var method: HttpMethod { get }
   var contentType: ContentType { get }
+  var requiresAuthorizationHeader: Bool { get }
+}
+
+extension ApiRouter {
+  var requiresAuthorizationHeader: Bool {
+    false
+  }
 }

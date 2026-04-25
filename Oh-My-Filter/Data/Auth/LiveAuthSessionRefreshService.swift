@@ -7,7 +7,7 @@ nonisolated struct LiveAuthSessionRefreshService: AuthSessionRefreshing {
   private let now: @Sendable () -> Date
 
   init(
-    networkManager: any BaseNetworkManaging = BaseNetworkManager(),
+    networkManager: any BaseNetworkManaging,
     tokenStore: any AuthTokenStoring,
     decoder: JSONDecoder = JSONDecoder(),
     now: @escaping @Sendable () -> Date = { .now }
@@ -20,12 +20,11 @@ nonisolated struct LiveAuthSessionRefreshService: AuthSessionRefreshing {
 
   @MainActor
   init(
-    networkManager: any BaseNetworkManaging = BaseNetworkManager(),
     decoder: JSONDecoder = JSONDecoder(),
     now: @escaping @Sendable () -> Date = { .now }
   ) {
     self.init(
-      networkManager: networkManager,
+      networkManager: BaseNetworkManager(),
       tokenStore: KeychainAuthTokenStore(),
       decoder: decoder,
       now: now
@@ -54,7 +53,6 @@ nonisolated struct LiveAuthSessionRefreshService: AuthSessionRefreshing {
         ],
         parameters: .empty
       )
-      print(response)
     } catch let error as NetworkError {
       throw mappedNetworkError(error)
     } catch {
@@ -66,7 +64,6 @@ nonisolated struct LiveAuthSessionRefreshService: AuthSessionRefreshing {
       do {
         let decodedResponse = try decoder.decode(TokenRefreshResponseDTO.self, from: response.data)
         let refreshedTokens = decodedResponse.tokenPayload(now: now())
-        print(refreshedTokens)
         try await tokenStore.save(refreshedTokens)
         return refreshedTokens
       } catch {
