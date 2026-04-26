@@ -6,7 +6,8 @@ struct LiveSignupServiceTests {
   @Test("email validation maps status codes to domain states")
   func validateEmailMapsStatusCodes() async throws {
     let manager = MockBaseNetworkManager()
-    let service = await LiveSignupService(networkManager: manager)
+    let tokenStore = MockAuthTokenStore()
+    let service = await LiveSignupService(networkManager: manager, tokenStore: tokenStore)
 
     await manager.enqueueResponse(NetworkResponse(data: Data(), statusCode: 200))
     let available = try await service.validateEmail("sesac@sesac.com")

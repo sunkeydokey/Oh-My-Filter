@@ -10,7 +10,7 @@ struct MainViewModelTests {
     let viewModel = MainViewModel(service: service)
 
     let task = Task {
-      await viewModel.load()
+      await viewModel.send(.task)
     }
 
     try? await Task.sleep(for: .milliseconds(25))
@@ -19,9 +19,18 @@ struct MainViewModelTests {
     #expect(await service.mainBannersCallCount == 1)
     #expect(await service.hotTrendFiltersCallCount == 1)
     #expect(await service.todayAuthorCallCount == 1)
+    #expect(viewModel.state.todayFilter == .loading(previous: nil))
+    #expect(viewModel.state.mainBanners == .loading(previous: nil))
+    #expect(viewModel.state.hotTrendFilters == .loading(previous: nil))
+    #expect(viewModel.state.todayAuthor == .loading(previous: nil))
 
     await service.resumeAll()
     await task.value
+
+    #expect(viewModel.state.todayFilter == .loaded(.todayFilter))
+    #expect(viewModel.state.mainBanners == .loaded([.banner]))
+    #expect(viewModel.state.hotTrendFilters == .loaded([.hotTrend]))
+    #expect(viewModel.state.todayAuthor == .loaded(.todayAuthor))
   }
 
   @Test("partial failures preserve successful sections")
@@ -34,16 +43,12 @@ struct MainViewModelTests {
     )
     let viewModel = MainViewModel(service: service)
 
-    await viewModel.load()
+    await viewModel.send(.task)
 
-    #expect(viewModel.todayFilter == .todayFilter)
-    #expect(viewModel.todayFilterState == .loaded)
-    #expect(viewModel.mainBanners.isEmpty)
-    #expect(viewModel.mainBannersState == .failed(message: "잠시 후 다시 시도해 주세요."))
-    #expect(viewModel.hotTrendFilters == [.hotTrend])
-    #expect(viewModel.hotTrendFiltersState == .loaded)
-    #expect(viewModel.todayAuthor == .todayAuthor)
-    #expect(viewModel.todayAuthorState == .loaded)
+    #expect(viewModel.state.todayFilter == .loaded(.todayFilter))
+    #expect(viewModel.state.mainBanners == .failed(message: "잠시 후 다시 시도해 주세요.", previous: nil))
+    #expect(viewModel.state.hotTrendFilters == .loaded([.hotTrend]))
+    #expect(viewModel.state.todayAuthor == .loaded(.todayAuthor))
   }
 
   @Test("retry updates failed sections")
@@ -57,9 +62,9 @@ struct MainViewModelTests {
       hotTrendFilters: .success([.hotTrend]),
       todayAuthor: .success(.todayAuthor)
     )
-    await viewModel.load()
+    await viewModel.send(.task)
 
-    #expect(viewModel.mainBannersState == .failed(message: "잠시 후 다시 시도해 주세요."))
+    #expect(viewModel.state.mainBanners == .failed(message: "잠시 후 다시 시도해 주세요.", previous: nil))
 
     await service.configure(
       todayFilter: .success(.todayFilter),
@@ -67,10 +72,9 @@ struct MainViewModelTests {
       hotTrendFilters: .success([.hotTrend]),
       todayAuthor: .success(.todayAuthor)
     )
-    await viewModel.load()
+    await viewModel.send(.retryMainBanners)
 
-    #expect(viewModel.mainBanners == [.banner])
-    #expect(viewModel.mainBannersState == .loaded)
+    #expect(viewModel.state.mainBanners == .loaded([.banner]))
   }
 
   @Test("retry only reloads the failed section")
@@ -84,7 +88,7 @@ struct MainViewModelTests {
       hotTrendFilters: .success([.hotTrend]),
       todayAuthor: .success(.todayAuthor)
     )
-    await viewModel.load()
+    await viewModel.send(.task)
 
     #expect(await service.todayFilterCallCount == 1)
     #expect(await service.mainBannersCallCount == 1)
@@ -97,14 +101,55 @@ struct MainViewModelTests {
       hotTrendFilters: .success([.hotTrend]),
       todayAuthor: .success(.todayAuthor)
     )
-    await viewModel.retryMainBanners()
+    await viewModel.send(.retryMainBanners)
 
     #expect(await service.todayFilterCallCount == 1)
     #expect(await service.mainBannersCallCount == 2)
     #expect(await service.hotTrendFiltersCallCount == 1)
     #expect(await service.todayAuthorCallCount == 1)
-    #expect(viewModel.mainBanners == [.banner])
-    #expect(viewModel.mainBannersState == .loaded)
+    #expect(viewModel.state.mainBanners == .loaded([.banner]))
+  }
+
+  @Test("retry failure keeps previous value in failed state")
+  func retryFailureKeepsPreviousValueInFailedState() async {
+    let service = MutableMainService()
+    let viewModel = MainViewModel(service: service)
+
+    await service.configure(
+      todayFilter: .success(.todayFilter),
+      mainBanners: .success([.banner]),
+      hotTrendFilters: .success([.hotTrend]),
+      todayAuthor: .success(.todayAuthor)
+    )
+    await viewModel.send(.task)
+
+    await service.configure(
+      todayFilter: .success(.todayFilter),
+      mainBanners: .failure(MainServiceError.transport),
+      hotTrendFilters: .success([.hotTrend]),
+      todayAuthor: .success(.todayAuthor)
+    )
+    await viewModel.send(.retryMainBanners)
+
+    #expect(viewModel.state.mainBanners == .failed(message: "네트워크 상태를 확인한 뒤 다시 시도해 주세요.", previous: [.banner]))
+    #expect(viewModel.state.todayFilter == .loaded(.todayFilter))
+    #expect(viewModel.state.hotTrendFilters == .loaded([.hotTrend]))
+    #expect(viewModel.state.todayAuthor == .loaded(.todayAuthor))
+  }
+
+  @Test("cancellation does not transition to failed")
+  func cancellationDoesNotTransitionToFailed() async {
+    let service = ImmediateMainService(
+      todayFilter: .failure(CancellationError()),
+      mainBanners: .success([.banner]),
+      hotTrendFilters: .success([.hotTrend]),
+      todayAuthor: .success(.todayAuthor)
+    )
+    let viewModel = MainViewModel(service: service)
+
+    await viewModel.send(.retryTodayFilter)
+
+    #expect(viewModel.state.todayFilter == .idle)
   }
 }
 
@@ -268,7 +313,19 @@ private extension MainTodayAuthor {
   static let todayAuthor = MainTodayAuthor(
     userID: "author-1",
     nick: "오늘의 작가",
+    name: "윤새싹",
     profileImageUrl: URL(string: "https://example.com/author.png"),
-    introduction: "이번 주 가장 반응이 좋은 필터를 만든 작성자예요."
+    introduction: "이번 주 가장 반응이 좋은 필터를 만든 작성자예요.",
+    description: "자연의 섬세함을 담아내는 작가입니다.",
+    hashTags: ["#섬세함", "#자연"],
+    filters: [
+      MainTodayAuthorFilter(
+        id: "filter-1",
+        title: "풍경 필터",
+        category: "풍경",
+        description: "풍경 사진을 더 멋지게!",
+        imageUrl: URL(string: "https://example.com/filter.png")
+      )
+    ]
   )
 }
