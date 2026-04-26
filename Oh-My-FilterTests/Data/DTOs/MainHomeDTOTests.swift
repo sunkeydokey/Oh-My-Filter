@@ -50,6 +50,10 @@ struct MainHomeDTOTests {
     #expect(response.author.nick == "SESAC YOON")
     #expect(response.author.name == "윤새싹")
     #expect(response.author.introduction == "자연의 섬세함을 담아내는 감성 사진작가")
+    #expect(response.author.description == "윤새싹은 자연의 섬세한 아름다움을 포착하는 데 탁월한 감각을 지닌 사진작가입니다.")
+    #expect(response.filters.count == 1)
+    #expect(response.filters[0].filterId == "filter-1")
+    #expect(response.filters[0].files.first == "/data/filters/previews_original_1729345641848.jpg")
   }
 
   private var decoder: JSONDecoder {
@@ -196,7 +200,31 @@ private extension MainHomeDTOTests {
         "introduction": "자연의 섬세함을 담아내는 감성 사진작가",
         "description": "윤새싹은 자연의 섬세한 아름다움을 포착하는 데 탁월한 감각을 지닌 사진작가입니다."
       },
-      "filters": []
+      "filters": [
+        {
+          "filter_id": "filter-1",
+          "category": "풍경",
+          "title": "풍경 필터",
+          "description": "풍경 사진을 더 멋지게!",
+          "files": [
+            "/data/filters/previews_original_1729345641848.jpg",
+            "/data/filters/previews_filtered_1729345641849.jpg"
+          ],
+          "creator": {
+            "user_id": "author-1",
+            "nick": "SESAC YOON",
+            "name": "윤새싹",
+            "introduction": "자연의 섬세함을 담아내는 감성 사진작가",
+            "profileImage": "/data/profiles/1765346492791.jpg",
+            "hashTags": ["#섬세함"]
+          },
+          "is_liked": false,
+          "like_count": 15,
+          "buyer_count": 3,
+          "createdAt": "2026-02-13T15:59:21.071Z",
+          "updatedAt": "2026-02-13T15:59:21.071Z"
+        }
+      ]
     }
     """.utf8
   )

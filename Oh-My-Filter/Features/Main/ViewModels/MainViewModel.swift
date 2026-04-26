@@ -1,43 +1,53 @@
+import Observation
 import Foundation
-import Combine
 import OSLog
 
 @MainActor
-final class MainViewModel: ObservableObject {
+@Observable
+final class MainViewModel {
   private static let logger = Logger(
     subsystem: Bundle.main.bundleIdentifier ?? "Oh-My-Filter",
     category: "MainViewModel"
   )
 
-  @Published var todayFilterState: MainSectionLoadState = .idle
-  @Published var todayFilter: MainTodayFilter?
+  var state = MainState()
 
-  @Published var mainBannersState: MainSectionLoadState = .idle
-  @Published var mainBanners: [MainBanner] = []
+  private let useCase: any MainHomeUseCase
 
-  @Published var hotTrendFiltersState: MainSectionLoadState = .idle
-  @Published var hotTrendFilters: [MainHotTrendFilter] = []
+  init(useCase: any MainHomeUseCase) {
+    self.useCase = useCase
+  }
 
-  @Published var todayAuthorState: MainSectionLoadState = .idle
-  @Published var todayAuthor: MainTodayAuthor?
-
-  private let service: MainServicing
-
-  init(service: MainServicing) {
-    self.service = service
+  convenience init(service: any MainServicing) {
+    self.init(useCase: LiveMainHomeUseCase(service: service))
   }
 
   convenience init() {
-    self.init(service: LiveMainService())
+    self.init(useCase: LiveMainHomeUseCase())
   }
 
-  func load() async {
+  func send(_ action: MainAction) async {
+    switch action {
+    case .task:
+      await load()
+    case .retryTodayFilter:
+      await loadTodayFilter()
+    case .retryMainBanners:
+      await loadMainBanners()
+    case .retryHotTrendFilters:
+      await loadHotTrendFilters()
+    case .retryTodayAuthor:
+      await loadTodayAuthor()
+    }
+  }
+
+  private func load() async {
     Self.logger.debug("➡️ [MainViewModel] load started")
 
-    todayFilterState = .loading
-    mainBannersState = .loading
-    hotTrendFiltersState = .loading
-    todayAuthorState = .loading
+    state.todayFilter = .loading(previous: state.todayFilter.value)
+    state.mainBanners = .loading(previous: state.mainBanners.value)
+    state.hotTrendFilters = .loading(previous: state.hotTrendFilters.value)
+    state.todayAuthor = .loading(previous: state.todayAuthor.value)
     Self.logger.debug("➡️ [MainViewModel] states set to loading")
 
     async let todayFilterResult = loadTodayFilter()
@@ -50,100 +60,76 @@ final class MainViewModel: ObservableObject {
     await hotTrendFiltersResult
     await todayAuthorResult
 
-    let completionMessage = "⬅️ [MainViewModel] load finished todayFilterState=\(todayFilterState) mainBannersState=\(mainBannersState) hotTrendFiltersState=\(hotTrendFiltersState) todayAuthorState=\(todayAuthorState)"
+    let completionMessage = "⬅️ [MainViewModel] load finished state=\(state)"
     Self.logger.debug("\(completionMessage, privacy: .public)")
   }
 
-  func retryTodayFilter() async {
-    await loadTodayFilter()
-  }
-
-  func retryMainBanners() async {
-    await loadMainBanners()
-  }
-
-  func retryHotTrendFilters() async {
-    await loadHotTrendFilters()
-  }
-
-  func retryTodayAuthor() async {
-    await loadTodayAuthor()
-  }
-
   private func loadTodayFilter() async {
-    todayFilterState = .loading
+    let previous = state.todayFilter.value
+    state.todayFilter = .loading(previous: previous)
     do {
-      let todayFilter = try await service.loadTodayFilter()
-      self.todayFilter = todayFilter
-      todayFilterState = .loaded
-      let message = "✅ [MainViewModel] todayFilter loaded state=\(todayFilterState) id=\(todayFilter.id) title=\(todayFilter.title)"
+      let todayFilter = try await useCase.loadTodayFilter()
+      state.todayFilter = .loaded(todayFilter)
+      let message = "✅ [MainViewModel] todayFilter loaded id=\(todayFilter.id) title=\(todayFilter.title)"
       Self.logger.debug("\(message, privacy: .public)")
+    } catch is CancellationError {
+      state.todayFilter = previous.map { .loaded($0) } ?? .idle
     } catch {
-      if todayFilter == nil {
-        todayFilterState = .failed(message: Self.fallbackMessage(for: error))
-      } else {
-        todayFilterState = .loaded
-      }
-      let message = "❌ [MainViewModel] todayFilter failed state=\(todayFilterState) error=\(error)"
+      state.todayFilter = .failed(message: Self.fallbackMessage(for: error), previous: previous)
+      let message = "❌ [MainViewModel] todayFilter failed error=\(error)"
       Self.logger.error("\(message, privacy: .public)")
     }
   }
 
   private func loadMainBanners() async {
-    mainBannersState = .loading
+    let previous = state.mainBanners.value
+    state.mainBanners = .loading(previous: previous)
     do {
-      let mainBanners = try await service.loadMainBanners()
-      self.mainBanners = mainBanners
-      mainBannersState = .loaded
-      let message = "✅ [MainViewModel] mainBanners loaded state=\(mainBannersState) count=\(mainBanners.count)"
+      let mainBanners = try await useCase.loadMainBanners()
+      state.mainBanners = .loaded(mainBanners)
+      let message = "✅ [MainViewModel] mainBanners loaded count=\(mainBanners.count)"
       Self.logger.debug("\(message, privacy: .public)")
+    } catch is CancellationError {
+      state.mainBanners = previous.map { .loaded($0) } ?? .idle
     } catch {
-      if self.mainBanners.isEmpty {
-        mainBannersState = .failed(message: Self.fallbackMessage(for: error))
-      } else {
-        mainBannersState = .loaded
-      }
-      let message = "❌ [MainViewModel] mainBanners failed state=\(mainBannersState) error=\(error)"
+      state.mainBanners = .failed(message: Self.fallbackMessage(for: error), previous: previous)
+      let message = "❌ [MainViewModel] mainBanners failed error=\(error)"
       Self.logger.error("\(message, privacy: .public)")
     }
   }
 
   private func loadHotTrendFilters() async {
-    hotTrendFiltersState = .loading
+    let previous = state.hotTrendFilters.value
+    state.hotTrendFilters = .loading(previous: previous)
     do {
-      let hotTrendFilters = try await service.loadHotTrendFilters()
-      self.hotTrendFilters = hotTrendFilters
-      hotTrendFiltersState = .loaded
-      let message = "✅ [MainViewModel] hotTrendFilters loaded state=\(hotTrendFiltersState) count=\(hotTrendFilters.count)"
+      let hotTrendFilters = try await useCase.loadHotTrendFilters()
+      state.hotTrendFilters = .loaded(hotTrendFilters)
+      let message = "✅ [MainViewModel] hotTrendFilters loaded count=\(hotTrendFilters.count)"
       Self.logger.debug("\(message, privacy: .public)")
+    } catch is CancellationError {
+      state.hotTrendFilters = previous.map { .loaded($0) } ?? .idle
     } catch {
-      if self.hotTrendFilters.isEmpty {
-        hotTrendFiltersState = .failed(message: Self.fallbackMessage(for: error))
-      } else {
-        hotTrendFiltersState = .loaded
-      }
-      let message = "❌ [MainViewModel] hotTrendFilters failed state=\(hotTrendFiltersState) error=\(error)"
+      state.hotTrendFilters = .failed(message: Self.fallbackMessage(for: error), previous: previous)
+      let message = "❌ [MainViewModel] hotTrendFilters failed error=\(error)"
       Self.logger.error("\(message, privacy: .public)")
     }
   }
 
   private func loadTodayAuthor() async {
-    todayAuthorState = .loading
+    let previous = state.todayAuthor.value
+    state.todayAuthor = .loading(previous: previous)
     do {
-      let todayAuthor = try await service.loadTodayAuthor()
-      self.todayAuthor = todayAuthor
-      todayAuthorState = .loaded
+      let todayAuthor = try await useCase.loadTodayAuthor()
+      state.todayAuthor = .loaded(todayAuthor)
       let profileImageUrl = todayAuthor.profileImageUrl?.absoluteString ?? "<nil>"
       let introduction = todayAuthor.introduction ?? "<nil>"
-      let message = "✅ [MainViewModel] todayAuthor loaded state=\(todayAuthorState) userID=\(todayAuthor.userID) nick=\(todayAuthor.nick) profileImageUrl=\(profileImageUrl) introduction=\(introduction)"
+      let message = "✅ [MainViewModel] todayAuthor loaded userID=\(todayAuthor.userID) nick=\(todayAuthor.nick) profileImageUrl=\(profileImageUrl) introduction=\(introduction)"
       Self.logger.debug("\(message, privacy: .public)")
+    } catch is CancellationError {
+      state.todayAuthor = previous.map { .loaded($0) } ?? .idle
     } catch {
-      if todayAuthor == nil {
-        todayAuthorState = .failed(message: Self.fallbackMessage(for: error))
-      } else {
-        todayAuthorState = .loaded
-      }
-      let message = "❌ [MainViewModel] todayAuthor failed state=\(todayAuthorState) error=\(error) cachedValuePresent=\(todayAuthor != nil)"
+      state.todayAuthor = .failed(message: Self.fallbackMessage(for: error), previous: previous)
+      let message = "❌ [MainViewModel] todayAuthor failed error=\(error) cachedValuePresent=\(previous != nil)"
       Self.logger.error("\(message, privacy: .public)")
     }
   }

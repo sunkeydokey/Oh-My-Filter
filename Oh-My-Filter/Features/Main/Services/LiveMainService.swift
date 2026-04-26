@@ -101,8 +101,8 @@ struct LiveMainService: MainServicing {
         let decodedMessage = "✅ [MainAPI] GET \(UserApiRouter.getTodayAuthorInfo.url) decoded successfully author.userId=\(dto.author.userId) author.nick=\(dto.author.nick) author.profileImage=\(dto.author.profileImage ?? "<nil>") author.introduction=\(dto.author.introduction ?? "<nil>")"
         Self.logger.debug("\(decodedMessage, privacy: .public)")
 
-        let author = dto.author.toDomain()
-        let mappedMessage = "✅ [MainAPI] GET \(UserApiRouter.getTodayAuthorInfo.url) mapped to domain userID=\(author.userID) nick=\(author.nick) profileImageUrl=\(author.profileImageUrl?.absoluteString ?? "<nil>") introduction=\(author.introduction ?? "<nil>")"
+        let author = dto.toDomain()
+        let mappedMessage = "✅ [MainAPI] GET \(UserApiRouter.getTodayAuthorInfo.url) mapped to domain userID=\(author.userID) nick=\(author.nick) profileImageUrl=\(author.profileImageUrl?.absoluteString ?? "<nil>") introduction=\(author.introduction ?? "<nil>") filters=\(author.filters.count)"
         Self.logger.debug("\(mappedMessage, privacy: .public)")
         return author
       } catch {
@@ -182,13 +182,29 @@ private extension MainHotTrendFilterDTO {
   }
 }
 
-private extension MainTodayAuthorDTO {
+private extension MainTodayAuthorResponseDTO {
   func toDomain() -> MainTodayAuthor {
     MainTodayAuthor(
-      userID: userId,
-      nick: nick,
-      profileImageUrl: AuthenticatedRemoteImageSupport.url(from: profileImage),
-      introduction: introduction
+      userID: author.userId,
+      nick: author.nick,
+      name: author.name ?? author.nick,
+      profileImageUrl: AuthenticatedRemoteImageSupport.url(from: author.profileImage),
+      introduction: author.introduction,
+      description: author.description,
+      hashTags: author.hashTags ?? [],
+      filters: filters.map { $0.toDomain() }
+    )
+  }
+}
+
+private extension MainTodayAuthorFilterDTO {
+  func toDomain() -> MainTodayAuthorFilter {
+    MainTodayAuthorFilter(
+      id: filterId,
+      title: title,
+      category: category,
+      description: description,
+      imageUrl: AuthenticatedRemoteImageSupport.url(from: files.first)
     )
   }
 }

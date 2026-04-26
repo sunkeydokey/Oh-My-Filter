@@ -1,6 +1,6 @@
 import Foundation
 
-protocol MainServicing: Sendable {
+nonisolated protocol MainServicing: Sendable {
   func loadTodayFilter() async throws -> MainTodayFilter
   func loadMainBanners() async throws -> [MainBanner]
   func loadHotTrendFilters() async throws -> [MainHotTrendFilter]
