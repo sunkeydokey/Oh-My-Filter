@@ -28,7 +28,8 @@ nonisolated enum MainSectionState<Value: Equatable & Sendable>: Equatable, Senda
 nonisolated struct MainTodayFilter: Equatable, Identifiable, Sendable {
   let id: String
   let title: String
-  let subtitle: String
+  let subtitle: String?
+  let description: String
   let imageUrl: URL?
   let creatorName: String?
   let creatorProfileImageUrl: URL?

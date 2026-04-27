@@ -151,7 +151,8 @@ private extension MainTodayFilterDTO {
     MainTodayFilter(
       id: filterId,
       title: title,
-      subtitle: introduction ?? description,
+      subtitle: introduction,
+      description: description,
       imageUrl: AuthenticatedRemoteImageSupport.url(from: files.first),
       creatorName: creator?.nick,
       creatorProfileImageUrl: AuthenticatedRemoteImageSupport.url(from: creator?.profileImage)

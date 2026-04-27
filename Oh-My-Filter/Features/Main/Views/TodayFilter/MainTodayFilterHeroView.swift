@@ -27,7 +27,7 @@ struct MainTodayFilterHeroView: View {
         colors: [
           .clear,
           ColorToken.brandBlackSprout.color.opacity(0.12),
-          ColorToken.brandBlackSprout.color.opacity(0.94)
+          ColorToken.brandBlackSprout.color.opacity(0.94),
         ],
         startPoint: .top,
         endPoint: .bottom
@@ -53,28 +53,36 @@ struct MainTodayFilterHeroView: View {
             .padding(.top, 64)
         }
 
-        Spacer(minLength: MainTodayFilterLayout.contentTopOffset)
+        Spacer()
 
-        VStack(alignment: .leading, spacing: 8) {
-          Text("오늘의 필터 소개")
-            .font(.custom(TypographyToken.pretendardBody3.fontName, size: 13, relativeTo: .callout))
-            .foregroundStyle(ColorToken.grayScale60.color)
+        VStack(alignment: .leading, spacing: 16) {
+          VStack(alignment: .leading, spacing: 8) {
+            Text("오늘의 필터 소개")
+              .font(.custom(TypographyToken.pretendardBody3.fontName, size: 13, relativeTo: .callout))
+              .foregroundStyle(ColorToken.grayScale60.color)
 
-          Text(todayFilter.title)
-            .font(TypographyToken.mulgyeolTitle1.font)
-            .foregroundStyle(ColorToken.grayScale0.color)
-            .fixedSize(horizontal: false, vertical: true)
+            Text(todayFilter.title)
+              .font(TypographyToken.mulgyeolTitle1.font)
+              .foregroundStyle(ColorToken.grayScale0.color)
+              .fixedSize(horizontal: false, vertical: true)
 
-          Text(todayFilter.subtitle)
+            if let todayFilterSubtitle = todayFilter.subtitle {
+              Text(todayFilterSubtitle)
+                .font(TypographyToken.mulgyeolTitle1.font)
+                .lineSpacing(5)
+                .foregroundStyle(ColorToken.grayScale45.color)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+          }
+
+          Text(todayFilter.description)
             .font(.custom(TypographyToken.pretendardBody3.fontName, size: 12, relativeTo: .subheadline))
             .lineSpacing(5)
             .foregroundStyle(ColorToken.grayScale45.color)
             .fixedSize(horizontal: false, vertical: true)
+
+          MainTodayFilterCategoryStripView()
         }
-
-        Spacer(minLength: 0)
-
-        MainTodayFilterCategoryStripView()
       }
       .padding(.horizontal, MainViewLayout.contentHorizontalInset)
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
