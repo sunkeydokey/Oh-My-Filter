@@ -16,7 +16,6 @@ This project uses a feature-oriented SwiftUI architecture built on top of MVVM, 
   - ViewModel receives input as `Action`
   - ViewModel updates a single `State`
   - View renders from `State`
-- Use **feature-based structure** over type-based grouping.
 - Keep business logic in **UseCases**, not in Views.
 
 ## View rules
@@ -30,12 +29,9 @@ This project uses a feature-oriented SwiftUI architecture built on top of MVVM, 
 - Do not make Views directly call repositories, services, SDK clients, or persistence APIs.
 - Views should prefer emitting actions like `viewModel.send(.tapSubmit)` instead of mutating business state directly.
 - Use local `@State` only for truly local UI-only state.
-- For shared observable models, ownership should be in `@State`, and downstream passing should use `@Bindable` or `@Environment`, consistent with the project’s Observation-based rules. :contentReference[oaicite:3]{index=3}
 
 ## ViewModel rules
 
-- All ViewModels must be `@MainActor`.
-- All ViewModels must use `@Observable`, not `ObservableObject`. :contentReference[oaicite:4]{index=4}
 - Each screen-level ViewModel must expose a **single screen State**.
 - Each screen-level ViewModel must receive user input through a single entry point:
   - `send(_ action: Action)`
@@ -102,7 +98,6 @@ This project uses a feature-oriented SwiftUI architecture built on top of MVVM, 
   - `NavigationStack` path
   - presented sheet
   - full-screen cover
-- Routers must be `@MainActor @Observable` in this project, not `ObservableObject`. :contentReference[oaicite:5]{index=5}
 - Routers should expose narrow navigation APIs such as:
   - `push(_:)`
   - `pop()`
@@ -133,21 +128,8 @@ This project uses a feature-oriented SwiftUI architecture built on top of MVVM, 
   - upload validation
 - If a rule is important enough to test independently, it likely belongs in a UseCase.
 
-## Project structure rules
+## Testing guidance
 
-- Organize code primarily by **feature**.
-- Keep each meaningful screen in its own folder with files like:
-  - `FeatureView.swift`
-  - `FeatureViewModel.swift`
-  - `FeatureAction.swift`
-  - `FeatureState.swift`
-  - `FeatureRoute.swift`
-- Shared infrastructure belongs in Core / Domain / Data, not duplicated across features.
-- Do not group the whole project by file type alone.
-
-## Testing rules
-
-- Write unit tests for UseCases and screen-level ViewModels.
 - Prefer testing:
   - action → state transitions
   - success/failure flows
@@ -155,16 +137,7 @@ This project uses a feature-oriented SwiftUI architecture built on top of MVVM, 
   - retry behavior
   - token refresh behavior
   - socket connection state changes
-- UI tests should cover only critical flows when unit tests are insufficient, consistent with the project rules.
 - Avoid putting important behavior exclusively in Views where it cannot be easily unit tested.
-- Never build UI tests module if Project Module is empty (If No UI Testing File or method)
-
-## SwiftUI architecture style constraints
-
-- Use `NavigationStack` and `navigationDestination(for:)` for stack-based navigation.
-- Avoid UIKit-based coordinators or navigation wrappers unless explicitly required. 
-- Keep Views small by extracting child Views into separate `View` structs rather than large computed subviews.
-- Place testable view logic into ViewModels or adjacent presentation models. 
 
 ## Default recommendation for new screens
 
@@ -172,7 +145,7 @@ For any new non-trivial screen, prefer this template:
 
 - one `State` struct
 - one `Action` enum
-- one `@MainActor @Observable` ViewModel
+- one ViewModel
 - one View
 - optional `Route` enum
 - optional feature Coordinator if the flow spans multiple screens
@@ -184,7 +157,6 @@ For any new non-trivial screen, prefer this template:
 - Massive ViewModels with repository/network/socket/payment implementation details
 - Two-way mutation of business state from many child Views
 - Direct repository calls from Views
-- Using `ObservableObject`/`@Published` for new shared state in this project
 - Treating Router as a flow decision-maker
 - Treating Coordinator as a dumb push/pop helper
 - Hiding important state transitions inside ad-hoc bindings
