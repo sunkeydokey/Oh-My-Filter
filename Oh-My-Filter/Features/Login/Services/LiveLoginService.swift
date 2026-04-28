@@ -39,6 +39,10 @@ struct LiveLoginService: LoginServicing {
     try await performLogin(router: UserApiRouter.kakaoLogin, body: request)
   }
 
+  func loginWithApple(request: AppleLoginRequest) async throws -> LoginSession {
+    try await performLogin(router: UserApiRouter.appleLogin, body: request)
+  }
+
   private func performLogin<Body: Encodable>(
     router: UserApiRouter,
     body: Body

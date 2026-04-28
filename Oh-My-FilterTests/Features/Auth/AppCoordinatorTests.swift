@@ -103,6 +103,25 @@ struct AppCoordinatorTests {
     #expect(coordinator.signupViewModel == nil)
   }
 
+  @Test("successful Apple login clears auth stack and switches scene")
+  func successfulAppleLoginSwitchesScene() async throws {
+    let loginService = MockLoginService()
+    await loginService.setResult(.success(.fixture))
+
+    let coordinator = makeCoordinator(loginService: loginService)
+    await coordinator.start()?.value
+    coordinator.showSignup()
+    let loginViewModel = try #require(coordinator.loginViewModel)
+
+    loginViewModel.send(.appleLoginStarted)
+    await loginViewModel.send(.appleLoginCompleted(identityToken: Data("apple-id-token".utf8)))?.value
+
+    #expect(coordinator.scene == .authenticated)
+    #expect(coordinator.authPath.isEmpty)
+    #expect(coordinator.loginViewModel == nil)
+    #expect(coordinator.signupViewModel == nil)
+  }
+
   @Test("successful signup clears auth stack and switches scene")
   func successfulSignupSwitchesScene() async throws {
     let coordinator = makeCoordinator()
@@ -190,6 +209,10 @@ private actor MockLoginService: LoginServicing {
   }
 
   func loginWithKakao(request: KakaoLoginRequest) async throws -> LoginSession {
+    try result.get()
+  }
+
+  func loginWithApple(request: AppleLoginRequest) async throws -> LoginSession {
     try result.get()
   }
 }

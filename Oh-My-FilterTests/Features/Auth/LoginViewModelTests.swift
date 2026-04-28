@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import Oh_My_Filter
 
@@ -74,6 +75,36 @@ struct LoginViewModelTests {
     #expect(viewModel.state.isSubmitting == false)
   }
 
+  @Test("successful Apple login forwards id token and session")
+  func appleLoginForwardsSession() async {
+    let service = ControlledLoginService()
+    await service.setResult(.success(.fixture))
+
+    var receivedSession: LoginSession?
+    let viewModel = LoginViewModel(service: service) { session in
+      receivedSession = session
+    }
+
+    viewModel.send(.appleLoginStarted)
+    await viewModel.send(.appleLoginCompleted(identityToken: Data("apple-id-token".utf8)))?.value
+
+    #expect(await service.lastAppleRequest == AppleLoginRequest(idToken: "apple-id-token"))
+    #expect(receivedSession == .fixture)
+    #expect(viewModel.state.submissionMessage == nil)
+    #expect(viewModel.state.isSubmitting == false)
+  }
+
+  @Test("missing Apple id token shows inline message")
+  func missingAppleIDTokenShowsInlineMessage() {
+    let viewModel = LoginViewModel(service: ControlledLoginService())
+
+    viewModel.send(.appleLoginStarted)
+    viewModel.send(.appleLoginCompleted(identityToken: nil))
+
+    #expect(viewModel.state.submissionMessage == "Apple 로그인 정보를 확인할 수 없어요. 다시 시도해 주세요.")
+    #expect(viewModel.state.isSubmitting == false)
+  }
+
   @Test("400 error shows inline validation message")
   func invalidRequestShowsInlineMessage() async {
     let service = ControlledLoginService()
@@ -124,6 +155,7 @@ private actor ControlledLoginService: LoginServicing {
   private var continuation: CheckedContinuation<LoginSession, Error>?
   private(set) var lastRequest: LoginRequest?
   private(set) var lastKakaoRequest: KakaoLoginRequest?
+  private(set) var lastAppleRequest: AppleLoginRequest?
 
   func setResult(_ result: Result<LoginSession, Error>) {
     self.result = result
@@ -141,6 +173,11 @@ private actor ControlledLoginService: LoginServicing {
 
   func loginWithKakao(request: KakaoLoginRequest) async throws -> LoginSession {
     lastKakaoRequest = request
+    return try await session()
+  }
+
+  func loginWithApple(request: AppleLoginRequest) async throws -> LoginSession {
+    lastAppleRequest = request
     return try await session()
   }
 

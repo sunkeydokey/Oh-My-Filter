@@ -3,6 +3,7 @@ import Foundation
 protocol LoginServicing: Sendable {
   func login(request: LoginRequest) async throws -> LoginSession
   func loginWithKakao(request: KakaoLoginRequest) async throws -> LoginSession
+  func loginWithApple(request: AppleLoginRequest) async throws -> LoginSession
 }
 
 enum LoginServiceError: Error, Equatable, LocalizedError, Sendable {

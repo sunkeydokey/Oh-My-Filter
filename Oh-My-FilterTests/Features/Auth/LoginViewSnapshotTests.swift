@@ -51,6 +51,10 @@ private actor SnapshotLoginService: LoginServicing {
   func loginWithKakao(request: KakaoLoginRequest) async throws -> LoginSession {
     .fixture
   }
+
+  func loginWithApple(request: AppleLoginRequest) async throws -> LoginSession {
+    .fixture
+  }
 }
 
 private extension LoginSession {
