@@ -3,6 +3,7 @@ import SwiftUI
 struct MainHotTrendSectionView: View {
   let state: MainSectionState<[MainHotTrendFilter]>
   let retryAction: () -> Void
+  let selectionAction: (String) -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -12,7 +13,7 @@ struct MainHotTrendSectionView: View {
         ScrollView(.horizontal) {
           LazyHStack(spacing: 16) {
             ForEach(hotTrendFilters.enumerated(), id: \.element.id) { index, item in
-              HotTrendCardView(rank: index + 1, item: item)
+              HotTrendCardView(rank: index + 1, item: item, selectionAction: selectionAction)
             }
           }
         }

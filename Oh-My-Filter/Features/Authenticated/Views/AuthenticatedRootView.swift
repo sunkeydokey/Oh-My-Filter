@@ -10,12 +10,21 @@ private enum AuthenticatedTab: Hashable {
 
 struct AuthenticatedRootView: View {
   @State private var selectedTab: AuthenticatedTab = .main
+  @State private var mainPath: [MainRoute] = []
 
   var body: some View {
     TabView(selection: $selectedTab) {
       Tab("홈", systemImage: IconToken.home.symbolName, value: .main) {
-        NavigationStack {
-          MainView()
+        NavigationStack(path: $mainPath) {
+          MainView { route in
+            mainPath.append(route)
+          }
+          .navigationDestination(for: MainRoute.self) { route in
+            switch route {
+            case let .filterDetail(filterID):
+              FilterDetailView(filterID: filterID)
+            }
+          }
         }
       }
 

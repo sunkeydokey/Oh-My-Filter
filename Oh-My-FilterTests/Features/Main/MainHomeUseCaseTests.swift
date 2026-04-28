@@ -103,6 +103,7 @@ private extension MainTodayFilter {
     id: "today-filter",
     title: "오늘의 필터",
     subtitle: "차분한 새벽 무드",
+    description: "테스트 필터 설명",
     imageUrl: URL(string: "https://example.com/today-filter.png"),
     creatorName: "새싹이",
     creatorProfileImageUrl: URL(string: "https://example.com/creator.png")

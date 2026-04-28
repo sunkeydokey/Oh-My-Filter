@@ -40,6 +40,10 @@ nonisolated enum EndPoint {
   nonisolated enum Filters {
     static let today = "\(EndPoint.baseUrl)/filters/today-filter"
     static let hotTrend = "\(EndPoint.baseUrl)/filters/hot-trend"
+
+    static func detail(filterID: String) -> String {
+      "\(EndPoint.baseUrl)/filters/\(filterID)"
+    }
   }
 
   nonisolated enum Banners {
