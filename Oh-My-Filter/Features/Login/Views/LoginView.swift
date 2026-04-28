@@ -76,7 +76,12 @@ struct LoginView: View {
             systemImage: IconToken.chat.symbolName,
             font: TypographyToken.pretendardTitle1.font,
             fillColor: Color(red: 254 / 255, green: 229 / 255, blue: 0),
-            foregroundColor: .black
+            foregroundColor: .black,
+            action: {
+              if let task = viewModel.send(.kakaoLoginTapped) {
+                await task.value
+              }
+            }
           )
 
           AuthSocialLoginButton(

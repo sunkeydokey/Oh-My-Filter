@@ -51,6 +51,29 @@ struct LoginViewModelTests {
     #expect(viewModel.state.submissionMessage == nil)
   }
 
+  @Test("successful Kakao login forwards session")
+  func kakaoLoginForwardsSession() async {
+    let service = ControlledLoginService()
+    let kakaoOAuthProvider = ControlledKakaoOAuthProvider()
+    await service.setResult(.success(.fixture))
+    await kakaoOAuthProvider.setResult(.success("kakao-access-token"))
+
+    var receivedSession: LoginSession?
+    let viewModel = LoginViewModel(
+      service: service,
+      kakaoOAuthProvider: kakaoOAuthProvider
+    ) { session in
+      receivedSession = session
+    }
+
+    await viewModel.send(.kakaoLoginTapped)?.value
+
+    #expect(await service.lastKakaoRequest == KakaoLoginRequest(oauthToken: "kakao-access-token"))
+    #expect(receivedSession == .fixture)
+    #expect(viewModel.state.submissionMessage == nil)
+    #expect(viewModel.state.isSubmitting == false)
+  }
+
   @Test("400 error shows inline validation message")
   func invalidRequestShowsInlineMessage() async {
     let service = ControlledLoginService()
@@ -100,6 +123,7 @@ private actor ControlledLoginService: LoginServicing {
   private var result: Result<LoginSession, Error>?
   private var continuation: CheckedContinuation<LoginSession, Error>?
   private(set) var lastRequest: LoginRequest?
+  private(set) var lastKakaoRequest: KakaoLoginRequest?
 
   func setResult(_ result: Result<LoginSession, Error>) {
     self.result = result
@@ -112,7 +136,15 @@ private actor ControlledLoginService: LoginServicing {
 
   func login(request: LoginRequest) async throws -> LoginSession {
     lastRequest = request
+    return try await session()
+  }
 
+  func loginWithKakao(request: KakaoLoginRequest) async throws -> LoginSession {
+    lastKakaoRequest = request
+    return try await session()
+  }
+
+  private func session() async throws -> LoginSession {
     if let result {
       return try result.get()
     }
@@ -120,6 +152,18 @@ private actor ControlledLoginService: LoginServicing {
     return try await withCheckedThrowingContinuation { continuation in
       self.continuation = continuation
     }
+  }
+}
+
+private actor ControlledKakaoOAuthProvider: KakaoOAuthProviding {
+  private var result: Result<String, Error> = .success("kakao-access-token")
+
+  func setResult(_ result: Result<String, Error>) {
+    self.result = result
+  }
+
+  func accessToken() async throws -> String {
+    try result.get()
   }
 }
 

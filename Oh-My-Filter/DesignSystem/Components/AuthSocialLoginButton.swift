@@ -8,7 +8,7 @@ struct AuthSocialLoginButton: View {
   let fillColor: Color
   let foregroundColor: Color
   let borderColor: Color?
-  let action: (() -> Void)?
+  let action: (() async -> Void)?
 
   init(
     title: String,
@@ -18,7 +18,7 @@ struct AuthSocialLoginButton: View {
     fillColor: Color,
     foregroundColor: Color,
     borderColor: Color? = nil,
-    action: (() -> Void)? = nil
+    action: (() async -> Void)? = nil
   ) {
     self.title = title
     self.systemImage = systemImage
@@ -32,7 +32,9 @@ struct AuthSocialLoginButton: View {
 
   var body: some View {
     Button(title, systemImage: systemImage) {
-      action?()
+      Task {
+        await action?()
+      }
     }
     .buttonStyle(.plain)
     .font(font)

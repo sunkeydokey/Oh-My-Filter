@@ -1,6 +1,7 @@
 import SwiftUI
 import FirebaseCore
 import FirebaseMessaging
+import KakaoSDKCommon
 import UserNotifications
 
 final class AppDelegate: NSObject, UIApplicationDelegate {
@@ -9,6 +10,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
     FirebaseApp.configure()
+    KakaoSDK.initSDK(appKey: Self.kakaoNativeAppKey())
 
     UNUserNotificationCenter.current().delegate = self
     Messaging.messaging().delegate = self
@@ -38,6 +40,31 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     didFailToRegisterForRemoteNotificationsWithError error: Error
   ) {
     print("APNs registration failed: \(error)")
+  }
+}
+
+private extension AppDelegate {
+  static func kakaoNativeAppKey() -> String {
+    let key = Bundle.main.object(forInfoDictionaryKey: "KAKAO_API_KEY") as? String
+      ?? kakaoURLScheme()
+
+    if key.hasPrefix("kakao") {
+      return String(key.dropFirst("kakao".count))
+    }
+
+    return key
+  }
+
+  static func kakaoURLScheme() -> String {
+    guard
+      let urlTypes = Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]],
+      let schemes = urlTypes.compactMap({ $0["CFBundleURLSchemes"] as? [String] }).first,
+      let scheme = schemes.first
+    else {
+      return ""
+    }
+
+    return scheme
   }
 }
 

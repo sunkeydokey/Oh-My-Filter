@@ -11,6 +11,7 @@ final class AppCoordinator {
   var signupViewModel: SignupViewModel?
 
   private let loginService: any LoginServicing
+  private let kakaoOAuthProvider: any KakaoOAuthProviding
   private let signupService: any SignupServicing
   private let authSessionRefresher: any AuthSessionRefreshing
   private let tokenStore: any AuthTokenStoring
@@ -18,11 +19,13 @@ final class AppCoordinator {
 
   init(
     loginService: any LoginServicing,
+    kakaoOAuthProvider: any KakaoOAuthProviding = LiveKakaoOAuthProvider(),
     signupService: any SignupServicing,
     authSessionRefresher: any AuthSessionRefreshing,
     tokenStore: any AuthTokenStoring
   ) {
     self.loginService = loginService
+    self.kakaoOAuthProvider = kakaoOAuthProvider
     self.signupService = signupService
     self.authSessionRefresher = authSessionRefresher
     self.tokenStore = tokenStore
@@ -35,6 +38,7 @@ final class AppCoordinator {
   ) {
     self.init(
       loginService: loginService,
+      kakaoOAuthProvider: LiveKakaoOAuthProvider(),
       signupService: signupService,
       authSessionRefresher: LiveAuthSessionRefreshService(),
       tokenStore: KeychainAuthTokenStore()
@@ -89,7 +93,10 @@ final class AppCoordinator {
   private func prepareAuthenticationFlow() {
     authPath.removeAll()
 
-    let loginViewModel = LoginViewModel(service: loginService)
+    let loginViewModel = LoginViewModel(
+      service: loginService,
+      kakaoOAuthProvider: kakaoOAuthProvider
+    )
     let signupViewModel = SignupViewModel(service: signupService)
 
     loginViewModel.onLoginSucceeded = { [weak self] _ in

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UIKit
+import KakaoSDKAuth
 
 @main
 struct OhMyFilterApp: App {
@@ -25,6 +26,9 @@ struct OhMyFilterApp: App {
     WindowGroup {
       ContentView(coordinator: coordinator)
         .preferredColorScheme(.dark)
+        .onOpenURL { url in
+          AuthController.handleOpenUrl(url: url)
+        }
     }
   }
 }
