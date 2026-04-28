@@ -32,10 +32,25 @@ struct LiveLoginService: LoginServicing {
   }
 
   func login(request: LoginRequest) async throws -> LoginSession {
+    try await performLogin(router: UserApiRouter.signIn, body: request)
+  }
+
+  func loginWithKakao(request: KakaoLoginRequest) async throws -> LoginSession {
+    try await performLogin(router: UserApiRouter.kakaoLogin, body: request)
+  }
+
+  func loginWithApple(request: AppleLoginRequest) async throws -> LoginSession {
+    try await performLogin(router: UserApiRouter.appleLogin, body: request)
+  }
+
+  private func performLogin<Body: Encodable>(
+    router: UserApiRouter,
+    body: Body
+  ) async throws -> LoginSession {
     let response: NetworkResponse
 
     do {
-      response = try await networkManager.request(UserApiRouter.signIn, body: request)
+      response = try await networkManager.request(router, body: body)
     } catch let error as LoginServiceError {
       throw error
     } catch let error as NetworkError {
@@ -63,6 +78,11 @@ struct LiveLoginService: LoginServicing {
         data: response.data,
         fallback: .unauthorized("계정을 확인해주세요.")
       )
+    case 409:
+      throw mappedServerMessageError(
+        data: response.data,
+        fallback: .conflict("이미 가입된 유저입니다.")
+      )
     default:
       throw LoginServiceError.serverError
     }
@@ -84,6 +104,8 @@ struct LiveLoginService: LoginServicing {
       return .invalidRequest(payload.message)
     case .unauthorized:
       return .unauthorized(payload.message)
+    case .conflict:
+      return .conflict(payload.message)
     case .serverError, .invalidResponse, .transport:
       return fallback
     }

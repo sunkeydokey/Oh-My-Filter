@@ -70,10 +70,7 @@ struct AppCoordinatorTests {
     let loginService = MockLoginService()
     await loginService.setResult(.success(.fixture))
 
-    let coordinator = AppCoordinator(
-      loginService: loginService,
-      signupService: PassiveSignupService()
-    )
+    let coordinator = makeCoordinator(loginService: loginService)
     await coordinator.start()?.value
     coordinator.showSignup()
     let loginViewModel = try #require(coordinator.loginViewModel)
@@ -81,6 +78,43 @@ struct AppCoordinatorTests {
     loginViewModel.send(.passwordChanged(" password123! "))
 
     await loginViewModel.send(.submitTapped)?.value
+
+    #expect(coordinator.scene == .authenticated)
+    #expect(coordinator.authPath.isEmpty)
+    #expect(coordinator.loginViewModel == nil)
+    #expect(coordinator.signupViewModel == nil)
+  }
+
+  @Test("successful Kakao login clears auth stack and switches scene")
+  func successfulKakaoLoginSwitchesScene() async throws {
+    let loginService = MockLoginService()
+    await loginService.setResult(.success(.fixture))
+
+    let coordinator = makeCoordinator(loginService: loginService)
+    await coordinator.start()?.value
+    coordinator.showSignup()
+    let loginViewModel = try #require(coordinator.loginViewModel)
+
+    await loginViewModel.send(.kakaoLoginTapped)?.value
+
+    #expect(coordinator.scene == .authenticated)
+    #expect(coordinator.authPath.isEmpty)
+    #expect(coordinator.loginViewModel == nil)
+    #expect(coordinator.signupViewModel == nil)
+  }
+
+  @Test("successful Apple login clears auth stack and switches scene")
+  func successfulAppleLoginSwitchesScene() async throws {
+    let loginService = MockLoginService()
+    await loginService.setResult(.success(.fixture))
+
+    let coordinator = makeCoordinator(loginService: loginService)
+    await coordinator.start()?.value
+    coordinator.showSignup()
+    let loginViewModel = try #require(coordinator.loginViewModel)
+
+    loginViewModel.send(.appleLoginStarted)
+    await loginViewModel.send(.appleLoginCompleted(identityToken: Data("apple-id-token".utf8)))?.value
 
     #expect(coordinator.scene == .authenticated)
     #expect(coordinator.authPath.isEmpty)
@@ -136,15 +170,30 @@ struct AppCoordinatorTests {
   }
 
   private func makeCoordinator(
+    loginService: MockLoginService = MockLoginService(),
     authSessionRefresher: MockAuthSessionRefresher = MockAuthSessionRefresher(),
-    tokenStore: MockAuthTokenStore = MockAuthTokenStore()
+    tokenStore: MockAuthTokenStore = MockAuthTokenStore(),
+    kakaoOAuthProvider: MockKakaoOAuthProvider = MockKakaoOAuthProvider()
   ) -> AppCoordinator {
     AppCoordinator(
-      loginService: MockLoginService(),
+      loginService: loginService,
+      kakaoOAuthProvider: kakaoOAuthProvider,
       signupService: PassiveSignupService(),
       authSessionRefresher: authSessionRefresher,
       tokenStore: tokenStore
     )
+  }
+}
+
+private actor MockKakaoOAuthProvider: KakaoOAuthProviding {
+  private var result: Result<String, Error> = .success("kakao-access-token")
+
+  func setResult(_ result: Result<String, Error>) {
+    self.result = result
+  }
+
+  func accessToken() async throws -> String {
+    try result.get()
   }
 }
 
@@ -156,6 +205,14 @@ private actor MockLoginService: LoginServicing {
   }
 
   func login(request: LoginRequest) async throws -> LoginSession {
+    try result.get()
+  }
+
+  func loginWithKakao(request: KakaoLoginRequest) async throws -> LoginSession {
+    try result.get()
+  }
+
+  func loginWithApple(request: AppleLoginRequest) async throws -> LoginSession {
     try result.get()
   }
 }

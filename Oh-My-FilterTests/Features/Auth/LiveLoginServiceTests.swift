@@ -23,7 +23,51 @@ struct LiveLoginServiceTests {
     } else {
       Issue.record("Expected signIn router")
     }
-    #expect(capturedRequest?.body == request)
+    #expect(capturedRequest?.loginBody == request)
+  }
+
+  @Test("Kakao login uses kakaoLogin router and forwards request body")
+  func kakaoLoginRequestUsesKakaoRouter() async throws {
+    let manager = MockLoginNetworkManager()
+    let tokenStore = MockAuthTokenStore()
+    let service = LiveLoginService(networkManager: manager, tokenStore: tokenStore)
+    let request = KakaoLoginRequest(oauthToken: "kakao-access-token")
+
+    await manager.enqueueResponse(
+      NetworkResponse(data: Self.successData, statusCode: 200)
+    )
+
+    _ = try await service.loginWithKakao(request: request)
+
+    let capturedRequest = await manager.capturedBodyRequest
+    if case .kakaoLogin? = capturedRequest?.router {
+      #expect(Bool(true))
+    } else {
+      Issue.record("Expected kakaoLogin router")
+    }
+    #expect(capturedRequest?.kakaoBody == request)
+  }
+
+  @Test("Apple login uses appleLogin router and forwards request body")
+  func appleLoginRequestUsesAppleRouter() async throws {
+    let manager = MockLoginNetworkManager()
+    let tokenStore = MockAuthTokenStore()
+    let service = LiveLoginService(networkManager: manager, tokenStore: tokenStore)
+    let request = AppleLoginRequest(idToken: "apple-id-token")
+
+    await manager.enqueueResponse(
+      NetworkResponse(data: Self.successData, statusCode: 200)
+    )
+
+    _ = try await service.loginWithApple(request: request)
+
+    let capturedRequest = await manager.capturedBodyRequest
+    if case .appleLogin? = capturedRequest?.router {
+      #expect(Bool(true))
+    } else {
+      Issue.record("Expected appleLogin router")
+    }
+    #expect(capturedRequest?.appleBody == request)
   }
 
   @Test("200 response decodes login session")
@@ -132,7 +176,9 @@ private actor MockAuthTokenStore: AuthTokenStoring {
 private actor MockLoginNetworkManager: BaseNetworkManaging {
   struct BodyRequest: Sendable {
     let router: UserApiRouter
-    let body: LoginRequest
+    let loginBody: LoginRequest?
+    let kakaoBody: KakaoLoginRequest?
+    let appleBody: AppleLoginRequest?
   }
 
   private var queuedResults: [Result<NetworkResponse, Error>] = []
@@ -160,9 +206,13 @@ private actor MockLoginNetworkManager: BaseNetworkManaging {
     headers: [String: String],
     parameters: RequestQuery
   ) async throws -> NetworkResponse {
-    if let loginRouter = router as? UserApiRouter,
-       let loginBody = body as? LoginRequest {
-      capturedBodyRequest = BodyRequest(router: loginRouter, body: loginBody)
+    if let loginRouter = router as? UserApiRouter {
+      capturedBodyRequest = BodyRequest(
+        router: loginRouter,
+        loginBody: body as? LoginRequest,
+        kakaoBody: body as? KakaoLoginRequest,
+        appleBody: body as? AppleLoginRequest
+      )
     }
 
     return try nextResult()

@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Observation
 import SwiftUI
 
@@ -76,17 +77,30 @@ struct LoginView: View {
             systemImage: IconToken.chat.symbolName,
             font: TypographyToken.pretendardTitle1.font,
             fillColor: Color(red: 254 / 255, green: 229 / 255, blue: 0),
-            foregroundColor: .black
+            foregroundColor: .black,
+            action: {
+              if let task = viewModel.send(.kakaoLoginTapped) {
+                await task.value
+              }
+            }
           )
 
-          AuthSocialLoginButton(
-            title: "Apple로 계속하기",
-            systemImage: "apple.logo",
-            emphasized: false,
-            fillColor: ColorToken.brandBlackSprout.color,
-            foregroundColor: ColorToken.grayScale0.color,
-            borderColor: ColorToken.grayScale90.color
-          )
+          SignInWithAppleButton(.continue) { request in
+            viewModel.send(.appleLoginStarted)
+            request.requestedScopes = [.email, .fullName]
+          } onCompletion: { result in
+            switch result {
+            case let .success(authorization):
+              let credential = authorization.credential as? ASAuthorizationAppleIDCredential
+              viewModel.send(.appleLoginCompleted(identityToken: credential?.identityToken))
+            case .failure:
+              viewModel.send(.appleLoginFailed)
+            }
+          }
+          .signInWithAppleButtonStyle(.whiteOutline)
+          .frame(maxWidth: .infinity, minHeight: 48)
+          .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
+          .disabled(viewModel.state.isSubmitting)
         }
 
         AuthNavigationPromptView(
