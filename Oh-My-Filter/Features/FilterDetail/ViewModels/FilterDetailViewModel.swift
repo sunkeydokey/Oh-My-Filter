@@ -14,15 +14,21 @@ final class FilterDetailViewModel {
 
   private let filterID: String
   private let useCase: any FilterDetailUseCase
+  private let orderCreateUseCase: any OrderCreateUseCase
+  private let paymentValidationUseCase: any PaymentValidationUseCase
   private let renderer: any ImageFilterRendering
 
   init(
     filterID: String,
     useCase: any FilterDetailUseCase,
+    orderCreateUseCase: (any OrderCreateUseCase)? = nil,
+    paymentValidationUseCase: (any PaymentValidationUseCase)? = nil,
     renderer: any ImageFilterRendering
   ) {
     self.filterID = filterID
     self.useCase = useCase
+    self.orderCreateUseCase = orderCreateUseCase ?? LiveOrderCreateUseCase()
+    self.paymentValidationUseCase = paymentValidationUseCase ?? LivePaymentValidationUseCase()
     self.renderer = renderer
   }
 
@@ -34,6 +40,8 @@ final class FilterDetailViewModel {
     self.init(
       filterID: filterID,
       useCase: LiveFilterDetailUseCase(service: service),
+      orderCreateUseCase: LiveOrderCreateUseCase(),
+      paymentValidationUseCase: LivePaymentValidationUseCase(),
       renderer: renderer
     )
   }
@@ -42,6 +50,8 @@ final class FilterDetailViewModel {
     self.init(
       filterID: filterID,
       useCase: LiveFilterDetailUseCase(),
+      orderCreateUseCase: LiveOrderCreateUseCase(),
+      paymentValidationUseCase: LivePaymentValidationUseCase(),
       renderer: CoreImageFilterRenderer()
     )
   }
@@ -51,7 +61,11 @@ final class FilterDetailViewModel {
     case .task, .retry:
       await load()
     case .tapDownload:
-      showDownloadAlert()
+      await startPayment()
+    case let .paymentResponseReceived(response):
+      await handlePaymentResponse(response)
+    case .dismissPaymentSheet:
+      state.paymentRequest = nil
     case .dismissAlert, .confirmAlert:
       state.alert = nil
     }
@@ -93,10 +107,72 @@ final class FilterDetailViewModel {
     }
   }
 
-  private func showDownloadAlert() {
+  private func startPayment() async {
+    guard state.isPaymentProcessing == false,
+          state.paymentRequest == nil,
+          let detail = state.detail else {
+      return
+    }
+
+    guard detail.isDownloaded == false else {
+      return
+    }
+
+    state.isPaymentProcessing = true
+    do {
+      let order = try await orderCreateUseCase.createOrder(
+        filterID: detail.id,
+        totalPrice: detail.price
+      )
+      state.paymentRequest = PortonePaymentRequest(
+        detail: detail,
+        merchantUID: order.orderCode
+      )
+      state.isPaymentProcessing = false
+    } catch is CancellationError {
+      state.isPaymentProcessing = false
+    } catch {
+      state.isPaymentProcessing = false
+      showPaymentAlert(message: Self.paymentMessage(for: error))
+      Self.logger.error("❌ [FilterDetailViewModel] order creation failed \(String(describing: error), privacy: .public)")
+    }
+  }
+
+  private func handlePaymentResponse(_ response: PortonePaymentResponse?) async {
+    state.paymentRequest = nil
+
+    guard let response else {
+      return
+    }
+
+    guard response.success else {
+      showPaymentAlert(message: response.errorMessage ?? "결제가 완료되지 않았습니다.")
+      return
+    }
+
+    guard let impUID = response.impUID, impUID.isEmpty == false else {
+      showPaymentAlert(message: "결제 승인 정보를 확인할 수 없습니다.")
+      return
+    }
+
+    state.isPaymentProcessing = true
+    do {
+      try await paymentValidationUseCase.validatePayment(impUID: impUID)
+      await load()
+      state.isPaymentProcessing = false
+    } catch is CancellationError {
+      state.isPaymentProcessing = false
+    } catch {
+      state.isPaymentProcessing = false
+      showPaymentAlert(message: Self.paymentMessage(for: error))
+      Self.logger.error("❌ [FilterDetailViewModel] payment validation failed \(String(describing: error), privacy: .public)")
+    }
+  }
+
+  private func showPaymentAlert(message: String) {
     state.alert = FilterDetailAlert(
       title: "필터 결제",
-      message: "결제 기능은 준비 중입니다.",
+      message: message,
       cancelTitle: "취소",
       confirmTitle: "확인"
     )
@@ -109,5 +185,19 @@ final class FilterDetailViewModel {
     }
 
     return FilterDetailServiceError.serverError.errorDescription ?? "잠시 후 다시 시도해 주세요."
+  }
+
+  private static func paymentMessage(for error: Error) -> String {
+    if let orderError = error as? OrderServiceError,
+       let message = orderError.errorDescription {
+      return message
+    }
+
+    if let paymentError = error as? PaymentServiceError,
+       let message = paymentError.errorDescription {
+      return message
+    }
+
+    return "결제를 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."
   }
 }

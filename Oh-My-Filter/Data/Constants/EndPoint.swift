@@ -49,4 +49,12 @@ nonisolated enum EndPoint {
   nonisolated enum Banners {
     static let main = "\(EndPoint.baseUrl)/banners/main"
   }
+
+  nonisolated enum Payment {
+    static let validation = "\(EndPoint.baseUrl)/payments/validation"
+  }
+
+  nonisolated enum Orders {
+    static let create = "\(EndPoint.baseUrl)/orders"
+  }
 }
