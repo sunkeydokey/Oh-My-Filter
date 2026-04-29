@@ -61,7 +61,7 @@ struct PaymentServiceTests {
 struct OrderServiceTests {
   @Test("order router uses POST documented endpoint")
   func orderRouterUsesPostEndpoint() {
-    #expect(OrderApiRouter.create.url == "http://filter.sesac.kr:42598/v1/oreders")
+    #expect(OrderApiRouter.create.url == "http://filter.sesac.kr:42598/v1/orders")
     #expect(OrderApiRouter.create.method == .post)
     #expect(OrderApiRouter.create.requiresAuthorizationHeader)
   }
@@ -112,7 +112,7 @@ struct OrderServiceTests {
   }
 }
 
-private actor MockPaymentNetworkManager: BaseNetworkManaging {
+private actor MockPaymentNetworkManager: AuthenticatedNetworkManaging {
   private var queuedResults: [Result<NetworkResponse, Error>] = []
 
   func enqueueResponse(_ response: NetworkResponse) {
@@ -125,7 +125,6 @@ private actor MockPaymentNetworkManager: BaseNetworkManaging {
 
   func request<Router: ApiRouter>(
     _ router: Router,
-    headers: [String: String],
     parameters: RequestQuery
   ) async throws -> NetworkResponse {
     try nextResult()
@@ -134,7 +133,6 @@ private actor MockPaymentNetworkManager: BaseNetworkManaging {
   func request<Router: ApiRouter, Body: Encodable>(
     _ router: Router,
     body: Body,
-    headers: [String: String],
     parameters: RequestQuery
   ) async throws -> NetworkResponse {
     try nextResult()

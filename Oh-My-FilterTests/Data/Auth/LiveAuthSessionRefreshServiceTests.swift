@@ -69,7 +69,7 @@ struct LiveAuthSessionRefreshServiceTests {
 
     #expect(refreshedTokens.accessToken == "new-access-token")
     #expect(refreshedTokens.refreshToken == "new-refresh-token")
-    #expect(refreshedTokens.accessTokenExpiresAt == now.addingTimeInterval(120 * 60))
+    #expect(refreshedTokens.accessTokenExpiresAt == now.addingTimeInterval(5 * 60))
     #expect(refreshedTokens.refreshTokenExpiresAt == now.addingTimeInterval(12_000 * 60))
     #expect(await tokenStore.storedTokens == refreshedTokens)
 

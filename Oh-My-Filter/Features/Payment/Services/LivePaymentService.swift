@@ -2,19 +2,19 @@ import Foundation
 import OSLog
 
 nonisolated struct LivePaymentService: PaymentServicing {
-  private let networkManager: any BaseNetworkManaging
+  private let networkManager: any AuthenticatedNetworkManaging
   private static let logger = Logger(
     subsystem: Bundle.main.bundleIdentifier ?? "Oh-My-Filter",
     category: "PaymentAPI"
   )
 
-  init(networkManager: any BaseNetworkManaging) {
+  init(networkManager: any AuthenticatedNetworkManaging) {
     self.networkManager = networkManager
   }
 
   @MainActor
   init() {
-    self.init(networkManager: BaseNetworkManager())
+    self.init(networkManager: AuthenticatedNetworkManager())
   }
 
   func validatePayment(request: PaymentValidationRequest) async throws {

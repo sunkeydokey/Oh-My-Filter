@@ -85,7 +85,7 @@ struct LiveMainServiceTests {
   }
 }
 
-private actor MockMainNetworkManager: BaseNetworkManaging {
+private actor MockMainNetworkManager: AuthenticatedNetworkManaging {
   private var queuedResults: [Result<NetworkResponse, Error>] = []
   private(set) var capturedURLs: [String] = []
 
@@ -99,7 +99,6 @@ private actor MockMainNetworkManager: BaseNetworkManaging {
 
   func request<Router: ApiRouter>(
     _ router: Router,
-    headers: [String: String],
     parameters: RequestQuery
   ) async throws -> NetworkResponse {
     capturedURLs.append(router.url)
@@ -109,7 +108,6 @@ private actor MockMainNetworkManager: BaseNetworkManaging {
   func request<Router: ApiRouter, Body: Encodable>(
     _ router: Router,
     body: Body,
-    headers: [String: String],
     parameters: RequestQuery
   ) async throws -> NetworkResponse {
     capturedURLs.append(router.url)

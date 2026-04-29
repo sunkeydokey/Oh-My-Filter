@@ -75,40 +75,19 @@ struct BaseNetworkManagerTests {
     #expect(response.statusCode == 200)
   }
 
-  @Test("request injects SeSACKey and stored access token headers")
+  @Test("request injects SeSACKey without implicit authorization")
   func requestInjectsDefaultHeaders() async throws {
     let session = makeSession()
-    let tokenStore = MockAuthTokenStore()
-    let manager = BaseNetworkManager(session: session, tokenStore: tokenStore)
-    await tokenStore.saveWithoutThrowing(.fixture)
+    let manager = BaseNetworkManager(session: session)
     defer { TestURLProtocol.reset() }
 
     TestURLProtocol.setRequestHandler { request in
       #expect(request.value(forHTTPHeaderField: "SeSACKey") == Server.apiKey())
-      #expect(request.value(forHTTPHeaderField: "Authorization") == "stored-access-token")
+      #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
       return TestURLProtocol.StubResponse(statusCode: 200)
     }
 
     let response = try await manager.request(TestRouter.search, parameters: .empty)
-
-    #expect(response.statusCode == 200)
-  }
-
-  @Test("home API requests include authorization headers")
-  func homeApiRequestsIncludeAuthorizationHeader() async throws {
-    let session = makeSession()
-    let tokenStore = MockAuthTokenStore()
-    let manager = BaseNetworkManager(session: session, tokenStore: tokenStore)
-    await tokenStore.saveWithoutThrowing(.fixture)
-    defer { TestURLProtocol.reset() }
-
-    TestURLProtocol.setRequestHandler { request in
-      #expect(request.value(forHTTPHeaderField: "SeSACKey") == Server.apiKey())
-      #expect(request.value(forHTTPHeaderField: "Authorization") == "stored-access-token")
-      return TestURLProtocol.StubResponse(statusCode: 200)
-    }
-
-    let response = try await manager.request(HomeApiRouter.todayFilter, parameters: .empty)
 
     #expect(response.statusCode == 200)
   }
@@ -193,33 +172,4 @@ private enum TestRouter: ApiRouter {
   var requiresAuthorizationHeader: Bool {
     true
   }
-}
-
-private actor MockAuthTokenStore: AuthTokenStoring {
-  private var tokensValue: StoredAuthTokens?
-
-  func save(_ tokens: StoredAuthTokens) async throws {
-    tokensValue = tokens
-  }
-
-  func tokens() async throws -> StoredAuthTokens? {
-    tokensValue
-  }
-
-  func delete() async throws {
-    tokensValue = nil
-  }
-
-  func saveWithoutThrowing(_ tokens: StoredAuthTokens) {
-    tokensValue = tokens
-  }
-}
-
-private extension StoredAuthTokens {
-  static let fixture = StoredAuthTokens(
-    accessToken: "stored-access-token",
-    refreshToken: "stored-refresh-token",
-    accessTokenExpiresAt: .distantFuture,
-    refreshTokenExpiresAt: .distantFuture
-  )
 }

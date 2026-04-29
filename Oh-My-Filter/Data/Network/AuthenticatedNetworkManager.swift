@@ -2,8 +2,7 @@ import Foundation
 
 nonisolated struct AuthenticatedNetworkManager: AuthenticatedNetworkManaging {
   private let networkManager: any BaseNetworkManaging
-  private let tokenStore: any AuthTokenStoring
-  private let authSessionRefresher: any AuthSessionRefreshing
+  private let tokenRefreshCoordinator: any TokenRefreshCoordinating
 
   init(
     networkManager: any BaseNetworkManaging,
@@ -11,11 +10,34 @@ nonisolated struct AuthenticatedNetworkManager: AuthenticatedNetworkManaging {
     authSessionRefresher: (any AuthSessionRefreshing)? = nil
   ) {
     self.networkManager = networkManager
-    self.tokenStore = tokenStore
-    self.authSessionRefresher = authSessionRefresher ?? LiveAuthSessionRefreshService(
+    let resolvedRefresher = authSessionRefresher ?? LiveAuthSessionRefreshService(
       networkManager: networkManager,
       tokenStore: tokenStore
     )
+    self.tokenRefreshCoordinator = TokenRefreshCoordinator(
+      tokenStore: tokenStore,
+      authSessionRefresher: resolvedRefresher
+    )
+  }
+
+  init(
+    networkManager: any BaseNetworkManaging,
+    tokenRefreshCoordinator: any TokenRefreshCoordinating
+  ) {
+    self.networkManager = networkManager
+    self.tokenRefreshCoordinator = tokenRefreshCoordinator
+  }
+
+  init(networkManager: any BaseNetworkManaging) {
+    self.init(
+      networkManager: networkManager,
+      tokenRefreshCoordinator: AppTokenRefreshCoordinator.shared
+    )
+  }
+
+  @MainActor
+  init() {
+    self.init(networkManager: BaseNetworkManager())
   }
 
   func request<Router: ApiRouter>(
@@ -49,35 +71,15 @@ nonisolated struct AuthenticatedNetworkManager: AuthenticatedNetworkManaging {
   private func performAuthenticatedRequest(
     operation: (String) async throws -> NetworkResponse
   ) async throws -> NetworkResponse {
-    let initialAccessToken = try await currentAccessToken()
-    let initialResponse = try await operation(initialAccessToken)
+    let accessToken = try await tokenRefreshCoordinator.authorizationHeaderValue()
+    let response = try await operation(accessToken)
 
-    guard initialResponse.statusCode == 419 else {
-      return initialResponse
+    if response.statusCode == 401 || response.statusCode == 419 {
+      try await tokenRefreshCoordinator.clearTokens()
+      throw AuthenticatedNetworkError.sessionExpired
     }
 
-    let refreshedTokens: StoredAuthTokens
-
-    do {
-      refreshedTokens = try await authSessionRefresher.refreshSession()
-    } catch {
-      throw AuthenticatedNetworkError.refreshFailed
-    }
-
-    let retriedResponse = try await operation(refreshedTokens.accessToken)
-    guard retriedResponse.statusCode != 419 else {
-      throw AuthenticatedNetworkError.refreshFailed
-    }
-
-    return retriedResponse
-  }
-
-  private func currentAccessToken() async throws -> String {
-    guard let accessToken = try await tokenStore.tokens()?.accessToken else {
-      throw AuthenticatedNetworkError.missingAccessToken
-    }
-
-    return accessToken
+    return response
   }
 
   private func authorizationHeaders(accessToken: String) -> [String: String] {

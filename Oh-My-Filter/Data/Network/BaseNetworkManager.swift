@@ -3,7 +3,6 @@ import Foundation
 nonisolated struct BaseNetworkManager: BaseNetworkManaging {
   private let session: URLSession
   private let encoder: JSONEncoder
-  private let tokenStore: any AuthTokenStoring
 
   init(
     session: URLSession = .shared,
@@ -12,7 +11,6 @@ nonisolated struct BaseNetworkManager: BaseNetworkManaging {
   ) {
     self.session = session
     self.encoder = encoder
-    self.tokenStore = tokenStore
   }
 
   @MainActor
@@ -104,19 +102,10 @@ nonisolated struct BaseNetworkManager: BaseNetworkManaging {
     request.setValue(router.contentType.rawValue, forHTTPHeaderField: "Content-Type")
     request.setValue(ContentType.json.rawValue, forHTTPHeaderField: "Accept")
     request.setValue(Server.apiKey(), forHTTPHeaderField: "SeSACKey")
-    if router.requiresAuthorizationHeader,
-       headers["Authorization"] == nil,
-       let accessToken = try await accessTokenHeaderValue() {
-      request.setValue(accessToken, forHTTPHeaderField: "Authorization")
-    }
     for (field, value) in headers {
       request.setValue(value, forHTTPHeaderField: field)
     }
     request.httpBody = body
     return request
-  }
-
-  private func accessTokenHeaderValue() async throws -> String? {
-    try await tokenStore.tokens()?.accessToken
   }
 }

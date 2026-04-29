@@ -2,7 +2,7 @@ import Foundation
 import OSLog
 
 nonisolated struct LiveFilterDetailService: FilterDetailServicing {
-  private let networkManager: any BaseNetworkManaging
+  private let networkManager: any AuthenticatedNetworkManaging
   private let decoder: JSONDecoder
   private static let logger = Logger(
     subsystem: Bundle.main.bundleIdentifier ?? "Oh-My-Filter",
@@ -10,7 +10,7 @@ nonisolated struct LiveFilterDetailService: FilterDetailServicing {
   )
 
   init(
-    networkManager: any BaseNetworkManaging,
+    networkManager: any AuthenticatedNetworkManaging,
     decoder: JSONDecoder = JSONDecoder()
   ) {
     self.networkManager = networkManager
@@ -21,7 +21,7 @@ nonisolated struct LiveFilterDetailService: FilterDetailServicing {
 
   @MainActor
   init(decoder: JSONDecoder = JSONDecoder()) {
-    self.init(networkManager: BaseNetworkManager(), decoder: decoder)
+    self.init(networkManager: AuthenticatedNetworkManager(), decoder: decoder)
   }
 
   func loadFilterDetail(filterID: String) async throws -> FilterDetail {

@@ -71,7 +71,7 @@ struct LiveSignupServiceTests {
     let tokens = await tokenStore.savedTokens
     #expect(tokens?.accessToken == "access-token")
     #expect(tokens?.refreshToken == "refresh-token")
-    #expect(tokens?.accessTokenExpiresAt == now.addingTimeInterval(120 * 60))
+    #expect(tokens?.accessTokenExpiresAt == now.addingTimeInterval(5 * 60))
     #expect(tokens?.refreshTokenExpiresAt == now.addingTimeInterval(12_000 * 60))
   }
 

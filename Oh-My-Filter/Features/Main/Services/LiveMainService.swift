@@ -2,7 +2,7 @@ import Foundation
 import OSLog
 
 struct LiveMainService: MainServicing {
-  private let networkManager: any BaseNetworkManaging
+  private let networkManager: any AuthenticatedNetworkManaging
   private let decoder: JSONDecoder
   private static let logger = Logger(
     subsystem: Bundle.main.bundleIdentifier ?? "Oh-My-Filter",
@@ -10,7 +10,7 @@ struct LiveMainService: MainServicing {
   )
 
   init(
-    networkManager: any BaseNetworkManaging,
+    networkManager: any AuthenticatedNetworkManaging,
     decoder: JSONDecoder = JSONDecoder()
   ) {
     self.networkManager = networkManager
@@ -21,7 +21,7 @@ struct LiveMainService: MainServicing {
 
   @MainActor
   init(decoder: JSONDecoder = JSONDecoder()) {
-    self.init(networkManager: BaseNetworkManager(), decoder: decoder)
+    self.init(networkManager: AuthenticatedNetworkManager(), decoder: decoder)
   }
 
   func loadTodayFilter() async throws -> MainTodayFilter {

@@ -73,31 +73,6 @@ actor KeychainAuthTokenStore: AuthTokenStoring {
     }
   }
 
-  nonisolated static func currentAccessToken(
-    service: String? = nil,
-    account: String = "authTokens"
-  ) -> String? {
-    let resolvedService = service ?? "Oh-My-Filter"
-    let query: [String: Any] = [
-      kSecClass as String: kSecClassGenericPassword,
-      kSecAttrService as String: resolvedService,
-      kSecAttrAccount as String: account,
-      kSecReturnData as String: true,
-      kSecMatchLimit as String: kSecMatchLimitOne,
-    ]
-
-    var item: CFTypeRef?
-    let status = SecItemCopyMatching(query as CFDictionary, &item)
-
-    guard status == errSecSuccess,
-          let data = item as? Data,
-          let tokens = try? JSONDecoder().decode(StoredAuthTokens.self, from: data) else {
-      return nil
-    }
-
-    return tokens.accessToken
-  }
-
   private var baseQuery: [String: Any] {
     [
       kSecClass as String: kSecClassGenericPassword,

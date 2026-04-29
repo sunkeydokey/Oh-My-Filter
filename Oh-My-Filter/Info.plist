@@ -26,6 +26,10 @@
 	<string>$(KAKAO_API_KEY)</string>
 	<key>REAL_NAME</key>
 	<string>$(REAL_NAME)</string>
+	<key>PG_ID</key>
+	<string>$(PG_ID)</string>
+	<key>PAYMENT_USER_CODE</key>
+	<string>$(PAYMENT_USER_CODE)</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>kakaokompassauth</string>
