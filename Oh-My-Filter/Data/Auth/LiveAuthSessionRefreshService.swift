@@ -65,6 +65,7 @@ nonisolated struct LiveAuthSessionRefreshService: AuthSessionRefreshing {
         let decodedResponse = try decoder.decode(TokenRefreshResponseDTO.self, from: response.data)
         let refreshedTokens = decodedResponse.tokenPayload(now: now())
         try await tokenStore.save(refreshedTokens)
+        print(refreshedTokens)
         return refreshedTokens
       } catch {
         throw AuthSessionRefreshError.invalidResponse

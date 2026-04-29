@@ -57,4 +57,16 @@ nonisolated enum EndPoint {
   nonisolated enum Orders {
     static let create = "\(EndPoint.baseUrl)/orders"
   }
+
+  nonisolated enum Chats {
+    static let rooms = "\(EndPoint.baseUrl)/chats"
+
+    static func room(roomID: String) -> String {
+      "\(EndPoint.baseUrl)/chats/\(roomID)"
+    }
+
+    static func files(roomID: String) -> String {
+      "\(EndPoint.baseUrl)/chats/\(roomID)/files"
+    }
+  }
 }

@@ -84,6 +84,9 @@ struct BaseNetworkManagerTests {
     TestURLProtocol.setRequestHandler { request in
       #expect(request.value(forHTTPHeaderField: "SeSACKey") == Server.apiKey())
       #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+      #expect(request.cachePolicy == .reloadIgnoringLocalCacheData)
+      #expect(request.value(forHTTPHeaderField: "If-None-Match") == nil)
+      #expect(request.value(forHTTPHeaderField: "If-Modified-Since") == nil)
       return TestURLProtocol.StubResponse(statusCode: 200)
     }
 

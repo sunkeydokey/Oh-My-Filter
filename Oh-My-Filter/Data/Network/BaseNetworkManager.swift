@@ -97,7 +97,7 @@ nonisolated struct BaseNetworkManager: BaseNetworkManaging {
       throw NetworkError.invalidRequest
     }
 
-    var request = URLRequest(url: url)
+    var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
     request.httpMethod = router.method.rawValue
     request.setValue(router.contentType.rawValue, forHTTPHeaderField: "Content-Type")
     request.setValue(ContentType.json.rawValue, forHTTPHeaderField: "Accept")
