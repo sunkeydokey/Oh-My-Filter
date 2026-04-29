@@ -44,6 +44,24 @@ struct FilterDetailView: View {
       didLoad = true
       await viewModel.send(.task)
     }
+    .sheet(item: paymentRequestBinding) { paymentRequest in
+      PortoneWebView(paymentRequest: paymentRequest) { response in
+        Task {
+          await viewModel.send(.paymentResponseReceived(response))
+        }
+      }
+    }
+  }
+
+  private var paymentRequestBinding: Binding<PortonePaymentRequest?> {
+    Binding {
+      viewModel.state.paymentRequest
+    } set: { paymentRequest in
+      guard paymentRequest == nil else { return }
+      Task {
+        await viewModel.send(.dismissPaymentSheet)
+      }
+    }
   }
 
   @ViewBuilder
@@ -58,6 +76,7 @@ struct FilterDetailView: View {
           originalImageURL: previous.originalImageURL,
           filteredImageURL: previous.fallbackFilteredImageURL
         ),
+        isPaymentProcessing: viewModel.state.isPaymentProcessing,
         action: downloadAction
       )
       .overlay {
@@ -68,6 +87,7 @@ struct FilterDetailView: View {
       FilterDetailLoadedView(
         detail: detail,
         previewState: previewState,
+        isPaymentProcessing: viewModel.state.isPaymentProcessing,
         action: downloadAction
       )
     case let .failed(message, previous: nil):
@@ -79,6 +99,7 @@ struct FilterDetailView: View {
           originalImageURL: previous.originalImageURL,
           filteredImageURL: previous.fallbackFilteredImageURL
         ),
+        isPaymentProcessing: viewModel.state.isPaymentProcessing,
         action: downloadAction
       )
       .overlay(alignment: .top) {

@@ -3,6 +3,7 @@ import SwiftUI
 struct FilterDetailLoadedView: View {
   let detail: FilterDetail
   let previewState: FilterDetailPreviewState
+  let isPaymentProcessing: Bool
   let action: () -> Void
 
   var body: some View {
@@ -20,14 +21,15 @@ struct FilterDetailLoadedView: View {
           isLocked: detail.isDownloaded == false
         )
 
-        Button(detail.buttonTitle, action: action)
+        Button(buttonTitle, action: action)
+          .disabled(detail.isDownloaded || isPaymentProcessing)
           .font(TypographyToken.pretendardBody1.font)
           .bold()
-          .foregroundStyle(detail.isDownloaded ? ColorToken.grayScale0.color : ColorToken.grayScale60.color)
+          .foregroundStyle(detail.isDownloaded || isPaymentProcessing ? ColorToken.grayScale0.color : ColorToken.grayScale60.color)
           .frame(maxWidth: .infinity)
           .padding(.vertical, 12)
           .background(
-            detail.isDownloaded ? ColorToken.sesacFilterDeepTurquoise.color : ColorToken.grayScale75.color,
+            detail.isDownloaded || isPaymentProcessing ? ColorToken.grayScale75.color : ColorToken.sesacFilterBrightTurquoise.color,
             in: RoundedRectangle(cornerRadius: 8, style: .continuous)
           )
 
@@ -49,5 +51,9 @@ struct FilterDetailLoadedView: View {
       .padding(.bottom, 40)
     }
     .scrollIndicators(.hidden)
+  }
+
+  private var buttonTitle: String {
+    isPaymentProcessing ? "결제 처리 중" : detail.buttonTitle
   }
 }

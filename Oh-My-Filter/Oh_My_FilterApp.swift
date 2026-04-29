@@ -5,9 +5,10 @@
 //  Created by 이선기 on 4/22/26.
 //
 
+import KakaoSDKAuth
 import SwiftUI
 import UIKit
-import KakaoSDKAuth
+import iamport_ios
 
 @main
 struct OhMyFilterApp: App {
@@ -27,7 +28,11 @@ struct OhMyFilterApp: App {
       ContentView(coordinator: coordinator)
         .preferredColorScheme(.dark)
         .onOpenURL { url in
-          AuthController.handleOpenUrl(url: url)
+          if url.scheme == SDK.Payment.appScheme {
+            Iamport.shared.receivedURL(url)
+          } else {
+            AuthController.handleOpenUrl(url: url)
+          }
         }
     }
   }

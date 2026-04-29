@@ -3,6 +3,8 @@ import Foundation
 nonisolated struct FilterDetailState: Sendable {
   var phase: FilterDetailPhase = .idle
   var alert: FilterDetailAlert?
+  var paymentRequest: PortonePaymentRequest?
+  var isPaymentProcessing = false
 
   var detail: FilterDetail? {
     switch phase {
