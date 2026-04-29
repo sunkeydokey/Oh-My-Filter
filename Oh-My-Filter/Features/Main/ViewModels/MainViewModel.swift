@@ -13,17 +13,31 @@ final class MainViewModel {
   var state = MainState()
 
   private let useCase: any MainHomeUseCase
+  private let tokenRefreshCoordinator: (any TokenRefreshCoordinating)?
 
-  init(useCase: any MainHomeUseCase) {
+  init(
+    useCase: any MainHomeUseCase,
+    tokenRefreshCoordinator: (any TokenRefreshCoordinating)? = nil
+  ) {
     self.useCase = useCase
+    self.tokenRefreshCoordinator = tokenRefreshCoordinator
   }
 
-  convenience init(service: any MainServicing) {
-    self.init(useCase: LiveMainHomeUseCase(service: service))
+  convenience init(
+    service: any MainServicing,
+    tokenRefreshCoordinator: (any TokenRefreshCoordinating)? = nil
+  ) {
+    self.init(
+      useCase: LiveMainHomeUseCase(service: service),
+      tokenRefreshCoordinator: tokenRefreshCoordinator
+    )
   }
 
   convenience init() {
-    self.init(useCase: LiveMainHomeUseCase())
+    self.init(
+      useCase: LiveMainHomeUseCase(),
+      tokenRefreshCoordinator: AppTokenRefreshCoordinator.shared
+    )
   }
 
   func send(_ action: MainAction) async {
@@ -49,6 +63,24 @@ final class MainViewModel {
     state.hotTrendFilters = .loading(previous: state.hotTrendFilters.value)
     state.todayAuthor = .loading(previous: state.todayAuthor.value)
     Self.logger.debug("➡️ [MainViewModel] states set to loading")
+
+    do {
+      try await tokenRefreshCoordinator?.prepareValidTokenIfNeeded()
+    } catch is CancellationError {
+      state.todayFilter = .idle
+      state.mainBanners = .idle
+      state.hotTrendFilters = .idle
+      state.todayAuthor = .idle
+      return
+    } catch {
+      let message = Self.fallbackMessage(for: error)
+      state.todayFilter = .failed(message: message, previous: state.todayFilter.value)
+      state.mainBanners = .failed(message: message, previous: state.mainBanners.value)
+      state.hotTrendFilters = .failed(message: message, previous: state.hotTrendFilters.value)
+      state.todayAuthor = .failed(message: message, previous: state.todayAuthor.value)
+      Self.logger.error("❌ [MainViewModel] token preparation failed error=\(String(describing: error), privacy: .public)")
+      return
+    }
 
     async let todayFilterResult = loadTodayFilter()
     async let mainBannersResult = loadMainBanners()

@@ -29,4 +29,5 @@ extension AuthenticatedNetworkManaging {
 enum AuthenticatedNetworkError: Error, Equatable, Sendable {
   case missingAccessToken
   case refreshFailed
+  case sessionExpired
 }

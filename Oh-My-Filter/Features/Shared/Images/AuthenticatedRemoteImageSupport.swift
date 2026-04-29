@@ -19,16 +19,25 @@ enum AuthenticatedRemoteImageSupport {
     return baseURL.appending(path: trimmedPath)
   }
 
-  static var requestModifier: AnyModifier {
-    AnyModifier { request in
+  static var requestModifier: any AsyncImageDownloadRequestModifier {
+    AuthenticatedRemoteImageRequestModifier(
+      tokenRefreshCoordinator: AppTokenRefreshCoordinator.shared
+    )
+  }
+}
+
+private struct AuthenticatedRemoteImageRequestModifier: AsyncImageDownloadRequestModifier {
+  let tokenRefreshCoordinator: any TokenRefreshCoordinating
+  let onDownloadTaskStarted: (@Sendable (DownloadTask?) -> Void)? = nil
+
+  func modified(for request: URLRequest) async -> URLRequest? {
       var modifiedRequest = request
       modifiedRequest.setValue(Server.apiKey(), forHTTPHeaderField: "SeSACKey")
 
-      if let accessToken = KeychainAuthTokenStore.currentAccessToken() {
+      if let accessToken = try? await tokenRefreshCoordinator.authorizationHeaderValue() {
         modifiedRequest.setValue(accessToken, forHTTPHeaderField: "Authorization")
       }
 
       return modifiedRequest
-    }
   }
 }

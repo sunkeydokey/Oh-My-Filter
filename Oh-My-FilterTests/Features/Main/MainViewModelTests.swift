@@ -13,7 +13,7 @@ struct MainViewModelTests {
       await viewModel.send(.task)
     }
 
-    try? await Task.sleep(for: .milliseconds(25))
+    await service.waitForAllRequestsToStart()
 
     #expect(await service.todayFilterCallCount == 1)
     #expect(await service.mainBannersCallCount == 1)
@@ -197,6 +197,20 @@ private actor ControlledMainService: MainServicing {
     mainBannersContinuation?.resume(returning: [.banner])
     hotTrendFiltersContinuation?.resume(returning: [.hotTrend])
     todayAuthorContinuation?.resume(returning: .todayAuthor)
+  }
+
+  func waitForAllRequestsToStart() async {
+    let deadline = ContinuousClock.now + .seconds(1)
+    while ContinuousClock.now < deadline {
+      if todayFilterCallCount == 1,
+         mainBannersCallCount == 1,
+         hotTrendFiltersCallCount == 1,
+         todayAuthorCallCount == 1 {
+        return
+      }
+
+      try? await Task.sleep(for: .milliseconds(10))
+    }
   }
 }
 

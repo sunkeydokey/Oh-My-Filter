@@ -8,7 +8,7 @@ nonisolated struct TokenRefreshResponseDTO: Codable, Sendable {
     StoredAuthTokens(
       accessToken: accessToken,
       refreshToken: refreshToken,
-      accessTokenExpiresAt: now.addingTimeInterval(120 * 60),
+      accessTokenExpiresAt: now.addingTimeInterval(5 * 60),
       refreshTokenExpiresAt: now.addingTimeInterval(12_000 * 60)
     )
   }

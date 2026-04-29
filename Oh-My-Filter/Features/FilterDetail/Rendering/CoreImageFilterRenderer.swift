@@ -5,19 +5,22 @@ import Foundation
 nonisolated struct CoreImageFilterRenderer: ImageFilterRendering {
   private let session: URLSession
   private let context: CIContext
+  private let tokenRefreshCoordinator: any TokenRefreshCoordinating
 
   init(
     session: URLSession = .shared,
-    context: CIContext = CIContext()
+    context: CIContext = CIContext(),
+    tokenRefreshCoordinator: any TokenRefreshCoordinating = AppTokenRefreshCoordinator.shared
   ) {
     self.session = session
     self.context = context
+    self.tokenRefreshCoordinator = tokenRefreshCoordinator
   }
 
   func render(originalImageURL: URL, filterValues: FilterValues) async throws -> RenderedFilterImages {
     var request = URLRequest(url: originalImageURL)
     request.setValue(Server.apiKey(), forHTTPHeaderField: "SeSACKey")
-    if let accessToken = KeychainAuthTokenStore.currentAccessToken() {
+    if let accessToken = try? await tokenRefreshCoordinator.authorizationHeaderValue() {
       request.setValue(accessToken, forHTTPHeaderField: "Authorization")
     }
 

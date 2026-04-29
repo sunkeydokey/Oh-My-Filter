@@ -3,98 +3,63 @@ import Testing
 @testable import Oh_My_Filter
 
 struct AuthenticatedNetworkManagerTests {
-  @Test("authenticated request sends access token in Authorization header")
+  @Test("authenticated request sends coordinator access token in Authorization header")
   func requestSendsAuthorizationHeader() async throws {
     let networkManager = MockAuthenticatedBaseNetworkManager()
-    let tokenStore = MockAuthenticatedTokenStore()
-    await tokenStore.saveWithoutThrowing(.oldTokens)
+    let tokenRefreshCoordinator = MockTokenRefreshCoordinator(accessToken: "valid-access-token")
     await networkManager.enqueueResponse(NetworkResponse(data: Data(), statusCode: 200))
     let manager = AuthenticatedNetworkManager(
       networkManager: networkManager,
-      tokenStore: tokenStore,
-      authSessionRefresher: MockSessionRefresher()
+      tokenRefreshCoordinator: tokenRefreshCoordinator
     )
 
     let response = try await manager.request(AuthenticatedTestRouter.profile)
 
     #expect(response.statusCode == 200)
-    #expect(await networkManager.capturedHeaders == [["Authorization": "old-access-token"]])
+    #expect(await tokenRefreshCoordinator.authorizationHeaderCallCount == 1)
+    #expect(await networkManager.capturedHeaders == [["Authorization": "valid-access-token"]])
   }
 
-  @Test("419 response refreshes session and retries request once")
-  func response419RefreshesAndRetriesOnce() async throws {
+  @Test("401 response clears tokens and does not retry")
+  func response401ClearsTokensAndDoesNotRetry() async {
     let networkManager = MockAuthenticatedBaseNetworkManager()
-    let tokenStore = MockAuthenticatedTokenStore()
-    let refresher = MockSessionRefresher()
-    await tokenStore.saveWithoutThrowing(.oldTokens)
-    await refresher.setResult(.success(.newTokens))
-    await networkManager.enqueueResponse(NetworkResponse(data: Data(), statusCode: 419))
-    await networkManager.enqueueResponse(NetworkResponse(data: Data(), statusCode: 200))
+    let tokenRefreshCoordinator = MockTokenRefreshCoordinator(accessToken: "valid-access-token")
+    await networkManager.enqueueResponse(NetworkResponse(data: Data(), statusCode: 401))
     let manager = AuthenticatedNetworkManager(
       networkManager: networkManager,
-      tokenStore: tokenStore,
-      authSessionRefresher: refresher
-    )
-
-    let response = try await manager.request(AuthenticatedTestRouter.profile)
-
-    #expect(response.statusCode == 200)
-    #expect(await refresher.refreshCount == 1)
-    #expect(
-      await networkManager.capturedHeaders == [
-        ["Authorization": "old-access-token"],
-        ["Authorization": "new-access-token"]
-      ]
-    )
-  }
-
-  @Test("refresh failure after 419 does not retry original request")
-  func refreshFailureAfter419DoesNotRetry() async {
-    let networkManager = MockAuthenticatedBaseNetworkManager()
-    let tokenStore = MockAuthenticatedTokenStore()
-    let refresher = MockSessionRefresher()
-    await tokenStore.saveWithoutThrowing(.oldTokens)
-    await refresher.setResult(.failure(AuthSessionRefreshError.expiredRefreshToken))
-    await networkManager.enqueueResponse(NetworkResponse(data: Data(), statusCode: 419))
-    let manager = AuthenticatedNetworkManager(
-      networkManager: networkManager,
-      tokenStore: tokenStore,
-      authSessionRefresher: refresher
+      tokenRefreshCoordinator: tokenRefreshCoordinator
     )
 
     do {
       _ = try await manager.request(AuthenticatedTestRouter.profile)
-      Issue.record("Expected refresh failure")
+      Issue.record("Expected session expiration")
     } catch {
-      #expect(error as? AuthenticatedNetworkError == .refreshFailed)
+      #expect(error as? AuthenticatedNetworkError == .sessionExpired)
     }
 
+    #expect(await tokenRefreshCoordinator.clearTokensCallCount == 1)
     #expect(await networkManager.requestCount == 1)
   }
 
-  @Test("retry still returning 419 maps to authentication failure")
-  func retryStillReturning419MapsToAuthenticationFailure() async {
+  @Test("419 response clears tokens and does not retry")
+  func response419ClearsTokensAndDoesNotRetry() async {
     let networkManager = MockAuthenticatedBaseNetworkManager()
-    let tokenStore = MockAuthenticatedTokenStore()
-    let refresher = MockSessionRefresher()
-    await tokenStore.saveWithoutThrowing(.oldTokens)
-    await refresher.setResult(.success(.newTokens))
-    await networkManager.enqueueResponse(NetworkResponse(data: Data(), statusCode: 419))
+    let tokenRefreshCoordinator = MockTokenRefreshCoordinator(accessToken: "valid-access-token")
     await networkManager.enqueueResponse(NetworkResponse(data: Data(), statusCode: 419))
     let manager = AuthenticatedNetworkManager(
       networkManager: networkManager,
-      tokenStore: tokenStore,
-      authSessionRefresher: refresher
+      tokenRefreshCoordinator: tokenRefreshCoordinator
     )
 
     do {
       _ = try await manager.request(AuthenticatedTestRouter.profile)
-      Issue.record("Expected refresh failure")
+      Issue.record("Expected session expiration")
     } catch {
-      #expect(error as? AuthenticatedNetworkError == .refreshFailed)
+      #expect(error as? AuthenticatedNetworkError == .sessionExpired)
     }
 
-    #expect(await networkManager.requestCount == 2)
+    #expect(await tokenRefreshCoordinator.clearTokensCallCount == 1)
+    #expect(await networkManager.requestCount == 1)
   }
 }
 
@@ -151,52 +116,36 @@ private actor MockAuthenticatedBaseNetworkManager: BaseNetworkManaging {
   }
 }
 
-private actor MockAuthenticatedTokenStore: AuthTokenStoring {
-  private var storedTokens: StoredAuthTokens?
+private actor MockTokenRefreshCoordinator: TokenRefreshCoordinating {
+  private let accessToken: String
+  private(set) var authorizationHeaderCallCount = 0
+  private(set) var clearTokensCallCount = 0
 
-  func save(_ tokens: StoredAuthTokens) async throws {
-    storedTokens = tokens
+  init(accessToken: String) {
+    self.accessToken = accessToken
   }
 
-  func tokens() async throws -> StoredAuthTokens? {
-    storedTokens
+  func prepareValidTokenIfNeeded() async throws {}
+
+  func validAccessToken() async throws -> String {
+    accessToken
   }
 
-  func delete() async throws {
-    storedTokens = nil
+  func authorizationHeaderValue() async throws -> String {
+    authorizationHeaderCallCount += 1
+    return accessToken
   }
 
-  func saveWithoutThrowing(_ tokens: StoredAuthTokens) {
-    storedTokens = tokens
-  }
-}
-
-private actor MockSessionRefresher: AuthSessionRefreshing {
-  private var result: Result<StoredAuthTokens, Error> = .success(.newTokens)
-  private(set) var refreshCount = 0
-
-  func setResult(_ result: Result<StoredAuthTokens, Error>) {
-    self.result = result
+  func forceRefresh() async throws -> StoredAuthTokens {
+    StoredAuthTokens(
+      accessToken: accessToken,
+      refreshToken: "refresh-token",
+      accessTokenExpiresAt: .distantFuture,
+      refreshTokenExpiresAt: .distantFuture
+    )
   }
 
-  func refreshSession() async throws -> StoredAuthTokens {
-    refreshCount += 1
-    return try result.get()
+  func clearTokens() async throws {
+    clearTokensCallCount += 1
   }
-}
-
-private extension StoredAuthTokens {
-  static let oldTokens = StoredAuthTokens(
-    accessToken: "old-access-token",
-    refreshToken: "old-refresh-token",
-    accessTokenExpiresAt: Date(timeIntervalSinceReferenceDate: 1_000),
-    refreshTokenExpiresAt: Date(timeIntervalSinceReferenceDate: 2_000)
-  )
-
-  static let newTokens = StoredAuthTokens(
-    accessToken: "new-access-token",
-    refreshToken: "new-refresh-token",
-    accessTokenExpiresAt: Date(timeIntervalSinceReferenceDate: 3_000),
-    refreshTokenExpiresAt: Date(timeIntervalSinceReferenceDate: 4_000)
-  )
 }
