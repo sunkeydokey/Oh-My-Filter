@@ -4,7 +4,7 @@ private enum AuthenticatedTab: Hashable {
   case main
   case feed
   case makeFilter
-  case search
+  case chat
   case profile
 }
 
@@ -40,9 +40,9 @@ struct AuthenticatedRootView: View {
         }
       }
 
-      Tab("검색", systemImage: IconToken.search.symbolName, value: .search) {
+      Tab("채팅", systemImage: "message.circle.fill", value: .chat) {
         NavigationStack {
-          SearchView()
+          ChatListView()
         }
       }
 

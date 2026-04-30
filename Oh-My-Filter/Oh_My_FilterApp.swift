@@ -6,6 +6,7 @@
 //
 
 import KakaoSDKAuth
+import SwiftData
 import SwiftUI
 import UIKit
 import iamport_ios
@@ -27,6 +28,10 @@ struct OhMyFilterApp: App {
     WindowGroup {
       ContentView(coordinator: coordinator)
         .preferredColorScheme(.dark)
+        .modelContainer(for: [
+          ChatRoomRecord.self,
+          ChatMessageRecord.self,
+        ])
         .onOpenURL { url in
           if url.scheme == SDK.Payment.appScheme {
             Iamport.shared.receivedURL(url)
