@@ -25,18 +25,7 @@ struct FilterDetailView: View {
         )
       }
     }
-    .navigationTitle(viewModel.state.detail?.title ?? "")
-    .navigationBarTitleDisplayMode(.inline)
-    .toolbar {
-      if let title = viewModel.state.detail?.title {
-        ToolbarItem(placement: .principal) {
-          Text(title)
-            .font(TypographyToken.mulgyeolBody1.font)
-            .foregroundStyle(ColorToken.grayScale45.color)
-            .id("FilterDetailTitle-\(title)")
-        }
-      }
-    }
+    .mulgyeolNavigationTitle(viewModel.state.detail?.title ?? "")
     .toolbarBackground(ColorToken.brandBlackSprout.color, for: .navigationBar)
     .toolbarBackground(.visible, for: .navigationBar)
     .task {
