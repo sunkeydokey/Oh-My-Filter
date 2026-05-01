@@ -5,7 +5,7 @@
         "공통적용 사항"
       ],
       "summary": "공통사항 정의",
-      "description": "서비스의 모든 요청 header에는 **SeSACKey**를 넣어주어야 합니다.  \n자물쇠 모양을 클릭하면 해당 기능에 필요한 AccessToken(Authorization)과 SeSACKey를 설정할 수 있습니다.  \n<br>\nstatusCode가 같은 응답값이 2개 이상 존재할 경우 Response의 Examples에 드롭다운 형태로 표시됩니다.  \n<br>\n 업로드한 파일을 조회 시 header에 **AccessToken(Authorization), SeSACKey**를 입력해야 합니다.\n<br>\n url 예) http://filter.sesac.kr:99999/v1/data/profiles/1712740785422.png",
+      "description": "서비스의 모든 요청 header에는 **SeSACKey**를 넣어주어야 합니다.  \n자물쇠 모양을 클릭하면 해당 기능에 필요한 AccessToken(Authorization)과 SeSACKey를 설정할 수 있습니다.  \n<br>\nstatusCode가 같은 응답값이 2개 이상 존재할 경우 Response의 Examples에 드롭다운 형태로 표시됩니다.  \n<br>\n 업로드한 파일을 조회 시 header에 **AccessToken(Authorization), SeSACKey**를 입력해야 합니다.\n<br>\n url 예) http://filter.sesac.kr:99999/data/profiles/1712740785422.png",
       "operationId": "get-api-v1-common",
       "responses": {
         "200": {
@@ -152,7 +152,7 @@
       ]
     }
   },
-  "/v1/auth/refresh": {
+  "/auth/refresh": {
     "get": {
       "tags": [
         "Auth"
@@ -232,7 +232,7 @@
       ]
     }
   },
-  "/v1/users/validation/email": {
+  "/users/validation/email": {
     "post": {
       "tags": [
         "User"
@@ -308,7 +308,7 @@
       ]
     }
   },
-  "/v1/users/join": {
+  "/users/join": {
     "post": {
       "tags": [
         "User"
@@ -390,7 +390,7 @@
       ]
     }
   },
-  "/v1/users/login": {
+  "/users/login": {
     "post": {
       "tags": [
         "User"
@@ -458,7 +458,7 @@
       ]
     }
   },
-  "/v1/users/login/kakao": {
+  "/users/login/kakao": {
     "post": {
       "tags": [
         "User"
@@ -546,7 +546,7 @@
       ]
     }
   },
-  "/v1/users/login/apple": {
+  "/users/login/apple": {
     "post": {
       "tags": [
         "User"
@@ -634,7 +634,7 @@
       ]
     }
   },
-  "/v1/users/logout": {
+  "/users/logout": {
     "post": {
       "tags": [
         "User"
@@ -657,7 +657,7 @@
       ]
     }
   },
-  "/v1/users/deviceToken": {
+  "/users/deviceToken": {
     "put": {
       "tags": [
         "User"
@@ -683,7 +683,7 @@
       ]
     }
   },
-  "/v1/filters/files": {
+  "/filters/files": {
     "post": {
       "tags": [
         "Filter"
@@ -740,7 +740,7 @@
       ]
     }
   },
-  "/v1/filters": {
+  "/filters": {
     "post": {
       "tags": [
         "Filter"
@@ -918,7 +918,7 @@
       ]
     }
   },
-  "/v1/filters/{filter_id}": {
+  "/filters/{filter_id}": {
     "get": {
       "tags": [
         "Filter"
@@ -1160,7 +1160,7 @@
       ]
     }
   },
-  "/v1/filters/{filter_id}/comments": {
+  "/filters/{filter_id}/comments": {
     "post": {
       "tags": [
         "Filter-Comment"
@@ -1255,7 +1255,7 @@
       ]
     }
   },
-  "/v1/filters/{filter_id}/comments/{comment_id}": {
+  "/filters/{filter_id}/comments/{comment_id}": {
     "put": {
       "tags": [
         "Filter-Comment"
@@ -1458,7 +1458,7 @@
       ]
     }
   },
-  "/v1/filters/{filter_id}/like": {
+  "/filters/{filter_id}/like": {
     "post": {
       "tags": [
         "Filter"
@@ -1544,7 +1544,7 @@
       ]
     }
   },
-  "/v1/filters/users/{user_id}": {
+  "/filters/users/{user_id}": {
     "get": {
       "tags": [
         "Filter"
@@ -1658,7 +1658,7 @@
       ]
     }
   },
-  "/v1/filters/likes/me": {
+  "/filters/likes/me": {
     "get": {
       "tags": [
         "Filter"
@@ -1743,7 +1743,7 @@
       ]
     }
   },
-  "/v1/posts/files": {
+  "/posts/files": {
     "post": {
       "tags": [
         "Community-Post"
@@ -1800,7 +1800,7 @@
       ]
     }
   },
-  "/v1/posts": {
+  "/posts": {
     "post": {
       "tags": [
         "Community-Post"
@@ -1880,7 +1880,7 @@
       ]
     }
   },
-  "/v1/posts/geolocation": {
+  "/posts/geolocation": {
     "get": {
       "tags": [
         "Community-Post"
@@ -2015,7 +2015,7 @@
       ]
     }
   },
-  "/v1/posts/search": {
+  "/posts/search": {
     "get": {
       "tags": [
         "Community-Post"
@@ -2057,7 +2057,7 @@
       ]
     }
   },
-  "/v1/posts/{post_id}": {
+  "/posts/{post_id}": {
     "get": {
       "tags": [
         "Community-Post"
@@ -2300,7 +2300,7 @@
       ]
     }
   },
-  "/v1/posts/{post_id}/like": {
+  "/posts/{post_id}/like": {
     "post": {
       "tags": [
         "Community-Post"
@@ -2386,7 +2386,7 @@
       ]
     }
   },
-  "/v1/posts/users/{user_id}": {
+  "/posts/users/{user_id}": {
     "get": {
       "tags": [
         "Community-Post"
@@ -2501,7 +2501,7 @@
       ]
     }
   },
-  "/v1/posts/likes/me": {
+  "/posts/likes/me": {
     "get": {
       "tags": [
         "Community-Post"
@@ -2586,7 +2586,7 @@
       ]
     }
   },
-  "/v1/posts/{post_id}/comments": {
+  "/posts/{post_id}/comments": {
     "post": {
       "tags": [
         "Community-Post-Comment"
@@ -2681,7 +2681,7 @@
       ]
     }
   },
-  "/v1/posts/{post_id}/comments/{comment_id}": {
+  "/posts/{post_id}/comments/{comment_id}": {
     "put": {
       "tags": [
         "Community-Post-Comment"
@@ -2884,7 +2884,7 @@
       ]
     }
   },
-  "/v1/users/{user_id}/profile": {
+  "/users/{user_id}/profile": {
     "get": {
       "tags": [
         "User"
@@ -2945,7 +2945,7 @@
       ]
     }
   },
-  "/v1/users/profile/image": {
+  "/users/profile/image": {
     "post": {
       "tags": [
         "User"
@@ -3021,7 +3021,7 @@
       ]
     }
   },
-  "/v1/users/me/profile": {
+  "/users/me/profile": {
     "get": {
       "tags": [
         "User"
@@ -3103,7 +3103,7 @@
       ]
     }
   },
-  "/v1/chats": {
+  "/chats": {
     "post": {
       "tags": [
         "Chat"
@@ -3223,7 +3223,7 @@
       ]
     }
   },
-  "/v1/chats/{room_id}": {
+  "/chats/{room_id}": {
     "post": {
       "tags": [
         "Chat"
@@ -3466,7 +3466,7 @@
       ]
     }
   },
-  "/v1/chats/{room_id}/files": {
+  "/chats/{room_id}/files": {
     "post": {
       "tags": [
         "Chat"
@@ -3576,7 +3576,7 @@
       ]
     }
   },
-  "/v1/filters/hot-trend": {
+  "/filters/hot-trend": {
     "get": {
       "tags": [
         "Filter"
@@ -3607,7 +3607,7 @@
       ]
     }
   },
-  "/v1/filters/today-filter": {
+  "/filters/today-filter": {
     "get": {
       "tags": [
         "Filter"
@@ -3638,7 +3638,7 @@
       ]
     }
   },
-  "/v1/users/today-author": {
+  "/users/today-author": {
     "get": {
       "tags": [
         "User"
@@ -3669,7 +3669,7 @@
       ]
     }
   },
-  "/v1/users/search": {
+  "/users/search": {
     "get": {
       "tags": [
         "User"
@@ -3712,7 +3712,7 @@
       ]
     }
   },
-  "/v1/banners/main": {
+  "/banners/main": {
     "get": {
       "tags": [
         "Banner"
@@ -3743,7 +3743,7 @@
       ]
     }
   },
-  "/v1/log": {
+  "/log": {
     "get": {
       "tags": [
         "Log"
@@ -3770,7 +3770,7 @@
       ]
     }
   },
-  "/v1/orders": {
+  "/orders": {
     "post": {
       "tags": [
         "Order"
@@ -3907,7 +3907,7 @@
       ]
     }
   },
-  "/v1/payments/validation": {
+  "/payments/validation": {
     "post": {
       "tags": [
         "Payment"
@@ -4034,7 +4034,7 @@
       ]
     }
   },
-  "/v1/payments/{order_code}": {
+  "/payments/{order_code}": {
     "get": {
       "tags": [
         "Payment"
@@ -4114,7 +4114,7 @@
       ]
     }
   },
-  "/v1/notifications/push": {
+  "/notifications/push": {
     "post": {
       "tags": [
         "Push"
@@ -4215,13 +4215,13 @@
       ]
     }
   },
-  "/v1/videos": {
+  "/videos": {
     "get": {
       "tags": [
         "Video"
       ],
       "summary": "비디오 목록 조회",
-      "description": "**[요청 쿼리]**\n\n**next**\n<br>- 처음 요청시에는 빈 값으로 요청, 이후 요청부터는 응답 값의 next_cursor 값을 입력하여 다음 페이지를 요청합니다.\n\n**limit**\n<br>- 한 페이지 당 보여지는 데이터 개수이며, 입력하지 않은 경우 5개를 요청한 것으로 간주합니다.\n\n**[응답값]**\n\n**next_cursor**\n<br>- next_cursor가 없는 경우 마지막 페이지입니다.\n\n**[스트리밍 URL 발급]**\n<br>- 스트리밍을 위한 URL은 GET /v1/videos/{video_id}/stream API를 호출하여 조회합니다.\n",
+      "description": "**[요청 쿼리]**\n\n**next**\n<br>- 처음 요청시에는 빈 값으로 요청, 이후 요청부터는 응답 값의 next_cursor 값을 입력하여 다음 페이지를 요청합니다.\n\n**limit**\n<br>- 한 페이지 당 보여지는 데이터 개수이며, 입력하지 않은 경우 5개를 요청한 것으로 간주합니다.\n\n**[응답값]**\n\n**next_cursor**\n<br>- next_cursor가 없는 경우 마지막 페이지입니다.\n\n**[스트리밍 URL 발급]**\n<br>- 스트리밍을 위한 URL은 GET /videos/{video_id}/stream API를 호출하여 조회합니다.\n",
       "operationId": "get-v1-videos",
       "parameters": [
         {
@@ -4266,7 +4266,7 @@
       ]
     }
   },
-  "/v1/videos/{video_id}/stream": {
+  "/videos/{video_id}/stream": {
     "get": {
       "tags": [
         "Video"
@@ -4326,7 +4326,7 @@
       ]
     }
   },
-  "/v1/videos/{video_id}/like": {
+  "/videos/{video_id}/like": {
     "post": {
       "tags": [
         "Video"
