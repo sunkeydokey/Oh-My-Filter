@@ -1,0 +1,4441 @@
+{
+  "/common": {
+    "get": {
+      "tags": [
+        "공통적용 사항"
+      ],
+      "summary": "공통사항 정의",
+      "description": "서비스의 모든 요청 header에는 **SeSACKey**를 넣어주어야 합니다.  \n자물쇠 모양을 클릭하면 해당 기능에 필요한 AccessToken(Authorization)과 SeSACKey를 설정할 수 있습니다.  \n<br>\nstatusCode가 같은 응답값이 2개 이상 존재할 경우 Response의 Examples에 드롭다운 형태로 표시됩니다.  \n<br>\n 업로드한 파일을 조회 시 header에 **AccessToken(Authorization), SeSACKey**를 입력해야 합니다.\n<br>\n url 예) http://filter.sesac.kr:99999/v1/data/profiles/1712740785422.png",
+      "operationId": "get-api-v1-common",
+      "responses": {
+        "200": {
+          "description": ""
+        },
+        "401": {
+          "description": "유효하지 않은 accessToken일 경우(공백 포함, 한글 포함 등)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "인증할 수 없는 액세스 토큰입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "403": {
+          "description": "user_id 조회를 할 수 없는 경우(공백, 탈퇴한 회원 등)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "Forbidden"
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "419": {
+          "description": "accessToken이 만료된 경우",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "액세스 토큰이 만료되었습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "420": {
+          "description": "header의 SeSACKey가 유효하지 않는 경우",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "This service sesac_memolease only"
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "429": {
+          "description": "정해진 api 호출 횟수를 초과한 경우",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "과호출입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "444": {
+          "description": "비정상 api 호출인 경우 (잘못된 url 등)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "돌아가 여긴 자네가 올 곳이 아니야."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "이외 서버관련 Error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "ServerError"
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/auth/refresh": {
+    "get": {
+      "tags": [
+        "Auth"
+      ],
+      "summary": "액세스 토큰갱신",
+      "description": "",
+      "operationId": "get-v1-auth-refreshToken",
+      "parameters": [
+        {
+          "name": "RefreshToken",
+          "in": "header",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenResponseDTO"
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "인증할 수 없는 리프레시 토큰입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "418": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "리프레시 토큰이 만료되었습니다. 다시 로그인 해주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/users/validation/email": {
+    "post": {
+      "tags": [
+        "User"
+      ],
+      "summary": "이메일 유효성 체크",
+      "operationId": "get-v1-users-validation/email",
+      "requestBody": {
+        "$ref": "#/components/requestBodies/EmailValidationRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "사용 가능한 이메일입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필수값을 채워주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "409": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "사용이 불가한 이메일입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/users/join": {
+    "post": {
+      "tags": [
+        "User"
+      ],
+      "summary": "회원가입",
+      "description": "[회원가입 규칙]\n<br>1. email은 중복 체크됩니다.\n<br>2. - . , ? * - @ + ^ $ { } ( ) | [ ] \\는 nick에 포함할 수 없습니다.\n<br>3. 이메일은 유효한 형식이어야 합니다 (예: user@example.com)\n<br>4. 비밀번호는 최소 8자 이상이며, 영문자, 숫자, 특수문자(@$!%*#?&)를 각각 1개 이상 포함해야 합니다.",
+      "operationId": "get-v1-users-join",
+      "parameters": [],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/JoinRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "이메일 형식이 올바르지 않은 경우": {
+                  "value": {
+                    "message": "이메일 형식이 올바르지 않습니다."
+                  }
+                },
+                "비밀번호 형식이 올바르지 않은 경우": {
+                  "value": {
+                    "message": "비밀번호는 최소 8자 이상이며, 영문자, 숫자, 특수문자를 포함해야 합니다."
+                  }
+                },
+                "사용할 수 없는 닉네임인 경우": {
+                  "value": {
+                    "message": "사용할 수 없는 닉네임입니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "409": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "이미 가입된 유저입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/users/login": {
+    "post": {
+      "tags": [
+        "User"
+      ],
+      "summary": "이메일 로그인",
+      "operationId": "get-users-login",
+      "parameters": [],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/LoginRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필수값을 채워주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "계정을 확인해주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/users/login/kakao": {
+    "post": {
+      "tags": [
+        "User"
+      ],
+      "summary": "카카오 로그인",
+      "description": "[회원가입 규칙]\n<br>1. email은 중복 체크됩니다.\n<br>2. 회원가입 시 닉네임은 \"새싹이\" + 랜덤 5자리 문자열로 자동 생성됩니다 (예: 새싹이Abc12).\n<br>3. 다른 수단으로 회원가입이 된 계정인 경우 중복 계정으로 처리되어 로그인(및 가입)할 수 없습니다.",
+      "operationId": "get-v1-users-login-kakao",
+      "parameters": [],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/KaKaoLoginRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필수값을 채워주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "계정을 확인해주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "409": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "이미 가입된 유저입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/users/login/apple": {
+    "post": {
+      "tags": [
+        "User"
+      ],
+      "summary": "애플 로그인",
+      "description": "[회원가입 규칙]\n<br>1. email은 중복 체크됩니다.\n<br>2. 회원가입 시 닉네임은 \"새싹이\" + 랜덤 5자리 문자열로 자동 생성됩니다 (예: 새싹이Abc12).\n<br>3. 다른 수단으로 회원가입이 된 계정인 경우 중복 계정으로 처리되어 로그인(및 가입)할 수 없습니다.",
+      "operationId": "get-api-v1-users-login-apple",
+      "parameters": [],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/AppleLoginRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필수값을 채워주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "계정을 확인해주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "409": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "이미 가입된 유저입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/users/logout": {
+    "post": {
+      "tags": [
+        "User"
+      ],
+      "summary": "로그아웃",
+      "operationId": "post-v1-users-logout",
+      "parameters": [],
+      "responses": {
+        "200": {
+          "description": "로그아웃 성공"
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/users/deviceToken": {
+    "put": {
+      "tags": [
+        "User"
+      ],
+      "summary": "디바이스 토큰 업데이트",
+      "operationId": "get-v1-users-deviceToken",
+      "parameters": [],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/DeviceTokenRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": ""
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/filters/files": {
+    "post": {
+      "tags": [
+        "Filter"
+      ],
+      "summary": "파일 업로드",
+      "description": "[요청 바디]\\\n<br>1. 확장자 제한: jpg, png, jpeg\\\n<br>2. 용량 제한: 서버공지 참고(2MB) \\\n<br>3. 파일 개수: 2개",
+      "operationId": "filter-v1-filters-files",
+      "parameters": [],
+      "requestBody": {
+        "name": "files",
+        "$ref": "#/components/requestBodies/FileRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "파일 제한사항과 맞지 않는 경우": {
+                  "value": {
+                    "message": "잘못된 요청입니다."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/filters": {
+    "post": {
+      "tags": [
+        "Filter"
+      ],
+      "summary": "필터 생성",
+      "description": "[요청 바디]\\\n<br>1. . , ? * - + @ ^ $ { } ( ) | [ ] \\  는 카테고리 명으로 사용할 수 없습니다.(카테고리 기준 푸드, 인물, 풍경, 별, 야경)\\\n<br>2. photo_metadata는 내부 키값(ex. camera, lens_info)을 제외한 키 값은 서버에서 인식 및 처리되지 않습니다.\\\n<br>3. filter_values는 내부 키값(ex. brightness, exposure)을 제외한 키 값은 서버에서 인식 및 처리되지 않습니다.",
+      "operationId": "filter-v1-filter",
+      "parameters": [],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/FilterRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "생성된 사진 필터 정보",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FilterResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "유효하지 않은 값 타입": {
+                  "value": {
+                    "message": "유효하지 않은 값 타입입니다."
+                  }
+                },
+                "사용할 수 없는 카테고리 명": {
+                  "value": {
+                    "message": "사용할 수 없는 카테고리 명입니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "생성된 필터가 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    },
+    "get": {
+      "tags": [
+        "Filter"
+      ],
+      "summary": "필터 목록 조회",
+      "description": "[요청 쿼리]\\\n<br>1. next: 처음 요청시에는 빈 값으로 요청, 이후 요청부터는 응답 값의 next_cursor값을 입력하여 다음 페이지를 요청합니다.\\\n<br>2. limit: 한 페이지 당 보여지는 데이터 개수이며, 입력하지 않은 경우 5개를 요청한 것으로 간주합니다(1 이상의 양수값).\\\n<br>3. category: category로 필터링하여 사진 필터를 조회합니다. 입력하지 않으면 전체 필터를 조회합니다. \\\n<br><br>\n[응답값]\\\n<br>1. 페이지네이션 추가 정보가 없는 경우(마지막 페이지)는 next_cursor은 \"0\"으로 반환됩니다.",
+      "operationId": "get-v1-filter",
+      "parameters": [
+        {
+          "name": "next",
+          "in": "query",
+          "description": "이전 페이지의 마지막 filter_id",
+          "required": false,
+          "style": "form",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "description": "한 페이지에 보여지는 필터 개수",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "category",
+          "in": "query",
+          "description": "필터가 속한 카테고리",
+          "required": false,
+          "style": "form",
+          "explode": false,
+          "schema": {
+            "type": "string",
+            "example": "풍경"
+          }
+        },
+        {
+          "name": "order_by",
+          "in": "query",
+          "description": "정렬 기준 (기본값: 'latest'). 'latest'(최신순), 'popularity'(인기순), 'purchase'(구매순) 중 선택.",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "latest",
+              "popularity",
+              "purchase"
+            ],
+            "default": "latest"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "필터 목록",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FilterSummaryPaginationListResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "유효하지 않은 값 타입입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/filters/{filter_id}": {
+    "get": {
+      "tags": [
+        "Filter"
+      ],
+      "summary": "필터 상세 조회",
+      "operationId": "get-v1-filters-filter_id",
+      "parameters": [
+        {
+          "name": "filter_id",
+          "in": "path",
+          "description": "필터의 filter_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "필터 상세 정보",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FilterResponseDTO"
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필터를 찾을 수 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    },
+    "put": {
+      "tags": [
+        "Filter"
+      ],
+      "summary": "필터 수정",
+      "description": "[요청 바디]\\\n<br>1. . , ? * - + @ ^ $ { } ( ) | [ ] \\  는 카테고리 명으로 사용할 수 없습니다.\\\n<br>2. 요청 바디에 입력되지 않은 값들은 기존값으로 유지됩니다.\\\n<br>3. 생성시 필수값(category, title, description, files, filter_values)이었던 값들이 빈 값(\"\", [], {})으로 입력된 경우는 400 에러를 반환합니다.\\\n<br>4. 단, photo_metadata, filter_values은 수정한 입력한 값들로 photo_metadata, filter_values가 대체됩니다.\n(수정한 json값으로 전체 값이 변경됩니다).",
+      "operationId": "put-v1-filter",
+      "parameters": [
+        {
+          "name": "filter_id",
+          "in": "path",
+          "description": "필터의 filter_id",
+          "required": true,
+          "style": "simple",
+          "explode": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/FilterUpdateRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "수정된 필터 정보",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FilterResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "유효하지 않은 값 타입": {
+                  "value": {
+                    "message": "유효하지 않은 값 타입입니다."
+                  }
+                },
+                "사용할 수 없는 카테고리 명": {
+                  "value": {
+                    "message": "사용할 수 없는 카테고리 명입니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필터를 찾을 수 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "445": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필터 수정 권한이 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    },
+    "delete": {
+      "tags": [
+        "Filter"
+      ],
+      "summary": "필터 삭제",
+      "operationId": "delete-v1-filter",
+      "parameters": [
+        {
+          "name": "filter_id",
+          "in": "path",
+          "description": "필터의 filter_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "삭제 성공",
+          "content": {}
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필터를 찾을 수 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "445": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필터 삭제 권한이 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/filters/{filter_id}/comments": {
+    "post": {
+      "tags": [
+        "Filter-Comment"
+      ],
+      "summary": "댓글 또는 대댓글 작성",
+      "description": "필터에 댓글을 작성하거나 기존 댓글에 대댓글을 작성합니다.\\\n<br> - 대댓글 작성 시 요청 본문에 parent_comment_id를 포함해야 합니다.\\\n<br> - 대댓글은 1뎁스까지만 허용됩니다 (대댓글에 다시 대댓글 작성 불가).",
+      "operationId": "post-v1-filter-comment",
+      "parameters": [
+        {
+          "name": "filter_id",
+          "in": "path",
+          "description": "필터의 filter_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/CommentRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "작성된 댓글 정보 (대댓글 포함 가능)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "대댓글의 대댓글 작성 시도": {
+                  "value": {
+                    "message": "대댓글에는 댓글을 작성할 수 없습니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필터를 찾을 수 없는 경우": {
+                  "value": {
+                    "message": "필터를 찾을 수 없습니다."
+                  }
+                },
+                "상위 댓글을 찾을 수 없는 경우": {
+                  "value": {
+                    "message": "상위 댓글을 찾을 수 없습니다."
+                  }
+                },
+                "생성된 댓글이 없는 경우": {
+                  "value": {
+                    "message": "생성된 댓글이 없습니다."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/filters/{filter_id}/comments/{comment_id}": {
+    "put": {
+      "tags": [
+        "Filter-Comment"
+      ],
+      "summary": "댓글 또는 대댓글 수정",
+      "description": "댓글 또는 대댓글을 수정합니다. 작성자 본인만 수정 가능합니다.",
+      "operationId": "put-v1-filters-filter_id-comments-comment_id",
+      "parameters": [
+        {
+          "name": "filter_id",
+          "in": "path",
+          "description": "필터의 filter_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "comment_id",
+          "in": "path",
+          "description": "수정하고자하는 댓글의 comment_id나 대댓글 comment_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/CommentUpdateRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "수정된 댓글 정보",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필수값을 채워주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필터를 찾을 수 없는 경우": {
+                  "value": {
+                    "message": "필터를 찾을 수 없습니다."
+                  }
+                },
+                "수정할 댓글이 없는 경우": {
+                  "value": {
+                    "message": "수정할 댓글을 찾을 수 없습니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "445": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "댓글 수정 권한이 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    },
+    "delete": {
+      "tags": [
+        "Filter-Comment"
+      ],
+      "summary": "댓글 또는 대댓글 삭제",
+      "description": "\\- 댓글 또는 대댓글을 삭제합니다. 작성자 본인만 삭제 가능합니다.\\\n<br> - 댓글 삭제 시 해당 댓글에 달린 대댓글도 함께 삭제됩니다.",
+      "operationId": "delete-v1-filters-filter_id-comments-comment_id",
+      "parameters": [
+        {
+          "name": "filter_id",
+          "in": "path",
+          "description": "필터의 filter_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "comment_id",
+          "in": "path",
+          "description": "삭제하고자하는 댓글의 comment_id나 대댓글 comment_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": ""
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필터를 찾을 수 없는 경우": {
+                  "value": {
+                    "message": "필터를 찾을 수 없습니다."
+                  }
+                },
+                "삭제할 댓글을 찾을 수 없는 경우": {
+                  "value": {
+                    "message": "삭제할 댓글을 찾을 수 없습니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "445": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "댓글 삭제 권한이 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/filters/{filter_id}/like": {
+    "post": {
+      "tags": [
+        "Filter"
+      ],
+      "summary": "필터 좋아요/좋아요 취소",
+      "operationId": "filter-v1-filters-filter_id-like",
+      "parameters": [
+        {
+          "name": "filter_id",
+          "in": "path",
+          "description": "필터의 filter_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/FilterLikeRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FilterLikeResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "유효하지 않은 값 타입": {
+                  "value": {
+                    "message": "유효하지 않은 값 타입입니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필터를 찾을 수 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/filters/users/{user_id}": {
+    "get": {
+      "tags": [
+        "Filter"
+      ],
+      "summary": "유저(작가)가 만든 필터 목록 조회",
+      "description": "[요청 쿼리]\\\n<br>1. category: 입력된 값으로 필터링하여 사진 필터를 조회합니다. 입력하지 않으면 전체 필터를 조회합니다.\\\n<br>2. next: 처음 요청시에는 빈 값으로 요청, 이후 요청부터는 응답 값의 next_cursor값을 입력하여 다음 페이지를 요청합니다.\\\n<br>3. limit: 한 페이지 당 보여지는 데이터 개수이며, 입력하지 않은 경우 5개를 요청한 것으로 간주합니다(1 이상의 양수값).\\\n<br><br>\n[응답값]\\\n<br>1. 페이지네이션할 추가 정보가 없는 경우(마지막 페이지)는 next_cursor은 \"0\"으로 반환됩니다.",
+      "operationId": "get-v1-filters-users",
+      "parameters": [
+        {
+          "name": "user_id",
+          "in": "path",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "next",
+          "in": "query",
+          "description": "이전 페이지의 마지막 filter_id",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "description": "한 페이지에 보여지는 필터 개수",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "category",
+          "in": "query",
+          "description": "필터이 속한 카테고리",
+          "required": false,
+          "style": "form",
+          "explode": false,
+          "schema": {
+            "type": "string",
+            "example": "풍경"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "유저가 생성한 필터 목록",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FilterSummaryPaginationListResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "유효하지 않은 값 타입입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "알 수 없는 계정입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/filters/likes/me": {
+    "get": {
+      "tags": [
+        "Filter"
+      ],
+      "summary": "내가 좋아요한 필터 조회",
+      "description": "[요청 쿼리]\\\n<br>1. next: 처음 요청시에는 빈 값으로 요청, 이후 요청부터는 응답 값의 next_cursor값을 입력하여 다음 페이지를 요청합니다.\\\n<br>2. limit: 한 페이지 당 보여지는 데이터 개수이며, 입력하지 않은 경우 5개를 요청한 것으로 간주합니다(1 이상의 양수값).\\\n<br>3. category: category로 필터링하여 사진 필터를 조회합니다. 입력하지 않으면 전체 필터를 조회합니다. \\\n<br><br>\n[응답값]\\\n<br>1. 페이지네이션 추가 정보가 없는 경우(마지막 페이지)는 next_cursor은 \"0\"으로 반환됩니다.",
+      "operationId": "get-v1-filters-likes-me",
+      "parameters": [
+        {
+          "name": "category",
+          "in": "query",
+          "description": "필터가 속한 카테고리",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string",
+            "example": "풍경"
+          }
+        },
+        {
+          "name": "next",
+          "in": "query",
+          "description": "다음 페이지의 인덱스 역할",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "description": "한 페이지에 보여지는 필터 개수",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FilterSummaryPaginationListResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "유효하지 않은 값 타입입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/posts/files": {
+    "post": {
+      "tags": [
+        "Community-Post"
+      ],
+      "summary": "파일 업로드",
+      "description": "[요청 바디]\n<br>1. 확장자 제한: jpg, png, jpeg, gif, webp, mp4, mov, avi, mkv, wmv\\\n<br>2. 용량 제한: 서버공지 참고(5MB)\\\n<br>3. 파일 개수: 서버공지 참고(5개)",
+      "operationId": "post-v1-posts-files",
+      "parameters": [],
+      "requestBody": {
+        "name": "files",
+        "$ref": "#/components/requestBodies/FileRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostFileResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "파일 제한사항과 맞지 않는 경우": {
+                  "value": {
+                    "message": "잘못된 요청입니다."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/posts": {
+    "post": {
+      "tags": [
+        "Community-Post"
+      ],
+      "summary": "게시글 작성",
+      "description": "[Point]\n<br>위치기반 게시물 조회 형태의 커뮤니티를 운영하려는 경우, 바디 값에 사용 할 위경도 값을 넣고,\\\n<br>위치기반이 아닌 단순 게시글 형태의 커뮤니티를 운영하려는 경우에는 \"latitude\": 37.654215, \"longitude\": 127.049914 을 넣어 주세요.\\\n<br>이 경우 게시물 조회시, 쿼리로 위경도 값과 maxDistance를 보낼 필요가 없습니다.\\\n<br><br>\n[요청바디]\\\n<br>1. files는 입력하지 않거나, 빈 배열로 요청 시 빈 배열로 리턴됩니다.\\\n<br>2. . , ? * - + @ ^ $ { } ( ) | [ ] \\  는 카테고리 명으로 사용할 수 없습니다.",
+      "operationId": "post-v1-post",
+      "parameters": [],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/PostRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "유효하지 않은 값 타입": {
+                  "value": {
+                    "message": "유효하지 않은 값 타입입니다."
+                  }
+                },
+                "사용할 수 없는 카테고리 명": {
+                  "value": {
+                    "message": "사용할 수 없는 카테고리 명입니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "생성된 게시글이 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/posts/geolocation": {
+    "get": {
+      "tags": [
+        "Community-Post"
+      ],
+      "summary": "(위치 기반)게시글 조회",
+      "description": "[Point]\n<br>위치기반 게시물 조회 커뮤니티를 운영하는 경우에는, 요청쿼리에 위경도 값과 적절한 maxDistance를 포함하여 요청해 주세요.\\\n<br>위치기반이 아닌, 단순 게시물 조회 커뮤니티를 운영하는 경우에는, 요청쿼리에 위경도 값과 maxDistance를 포함하지 말아 주세요.\\\n<br><br>\n[요청 쿼리]<br>\n   \\- 입력하지 않을 시 기본값\\\n<br> 1. category: 전체 게시글을 조회\\\n<br> 2. longitude: 청취사 경도값\\\n<br> 3. latitude: 청취사 위도값\\\n<br> 4. maxDistance: 전체 반경을 조회\\\n<br> 5. limit: 한 페이지당 보여지는 게시글 개수 (기본값: 5)\\\n<br> 6. next: 다음 페이지 조회를 위한 커서값 (처음 요청시 빈 값, 이후 응답의 next_cursor 값 사용)\\\n<br><br>\n [응답값]\n <br> 1. next_cursor: 다음 페이지 조회를 위한 커서값 (\"0\"인 경우 마지막 페이지)",
+      "operationId": "setSwitchTimer",
+      "parameters": [
+        {
+          "name": "category",
+          "in": "query",
+          "description": "카테고리",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string",
+            "example": "핫스팟"
+          }
+        },
+        {
+          "name": "longitude",
+          "in": "query",
+          "description": "경도",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "latitude",
+          "in": "query",
+          "description": "위도",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "maxDistance",
+          "in": "query",
+          "description": "반경(미터 단위)",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "description": "한 페이지당 보여지는 게시글 개수 (기본값: 5)",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "integer",
+            "default": 5
+          }
+        },
+        {
+          "name": "next",
+          "in": "query",
+          "description": "다음 페이지 조회를 위한 post_id",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order_by",
+          "in": "query",
+          "description": "정렬 기준 (createdAt: 최신순, likes: 좋아요 많은 순)",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "likes"
+            ],
+            "default": "createdAt"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostSummaryPaginationResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "유효하지 않은 값 타입입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/posts/search": {
+    "get": {
+      "tags": [
+        "Community-Post"
+      ],
+      "summary": "게시글 타이틀 검색",
+      "description": "<br> 1. 게시글 타이틀에 대해 대소문자 구분없이 부분 일치로 검색합니다.\\\n<br> 2. 검색 결과는 게시글 타이틀을 기준으로 오름차순 정렬되어 응답값으로 반환됩니다.",
+      "operationId": "search-filter-community-posts",
+      "parameters": [
+        {
+          "name": "title",
+          "in": "query",
+          "description": "검색할 게시글 타이틀",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "example": "새싹"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "검색 결과가 없는 경우 빈 배열이 반환될 수 있습니다.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostSummaryListResponseDTO"
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/posts/{post_id}": {
+    "get": {
+      "tags": [
+        "Community-Post"
+      ],
+      "summary": "게시글 상세 조회",
+      "description": "",
+      "operationId": "get-v1-posts-post_id",
+      "parameters": [
+        {
+          "name": "post_id",
+          "in": "path",
+          "description": "게시글의 post_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostResponseDTO"
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "게시글을 찾을 수 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    },
+    "put": {
+      "tags": [
+        "Community-Post"
+      ],
+      "summary": "게시글 수정",
+      "description": "[요청 바디]\\\n<br> 1 files는 빈배열로 요청 시 빈 배열로 리턴됩니다.\\\n<br> 2. 요청 바디에 입력되지 않은 값들은 기존값으로 유지됩니다.\\\n<br> 3. 게시글 작성시 필수값(category, title, content, latitude, longitude)이었던 값들이 빈 값(\"\")으로 입력된 경우는 400에러를 반환합니다.\\\n<br> 4. . , ? * - + @ ^ $ { } ( ) | [ ] \\  는 카테고리 명으로 사용할 수 없습니다.",
+      "operationId": "put-v1-post",
+      "parameters": [
+        {
+          "name": "post_id",
+          "in": "path",
+          "description": "게시글의 post_id",
+          "required": true,
+          "style": "simple",
+          "explode": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/PostUpdateRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "유효하지 않은 값 타입인 경우": {
+                  "value": {
+                    "message": "유효하지 않은 값 타입입니다."
+                  }
+                },
+                "사용할 수 없는 카테고리 명": {
+                  "value": {
+                    "message": "사용할 수 없는 카테고리 명입니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "게시글을 찾을 수 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "445": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "게시글 수정 권한이 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    },
+    "delete": {
+      "tags": [
+        "Community-Post"
+      ],
+      "summary": "게시글 삭제",
+      "operationId": "delete-v1-post",
+      "parameters": [
+        {
+          "name": "post_id",
+          "in": "path",
+          "description": "게시글의 post_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {}
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "게시글을 찾을 수 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "445": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "게시글 삭제 권한이 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/posts/{post_id}/like": {
+    "post": {
+      "tags": [
+        "Community-Post"
+      ],
+      "summary": "게시글 좋아요/좋아요 취소",
+      "operationId": "post-v1-posts-post_id-like",
+      "parameters": [
+        {
+          "name": "post_id",
+          "in": "path",
+          "description": "게시글의 post_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/PostLikeRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostLikeResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "유효하지 않은 값 타입": {
+                  "value": {
+                    "message": "유효하지 않은 값 타입입니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "게시글을 찾을 수 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/posts/users/{user_id}": {
+    "get": {
+      "tags": [
+        "Community-Post"
+      ],
+      "summary": "유저(작가)가 작성한 게시글 조회",
+      "description": "[요청 쿼리]<br>\n   \\- 입력하지 않을 시 기본값\\\n<br> 1. category: 전체 게시글을 조회\\\n<br> 2. limit: 한 페이지당 보여지는 게시글 개수 (기본값: 5)\\\n<br> 3. next: 다음 페이지 조회를 위한 커서값 (처음 요청시 빈 값, 이후 응답의 next_cursor 값 사용)\\\n<br><br>\n [응답값]\n <br> 1. next_cursor: 다음 페이지 조회를 위한 커서값 (\"0\"인 경우 마지막 페이지)",
+      "operationId": "get-v1-posts-users-user_id",
+      "parameters": [
+        {
+          "name": "category",
+          "in": "query",
+          "description": "게시글이 속한 카테고리",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string",
+            "example": "핫스팟"
+          }
+        },
+        {
+          "name": "user_id",
+          "in": "path",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "description": "한 페이지에 보여지는 게시글 개수(기본값: 5)",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "integer",
+            "example": 5
+          }
+        },
+        {
+          "name": "next",
+          "in": "query",
+          "description": "다음 페이지의 인덱스 역할",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostSummaryPaginationResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "유효하지 않은 값 타입입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "알 수 없는 계정입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/posts/likes/me": {
+    "get": {
+      "tags": [
+        "Community-Post"
+      ],
+      "summary": "내가 좋아요한 게시글 조회",
+      "description": "[요청 쿼리]<br>\n   \\- 입력하지 않을 시 기본값\\\n<br> 1. category: 전체 게시글을 조회\\\n<br> 2. limit: 한 페이지당 보여지는 게시글 개수 (기본값: 5)\\\n<br> 3. next: 다음 페이지 조회를 위한 커서값 (처음 요청시 빈 값, 이후 응답의 next_cursor 값 사용)\\\n<br><br>\n [응답값]\n <br> 1. next_cursor: 다음 페이지 조회를 위한 커서값 (\"0\"인 경우 마지막 페이지)",
+      "operationId": "get-v1-posts-likes-me",
+      "parameters": [
+        {
+          "name": "category",
+          "in": "query",
+          "description": "게시글이 속한 카테고리",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string",
+            "example": "핫스팟"
+          }
+        },
+        {
+          "name": "next",
+          "in": "query",
+          "description": "다음 페이지의 인덱스 역할",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "description": "한 페이지에 보여지는 게시글 개수",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostSummaryPaginationResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "유효하지 않은 값 타입입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/posts/{post_id}/comments": {
+    "post": {
+      "tags": [
+        "Community-Post-Comment"
+      ],
+      "summary": "댓글 또는 대댓글 작성",
+      "description": "게시글에 댓글을 작성하거나 기존 댓글에 대댓글을 작성합니다.\\\n<br> - 대댓글 작성 시 요청 본문에 parent_comment_id를 포함해야 합니다.\\\n<br> - 대댓글은 1뎁스까지만 허용됩니다 (대댓글에 다시 대댓글 작성 불가).",
+      "operationId": "post-v1-post-comment",
+      "parameters": [
+        {
+          "name": "post_id",
+          "in": "path",
+          "description": "게시글의 post_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/CommentRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "작성된 댓글 정보 (대댓글 포함 가능)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "대댓글의 대댓글 작성 시도": {
+                  "value": {
+                    "message": "대댓글에는 댓글을 작성할 수 없습니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "게시글을 찾을 수 없는 경우": {
+                  "value": {
+                    "message": "게시글을 찾을 수 없습니다."
+                  }
+                },
+                "상위 댓글을 찾을 수 없는 경우": {
+                  "value": {
+                    "message": "상위 댓글을 찾을 수 없습니다."
+                  }
+                },
+                "생성된 댓글이 없는 경우": {
+                  "value": {
+                    "message": "생성된 댓글이 없습니다."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/posts/{post_id}/comments/{comment_id}": {
+    "put": {
+      "tags": [
+        "Community-Post-Comment"
+      ],
+      "summary": "댓글 또는 대댓글 수정",
+      "description": "댓글 또는 대댓글을 수정합니다. 작성자 본인만 수정 가능합니다.",
+      "operationId": "put-v1-posts-post_id-comments-comment_id",
+      "parameters": [
+        {
+          "name": "post_id",
+          "in": "path",
+          "description": "게시글의 post_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "comment_id",
+          "in": "path",
+          "description": "수정하고자하는 댓글의 comment_id나 대댓글 comment_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/CommentUpdateRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "수정된 댓글 정보",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필수값을 채워주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "게시글을 찾을 수 없는 경우": {
+                  "value": {
+                    "message": "게시글을 찾을 수 없습니다."
+                  }
+                },
+                "수정할 댓글이 없는 경우": {
+                  "value": {
+                    "message": "수정할 댓글을 찾을 수 없습니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "445": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "댓글 수정 권한이 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    },
+    "delete": {
+      "tags": [
+        "Community-Post-Comment"
+      ],
+      "summary": "댓글 또는 대댓글 삭제",
+      "description": "\\- 댓글 또는 대댓글을 삭제합니다. 작성자 본인만 삭제 가능합니다.\\\n<br> - 댓글 삭제 시 해당 댓글에 달린 대댓글도 함께 삭제됩니다.",
+      "operationId": "delete-v1-posts-post_id-comments-comment_id",
+      "parameters": [
+        {
+          "name": "post_id",
+          "in": "path",
+          "description": "게시글의 post_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "comment_id",
+          "in": "path",
+          "description": "삭제하고자하는 댓글의 comment_id나 대댓글 comment_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": ""
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "게시글을 찾을 수 없는 경우": {
+                  "value": {
+                    "message": "게시글을 찾을 수 없습니다."
+                  }
+                },
+                "삭제할 댓글을 찾을 수 없는 경우": {
+                  "value": {
+                    "message": "삭제할 댓글을 찾을 수 없습니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "445": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "댓글 삭제 권한이 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/users/{user_id}/profile": {
+    "get": {
+      "tags": [
+        "User"
+      ],
+      "summary": "다른사람(작가) 프로필 조회",
+      "description": "다른 사람 프로필 조회 시 email, phoneNum 값은 응답값에 포함되지 않습니다.",
+      "operationId": "get-v1-users-profile",
+      "parameters": [
+        {
+          "name": "user_id",
+          "in": "path",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserInfoResponseDTO"
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "알 수 없는 계정입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/users/profile/image": {
+    "post": {
+      "tags": [
+        "User"
+      ],
+      "summary": "내 프로필 이미지 업로드",
+      "description": "[요청 바디]\n<br>1. 확장자 제한: jpg, png, jpeg\\\n<br>2. 용량 제한: 서버공지 참고(1MB)\\\n<br>3. 최대 파일 개수: 1개",
+      "operationId": "filter-v1-users-me-profile-image",
+      "requestBody": {
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "required": [
+                "profile"
+              ],
+              "type": "object",
+              "properties": {
+                "profile": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "업로드 성공 및 수정된 프로필 정보 반환",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileImage": {
+                    "type": "string",
+                    "example": "/data/profiles/1746246312955.jpg"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "파일 제한사항과 맞지 않는 경우": {
+                  "value": {
+                    "message": "잘못된 요청입니다."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/users/me/profile": {
+    "get": {
+      "tags": [
+        "User"
+      ],
+      "summary": "내 프로필 조회",
+      "description": "",
+      "operationId": "get-v1-users-me-profile",
+      "parameters": [],
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MyInfoResponseDTO"
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    },
+    "put": {
+      "tags": [
+        "User"
+      ],
+      "summary": "내 프로필 수정",
+      "description": "\\[요청 바디]\n <br> 1. nick은 빈 문자열로 설정할 수 없습니다.\n <br>2. email, password는 수정할 수 없습니다.\n <br>3. - . , ? * - @ + ^ $ { } ( ) | [ ] \\는 nick에 포함할 수 없습니다.\n <br>4. 요청 바디에 입력되지 않은 값들은 기존값으로 유지되어 응답값으로 리턴됩니다.",
+      "operationId": "put-v1-users-me-profile",
+      "parameters": [],
+      "requestBody": {
+        "$ref": "#/components/requestBodies/ProfileRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MyInfoResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "사용할 수 없는 닉네임입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/chats": {
+    "post": {
+      "tags": [
+        "Chat"
+      ],
+      "summary": "채팅방 생성(조회)",
+      "description": "<br> 1. 채팅을 하기위해서는 채팅방을 먼저 생성해주어야합니다.\\\n<br> 2. opponent_id(채팅 상대방 user_id)에 해당하는 유저와 채팅방 생성 이력이 있는 경우 채팅방을 조회하고, 없는 경우 새로 방이 생성됩니다.\\\n<br> 3. lastChat은 채팅방의 마지막 채팅에 해당합니다.",
+      "operationId": "filter-v1-chats",
+      "requestBody": {
+        "description": "",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "opponent_id": {
+                  "type": "string",
+                  "example": "65589297a93f5938a8416dc3"
+                }
+              },
+              "required": [
+                "opponent_id"
+              ]
+            }
+          }
+        }
+      },
+      "parameters": [],
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRoomResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필수값을 채워주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "채팅방 생성 및 조회에 실패한 경우": {
+                  "value": {
+                    "message": "채팅방을 찾을 수 없습니다."
+                  }
+                },
+                "상대방의 계정이 존재하지 않는 경우(예. 탈퇴)": {
+                  "value": {
+                    "message": "알 수 없는 계정입니다."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    },
+    "get": {
+      "tags": [
+        "Chat"
+      ],
+      "summary": "채팅방 목록 조회",
+      "description": "<br> 1. 채팅방 응답값의 updatedAt 기준으로 최신순 정렬되어 응답값이 리턴됩니다.\\\n<br> 2. 참여한 채팅방에 새로운 채팅이 생길 경우, 채팅방 응답값의 updatedAt 값이 업데이트됩니다.",
+      "operationId": "get-v1-chats",
+      "parameters": [],
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRoomListResponseDTO"
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/chats/{room_id}": {
+    "post": {
+      "tags": [
+        "Chat"
+      ],
+      "summary": "채팅 보내기",
+      "description": "",
+      "operationId": "filter-v1-chats-room_id",
+      "requestBody": {
+        "description": "",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "content"
+              ],
+              "properties": {
+                "content": {
+                  "type": "string",
+                  "example": "반갑습니다 :)"
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "example": "/data/chats/image_1712739634962.png"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "room_id",
+          "in": "path",
+          "description": "채팅방 room_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필수값을 채워주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "채팅방을 찾을 수 없는 경우": {
+                  "value": {
+                    "message": "채팅방을 찾을 수 없습니다."
+                  }
+                },
+                "채팅 메세지 전송에 실패한 경우": {
+                  "value": {
+                    "message": "채팅 메세지를 찾을 수 없습니다."
+                  }
+                },
+                "상대방의 계정이 존재하지 않는 경우(예. 탈퇴)": {
+                  "value": {
+                    "message": "알 수 없는 계정입니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "445": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "채팅방 참여자가 아닙니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    },
+    "get": {
+      "tags": [
+        "Chat"
+      ],
+      "summary": "채팅내역 목록 조회",
+      "description": "<br> 요청쿼리의 next 및 응답값의 createdAt 날짜는 UTC 기준입니다.\\\n<br> [요청 쿼리]\n<br> 1. next: 채팅내역 조회 기준시간\\\n<br> 1-2: 날짜 형식에 아예 벗어난 경우는 유효하지 않은 값 타입입니다 (예. 9999.05.1205:30:45)\\\n<br> 1-3: 형태 예시: 9999-05-06T05:13:54.357Z 또는 9999-05-06 05:13:54.357 +0000\\\n<br> 2. next 날짜 이후의 채팅을 조회합니다.\\\n<br> 3. next를 입력하지 않은 경우 해당 채팅방의 모든 채팅내역을 조회합니다.",
+      "operationId": "get-v1-chats-room_id",
+      "parameters": [
+        {
+          "name": "room_id",
+          "in": "path",
+          "description": "채팅방 room_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "next",
+          "in": "query",
+          "description": "채팅내역 조회 기준시간",
+          "required": false,
+          "style": "form",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatListResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "유효하지 않은 값 타입입니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "채팅방을 찾을 수 없는 경우": {
+                  "value": {
+                    "message": "채팅방을 찾을 수 없습니다."
+                  }
+                },
+                "상대방의 계정이 존재하지 않는 경우(예. 탈퇴)": {
+                  "value": {
+                    "message": "알 수 없는 계정입니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "445": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "채팅방 참여자가 아닙니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/chats/{room_id}/files": {
+    "post": {
+      "tags": [
+        "Chat"
+      ],
+      "summary": "채팅방 파일 업로드",
+      "description": "[요청 바디]\\\n<br> 1. 확장자 제한: jpg, png, jpeg, gif, pdf\\\n<br> 2. 용량 제한: 서버공지 참고(5MB) \\\n<br> 3. 파일 개수: 서버공지 참고(5개)",
+      "operationId": "filter-v1-chats-room_id-files",
+      "requestBody": {
+        "name": "files",
+        "$ref": "#/components/requestBodies/FileRequestDTO"
+      },
+      "parameters": [
+        {
+          "name": "room_id",
+          "in": "path",
+          "description": "채팅방 room_id",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatFileResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "잘못된 요청": {
+                  "value": {
+                    "message": "잘못된 요청입니다."
+                  }
+                },
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "채팅방을 찾을 수 없는 경우": {
+                  "value": {
+                    "message": "채팅방을 찾을 수 없습니다."
+                  }
+                },
+                "상대방의 계정이 존재하지 않는 경우(예. 탈퇴)": {
+                  "value": {
+                    "message": "알 수 없는 계정입니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "445": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "채팅방 참여자가 아닙니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/filters/hot-trend": {
+    "get": {
+      "tags": [
+        "Filter"
+      ],
+      "summary": "핫 트렌드 필터 목록 조회",
+      "description": "API 호출을 할 때마다 응답값의 요소가 달라질 수 있습니다.",
+      "operationId": "get-v1-filters-hot-trend",
+      "parameters": [],
+      "responses": {
+        "200": {
+          "description": "핫 트렌드 필터 목록",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FilterSummaryListResponseDTO"
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/filters/today-filter": {
+    "get": {
+      "tags": [
+        "Filter"
+      ],
+      "summary": "오늘의 필터 소개 조회",
+      "description": "",
+      "operationId": "get-v1-filters-today-filter",
+      "parameters": [],
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TodayFilterResponseDTO"
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/users/today-author": {
+    "get": {
+      "tags": [
+        "User"
+      ],
+      "summary": "오늘의 작가 소개 조회",
+      "description": "",
+      "operationId": "get-v1-users-today-author",
+      "parameters": [],
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TodayAuthorResponseDTO"
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/users/search": {
+    "get": {
+      "tags": [
+        "User"
+      ],
+      "summary": "유저/작가 검색",
+      "description": "<br>1. nick를 입력하지 않거나, 공백을 보내거나, 검색결과가 없을 경우 data가 빈 배열로 리턴됩니다.\\\n<br>2. 유저의 nick에 쿼리의 문자열이 포함된 유저 배열이 리턴됩니다.<br>예) query값이 sesac이라면 sesac, Sesac, SESAC🫡등 의 닉네임을 가진 유저 정보가 배열에 담겨 리턴\\\n<br>3. 검색 시 nick의 대소문자를 구분하지 않습니다.",
+      "operationId": "get-v1-users-search",
+      "parameters": [
+        {
+          "name": "nick",
+          "in": "query",
+          "description": "검색 닉네임",
+          "required": false,
+          "style": "form",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "검색된 유저 목록",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserInfoListResponseDTO"
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/banners/main": {
+    "get": {
+      "tags": [
+        "Banner"
+      ],
+      "summary": "배너 목록 조회",
+      "description": "[응답값]\n<br>1. payload의 type이 WEBVIEW인 경우, value의 URL 웹페이지로 이동합니다.\n<br>2. 현재 모든 payload type는 WEBVIEW로 설정\n\n[웹뷰 브릿지란?] \n<br>웹뷰에서 웹 페이지와 iOS 앱 간의 통신을 위한 인터페이스를 Bridge라고 합니다.\\\nBridge는 웹과 앱이 서로 소통하며 데이터를 주고받는 연결 다리 역할입니다. \\\n예를 들어, 웹 페이지에서 특정 이벤트(예: 버튼 클릭)가 발생하면, Bridge를 통해 iOS 앱에 신호를 보내 시스템 알림(얼럿)을 띄울 수 있습니다.\\\nSLP의 경우, 웹 페이지에서 \"출석하기\" 버튼을 누르면 Bridge를 통해 출석하기 버튼 클릭 신호(click_attendance_button)를 앱에 전달하고, 앱은 필요한 정보(예: 액세스 토큰)를 웹 페이지로 보냅니다.\\\n액세스 토큰을 통해 정상적으로 출석이 완료되었다면, 웹뷰에 000님 n번째 출석 완료! 문구가 뜹니다. 웹뷰 문구 외 iOS 에서 액션(얼럿, 토스트, 뒤로가기 등)을 취하고 싶은 경우, 출석이 정상적으로 완료되었다는 신호(complete_attendance)를 통해 처리할 수 있습니다.\n\n[웹뷰 브릿지 설정]\n<br>1. 웹뷰 로드\n<br>- 헤더에 SeSACKey 필수 포함.\n<br>- URL: http://{baseURL}:{port)/event-application\n\n<br>2. 웹 → 앱 메시지 핸들러\n<br>- click_attendance_button: 출석하기 버튼 클릭 시 웹에서 앱으로 전달하는 메세지(필수)\n<br>- complete_attendance: 출석 완료 시 웹에서 앱으로 전달하는 메세지(선택), WKScriptMessage의 message.body(예: 2)에 출석 횟수가 포함되어 있음.\n\n<br>3. 메세지 핸들러 등록 예시\n\n```swift\nlet controller = WKUserContentController()\ncontroller.add(self, name: \"click_attendance_button\")\ncontroller.add(self, name: \"complete_attendance\")\n```\n\n<br>4. 앱 → 웹으로 액세스 토큰 전송\n<br>- JavaScript 함수 호출로 토큰 전송\n<br>- accessToken 파라미터와 함께 requestAttendance 메서드 호출(파라미터에는 실제 accessToken값 할당)\n```swift\nwebView.evaluateJavaScript(\"requestAttendance('\\(accessToken)')\")\n```\n\n<br>5. 동작 흐름: 메세지 핸들러 수신을 위해 WKScriptMessageHandler Protocol 을 채택하고, 아래 메서드를 구현합니다. message 파라미터의 name 을 통해 메시지 핸들러를 분기처리 합니다. \n\n```swift\nfunc userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage)\n//1. 메시지별 분기 처리\nswitch message.name {\ncase \"click_attendance_button\":\n//2. 출석 버튼 클릭 처리 후 액세스 토큰 전달\nwebView.evaluateJavaScript (\"requestAttendance('\\(accessToken)')\")\ncase \"complete_attendance\":\n//3. 출석 완료 처리(ex. 얼럿, 토스트, 뒤로가기 액션 등)\n}\n```\n<br>5-1. 웹뷰 출석하기 버튼 클릭 시 웹의 click_attendance_button 메세지 핸들러가 호출됩니다.\\\n<br>5-2. 앱은 click_attendance_button 메세지 핸들러를 수신합니다. 이 때, JavaScript 함수 호출을 통해 웹으로 액세스 토큰을 전달합니다.\\\n<br>5-3. 웹이 액세스 토큰으로 사용자 인증처리 및 출석 처리를 완료하게 되면, 웹뷰에 000님 n번째 출석 완료!\"라는 문구가 표시됩니다.\\\n<br>5-4. 출석이 정상적으로 완료되면 웹의 complete_attendance 메세지 핸들러가 호출됩니다.\\\n<br>5-5. 웹뷰 문구 외 iOS 에서 액션(얼럿, 토스트, 뒤로가기 등)을 취하고 싶다면, 앱에서 complete_attendance 메세지 핸들러를 수신하여, message.body 를 통해 출석 횟수를 확인할 수 있습니다.\\\n<br>5-6. 만약 액세스토큰이 만료되었거나 유효하지 않은 액세스토큰 등 오류가 발생하는 경우, 웹뷰에 ‘회원정보를 찾을 수 없습니다’ 메시지가 표시됩니다.",
+      "operationId": "get-v1-banners-main",
+      "parameters": [],
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BannerListResponseDTO"
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/log": {
+    "get": {
+      "tags": [
+        "Log"
+      ],
+      "summary": "SeSACKey별 서버요청로그 조회",
+      "description": "요청 헤더의 SeSACKey를 기준으로 해당 키와 관련된 서버요청로그를 최신순으로 최대 50개까지 조회합니다",
+      "operationId": "get-v1-log",
+      "responses": {
+        "200": {
+          "description": "로그 조회 성공",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogListResponseDTO"
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/orders": {
+    "post": {
+      "tags": [
+        "Order"
+      ],
+      "summary": "주문 생성",
+      "description": "주문가능 기준: 특정 필터를 구매하면 나는 구매 완료 상태이지만(필터 상세의 is_downloaded: true) 다른 사람들은 똑같은 필터를 구매할 수 있습니다.\\\n<br>[응답값]\n<br>1. 응답값의 주문번호(order_code)는 아임포트(현재: 포트원)에 결제 요청시 결제 데이터의 merchant_uid에 넣어주세요.\\\n<br>2. total_price는 필터의 가격(price)입니다.",
+      "operationId": "create-order",
+      "requestBody": {
+        "$ref": "#/components/requestBodies/OrderCreateRequestDTO"
+      },
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderCreateResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "결제 금액이 맞지 않는 경우": {
+                  "value": {
+                    "message": "결제 금액이 맞지 않습니다."
+                  }
+                },
+                "유효하지 않은 값 타입": {
+                  "value": {
+                    "message": "유효하지 않은 값 타입입니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필터를 찾을 수 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "409": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "이미 구매한 필터입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    },
+    "get": {
+      "tags": [
+        "Order"
+      ],
+      "summary": "주문 내역 조회",
+      "description": "[응답값]\n<br>- 현재 결제가 완료된(결제예정/취소/실패 등 제외) 주문내역만 결제일시(paidAt) 기준으로 최신순 조회합니다.",
+      "operationId": "get-v1-orders",
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "data"
+                ],
+                "properties": {
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/OrderResponseDTO"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/payments/validation": {
+    "post": {
+      "tags": [
+        "Payment"
+      ],
+      "summary": "결제 영수증 검증",
+      "description": "[Point]\n<br>1. 결제 영수증 검증이 완료 되어야 주문이 정상적으로 처리 됩니다.\\\n<br>2. 하나의 결제 영수증으로 중복 검증할 수 없습니다.\\\n<br>3. 결제 영수증 검증 중 자동으로 결제취소되는 경우는 다음과 같습니다.\\\n<br>아래에서 주문이 함께 취소되는 이유는 order_code(주문번호)에 대한 유효하지 않은 접근으로 판단하여 재시도를 막기위함입니다.\\\n<br>3-1. 결제 영수증의 merchant_uid와 일치하는 order_code가 존재하지 않는 경우\\\n<br>3-2. order_code가 존재하나 로그인한 계정이 주문자가 아닐 경우(주문도 함께 취소)\\\n<br>3-3. 내 order_code이지만 결제 금액과 주문 금액의 일치하지 않을 경우(주문도 함께 취소)\n<br><br>\n[요청바디]\n<br>1. imp_uid: 앱에서 아임포트(현재 포트원)을 통한 결제 시, 결제 내역 정보 응답값에 포함되어있는 아임포트 고유 결제 번호에 해당합니다.",
+      "operationId": "post-v1-payments-validation",
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "imp_uid"
+              ],
+              "properties": {
+                "imp_uid": {
+                  "type": "string",
+                  "example": "imp_123456789012"
+                }
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "결제 검증 성공",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptOrderResponseDTO"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "유효하지 않은 결제건인 경우(결제취소 처리된 결제건, 금액 불일치, 유효하지 않은 imp_uid)": {
+                  "value": {
+                    "message": "유효하지 않은 결제건입니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "주문번호를 다시 확인해주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "409": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "검증처리가 완료된 결제건입니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "445": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "계정이 주문자와 일치하지 않습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/payments/{order_code}": {
+    "get": {
+      "tags": [
+        "Payment"
+      ],
+      "summary": "결제 영수증 조회",
+      "description": "[응답값]\n<br>1. 아임포트(현재 포트원)의 결제 영수증 정보를 따릅니다.\\\n<br>2. 응답값의 date-time 형식은 UTC 기준입니다.\\\n<br>3. 정상 결제건에 대해서만 조회 가능합니다.(결제취소/실패 결제건은 조회 불가능)",
+      "operationId": "get-v1-payments-order_code",
+      "parameters": [
+        {
+          "name": "order_code",
+          "in": "path",
+          "description": "조회할 주문 코드",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "example": "A123456"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "결제 영수증 조회 성공",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentResponseDTO"
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "주문번호를 다시 확인해주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "445": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "계정이 주문자와 일치하지 않습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/notifications/push": {
+    "post": {
+      "tags": [
+        "Push"
+      ],
+      "summary": "푸시알림 전송 테스트",
+      "description": "[요청바디]\n<br>1. user_id: 푸시 알림을 받을 유저의 user_id에 해당합니다.\\\n<br>2. title: 푸시 알림 제목에 해당합니다.\\\n<br>3. subtitle: 푸시 알림 부제목에 해당합니다.\\\n<br>4. body: 푸시 알림 내용에 해당합니다.",
+      "operationId": "post-v1-push-opponents",
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "user_id": {
+                  "type": "string",
+                  "description": "푸시 알림을 받을 사용자 user_id",
+                  "example": "65c9aa6932b0964405117d97"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "푸시 알림 제목",
+                  "example": "똑똑똑 "
+                },
+                "subtitle": {
+                  "type": "string",
+                  "description": "푸시 알림 부제목",
+                  "example": "근처에 새싹인이 있어요!"
+                },
+                "body": {
+                  "type": "string",
+                  "description": "푸시 알림 내용",
+                  "example": "지금 눌러서 확인하기"
+                }
+              },
+              "required": [
+                "user_id",
+                "title",
+                "body"
+              ]
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "푸시알림 전송성공"
+        },
+        "400": {
+          "description": "필수값을 채워주세요.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "필수값을 채워주세요."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "user_id가 알 수 없는 계정인 경우": {
+                  "value": {
+                    "message": "알 수 없는 계정입니다."
+                  }
+                },
+                "새싹키와 매칭되는 파이어베이스 프로젝트 비공개 키가 없는 경우": {
+                  "value": {
+                    "message": "파이어베이스 프로젝트 비공개 키가 존재하지 않습니다."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "SeSACKey": []
+        },
+        {
+          "Authorization": []
+        }
+      ]
+    }
+  },
+  "/v1/videos": {
+    "get": {
+      "tags": [
+        "Video"
+      ],
+      "summary": "비디오 목록 조회",
+      "description": "**[요청 쿼리]**\n\n**next**\n<br>- 처음 요청시에는 빈 값으로 요청, 이후 요청부터는 응답 값의 next_cursor 값을 입력하여 다음 페이지를 요청합니다.\n\n**limit**\n<br>- 한 페이지 당 보여지는 데이터 개수이며, 입력하지 않은 경우 5개를 요청한 것으로 간주합니다.\n\n**[응답값]**\n\n**next_cursor**\n<br>- next_cursor가 없는 경우 마지막 페이지입니다.\n\n**[스트리밍 URL 발급]**\n<br>- 스트리밍을 위한 URL은 GET /v1/videos/{video_id}/stream API를 호출하여 조회합니다.\n",
+      "operationId": "get-v1-videos",
+      "parameters": [
+        {
+          "name": "next",
+          "in": "query",
+          "description": "다음 페이지 커서 (이전 응답의 next_cursor 값)",
+          "required": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "description": "페이지당 항목 수 (기본값 5)",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "default": 5
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "비디오 목록 조회 성공",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoListResponseDTO"
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/videos/{video_id}/stream": {
+    "get": {
+      "tags": [
+        "Video"
+      ],
+      "summary": "스트리밍 URL 조회",
+      "description": "비디오 스트리밍을 위한 토큰이 포함된 URL을 발급합니다. 이 API 호출 시 조회수가 1 증가합니다.\n<br>HLS 스트리밍에서 AVPlayer의 기본 동작을 그대로 활용할 수 있고, HTTP Header가 아닌 토큰을 URL(형태: ?token=eyJhb...)에 포함하여 영상에 대한 데이터를 다운받습니다.\n\n**[비디오 스트리밍 흐름]**\n<br> **|** 스트리밍 파일(.m3u8, .m4s)은 URL에 토큰이 포함되어 클라이언트에서 별도 인증 없이 재생 가능합니다. 그 외 요청(API 호출, 썸네일, 자막 등)에는 HTTP Header(Authorization, SeSACKey) 인증이 필요합니다.\n<br>1. [비디오 목록 조회 API]를 호출하고 재생할 비디오를 선택합니다. 응답값의 title, description, thumbnail_url 등 정보를 활용하여 비디오 목록 화면을 구성합니다.\n<br>2. 비디오를 재생하기 위해 선택한 비디오의 video_id를 활용하여 [스트리밍 URL 조회 API]를 호출합니다. \n<br>3. [스트리밍 URL 조회 API] 응답값의 stream_url 또는 qualities 배열의 플레이리스트(.m3u8)을 AVPlayer에 전달하여 영상을 재생합니다.\n<br>4. AVPlayer는 플레이리스트(.m3u8)에 명시된 세그먼트파일(.m4s)을 순차적으로 요청하여 영상을 재생합니다.\n\n**[응답값]**\n<br>- stream_url: AVPlayer 재생을 위한 HLS 마스터 플레이리스트(.m3u8) URL (AVPlayer의 자동화질 조절을 위함)\n<br>- qualities: 화질 고정 재생을 위한 화질별 플레이리스트(.m3u8) URL 목록\n<br>- subtitles: 배열이 비어있지 않다면, URL로 자막 파일을 다운로드하여 현재 재생 시간에 맞는 자막을 표시\n\n**[토큰 만료]**\n<br>- 토큰 유효 시간은 영상 길이의 1.5배이며, 향후 변경될 수 있습니다(일시정지, 네트워크 지연 등을 고려한 여유 시간).\n\n**[자막 언어 ISO 639-1 코드]**\n<br>- 언어 코드: 언어명\n<br>- ko: 한국어\n<br>- en: English(영어)\n<br>- ja: 日本語(일본어)\n<br>- zh: 中文(중국어)\n<br>- fr: Français(프랑스어)\n<br>- es: Español(스페인어)\n<br>- de: Deutsch(독일어)\n",
+      "operationId": "get-v1-videos-video_id-stream",
+      "parameters": [
+        {
+          "name": "video_id",
+          "in": "path",
+          "description": "비디오의 video_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "스트림 URL 발급 성공",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StreamUrlResponseDTO"
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "비디오를 찾을 수 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  },
+  "/v1/videos/{video_id}/like": {
+    "post": {
+      "tags": [
+        "Video"
+      ],
+      "summary": "비디오 좋아요/좋아요 취소",
+      "description": "",
+      "operationId": "post-v1-videos-video_id-like",
+      "parameters": [
+        {
+          "name": "video_id",
+          "in": "path",
+          "description": "비디오의 video_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "like_status"
+              ],
+              "properties": {
+                "like_status": {
+                  "type": "boolean",
+                  "description": "true로 설정하면 좋아요, false로 설정하면 좋아요 취소",
+                  "example": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "like_status": {
+                    "type": "boolean",
+                    "description": "현재 좋아요 상태",
+                    "example": true
+                  }
+                },
+                "required": [
+                  "like_status"
+                ]
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              },
+              "examples": {
+                "필수값이 없는 경우": {
+                  "value": {
+                    "message": "필수값을 채워주세요."
+                  }
+                },
+                "유효하지 않은 값 타입인 경우": {
+                  "value": {
+                    "message": "유효하지 않은 값 타입입니다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "default": "비디오를 찾을 수 없습니다."
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "security": [
+        {
+          "Authorization": []
+        },
+        {
+          "SeSACKey": []
+        }
+      ]
+    }
+  }
+}
