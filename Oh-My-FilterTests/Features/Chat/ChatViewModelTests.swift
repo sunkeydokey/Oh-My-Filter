@@ -82,6 +82,89 @@ struct ChatViewModelTests {
     #expect(viewModel.state.alert == nil)
   }
 
+  @Test("image selection uploads before sending message with file paths")
+  func imageUploadSend() async throws {
+    let store = InMemoryChatStore()
+    let service = FakeChatService()
+    let viewModel = ChatViewModel(
+      room: try .fixture(id: "room-1"),
+      currentUserID: "me",
+      service: service,
+      store: store,
+      socketManager: SpyChatSocketManager()
+    )
+    let selection = PhotoPickerUploadSelection(data: Data("image".utf8), fileName: "chat.jpg")
+
+    await viewModel.send(.composerChanged("사진"))
+    await viewModel.send(.imageSelectionChanged([selection]))
+    await viewModel.send(.sendTapped)
+
+    #expect(await service.uploadedSelections == [[selection]])
+    #expect(await service.sentTexts == ["사진"])
+    #expect(await service.sentFiles == [["/uploads/chat.jpg"]])
+    #expect(viewModel.state.selectedImages.isEmpty)
+  }
+
+  @Test("image only send is prevented when message text is empty")
+  func imageOnlySendIsPreventedWhenTextIsEmpty() async throws {
+    let store = InMemoryChatStore()
+    let service = FakeChatService()
+    let viewModel = ChatViewModel(
+      room: try .fixture(id: "room-1"),
+      currentUserID: "me",
+      service: service,
+      store: store,
+      socketManager: SpyChatSocketManager()
+    )
+    let selection = PhotoPickerUploadSelection(data: Data("image".utf8), fileName: "only.jpg")
+
+    await viewModel.send(.imageSelectionChanged([selection]))
+    await viewModel.send(.sendTapped)
+
+    #expect(await service.uploadedSelections.isEmpty)
+    #expect(await service.sentTexts.isEmpty)
+    #expect(await service.sentFiles.isEmpty)
+    #expect(viewModel.state.selectedImages == [selection])
+  }
+
+  @Test("text only send keeps trimmed content and no files")
+  func textOnlySendKeepsContentAndNoFiles() async throws {
+    let store = InMemoryChatStore()
+    let service = FakeChatService()
+    let viewModel = ChatViewModel(
+      room: try .fixture(id: "room-1"),
+      currentUserID: "me",
+      service: service,
+      store: store,
+      socketManager: SpyChatSocketManager()
+    )
+
+    await viewModel.send(.composerChanged(" hello "))
+    await viewModel.send(.sendTapped)
+
+    #expect(await service.sentTexts == ["hello"])
+    #expect(await service.sentFiles == [[]])
+  }
+
+  @Test("image selection keeps max count and shows message")
+  func imageSelectionLimit() async throws {
+    let viewModel = ChatViewModel(
+      room: try .fixture(id: "room-1"),
+      currentUserID: "me",
+      service: FakeChatService(),
+      store: InMemoryChatStore(),
+      socketManager: SpyChatSocketManager()
+    )
+    let selections = (0..<7).map {
+      PhotoPickerUploadSelection(data: Data("image-\($0)".utf8), fileName: "image-\($0).jpg")
+    }
+
+    await viewModel.send(.imageSelectionChanged(selections))
+
+    #expect(viewModel.state.selectedImages.count == ImageUploadPreset.chat.maxCount)
+    #expect(viewModel.state.imageSelectionMessage == "최대 5장까지 업로드할 수 있습니다.")
+  }
+
   @Test("chat list filters search and unread rooms")
   func chatListSearchAndUnreadFiltering() async throws {
     let store = InMemoryChatStore()
@@ -157,6 +240,9 @@ private actor FakeChatService: ChatServicing {
   private var searchUsers: [ChatUser] = []
   private var createdRoom: ChatRoom?
   private var sendResult: Result<ChatMessage, Error>?
+  private(set) var uploadedSelections: [[PhotoPickerUploadSelection]] = []
+  private(set) var sentTexts: [String] = []
+  private(set) var sentFiles: [[String]] = []
   private(set) var syncCallCount = 0
   private(set) var syncNewestLocalCreatedAtValues: [Date?] = []
   private(set) var searchNicks: [String] = []
@@ -209,8 +295,19 @@ private actor FakeChatService: ChatServicing {
     return messages
   }
 
-  func sendMessage(roomID: String, text: String) async throws -> ChatMessage {
-    try sendResult?.get() ?? .fixture(id: "sent", content: text)
+  func uploadFiles(
+    roomID: String,
+    selections: [PhotoPickerUploadSelection],
+    preset: ImageUploadPreset
+  ) async throws -> [String] {
+    uploadedSelections.append(selections)
+    return selections.map { "/uploads/\($0.fileName)" }
+  }
+
+  func sendMessage(roomID: String, text: String, files: [String]) async throws -> ChatMessage {
+    sentTexts.append(text)
+    sentFiles.append(files)
+    return try sendResult?.get() ?? .fixture(id: "sent", content: text)
   }
 }
 

@@ -63,7 +63,7 @@ struct ChatDTOTests {
 
   @Test("chat file response decodes uploaded file paths")
   func decodeFileResponse() throws {
-    let response = try decoder.decode(ChatFileResponseDTO.self, from: Self.fileData)
+    let response = try decoder.decode(FileResponseDTO.self, from: Self.fileData)
 
     #expect(response.files == ["/data/chats/image_1729345641848.jpg"])
   }

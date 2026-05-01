@@ -13,9 +13,25 @@ nonisolated protocol BaseNetworkManaging: Sendable {
     headers: [String: String],
     parameters: RequestQuery
   ) async throws -> NetworkResponse
+
+  func request<Router: ApiRouter>(
+    _ router: Router,
+    multipartFiles: [MultipartFilePart],
+    headers: [String: String],
+    parameters: RequestQuery
+  ) async throws -> NetworkResponse
 }
 
 extension BaseNetworkManaging {
+  func request<Router: ApiRouter>(
+    _ router: Router,
+    multipartFiles: [MultipartFilePart],
+    headers: [String: String],
+    parameters: RequestQuery
+  ) async throws -> NetworkResponse {
+    throw NetworkError.invalidRequest
+  }
+
   func request<Router: ApiRouter>(
     _ router: Router,
     parameters: RequestQuery
@@ -40,5 +56,20 @@ extension BaseNetworkManaging {
     parameters: RequestQuery
   ) async throws -> NetworkResponse {
     try await request(router, body: body, headers: [:], parameters: parameters)
+  }
+
+  func request<Router: ApiRouter>(
+    _ router: Router,
+    multipartFiles: [MultipartFilePart]
+  ) async throws -> NetworkResponse {
+    try await request(router, multipartFiles: multipartFiles, headers: [:], parameters: .empty)
+  }
+
+  func request<Router: ApiRouter>(
+    _ router: Router,
+    multipartFiles: [MultipartFilePart],
+    parameters: RequestQuery
+  ) async throws -> NetworkResponse {
+    try await request(router, multipartFiles: multipartFiles, headers: [:], parameters: parameters)
   }
 }

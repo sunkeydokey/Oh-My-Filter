@@ -8,6 +8,7 @@ nonisolated struct CurrentUserProfileResponseDTO: Decodable, Sendable {
 nonisolated struct LiveChatService: ChatServicing {
   private let networkManager: any AuthenticatedNetworkManaging
   private let decoder: JSONDecoder
+  private let imageUploadUseCase: any ImageUploadUseCase
 
   @MainActor
   init() {
@@ -16,10 +17,12 @@ nonisolated struct LiveChatService: ChatServicing {
 
   init(
     networkManager: any AuthenticatedNetworkManaging,
-    decoder: JSONDecoder = LiveChatService.makeDecoder()
+    decoder: JSONDecoder = LiveChatService.makeDecoder(),
+    imageUploadUseCase: any ImageUploadUseCase = LiveImageUploadUseCase()
   ) {
     self.networkManager = networkManager
     self.decoder = decoder
+    self.imageUploadUseCase = imageUploadUseCase
   }
 
   func loadCurrentUserID() async throws -> String {
@@ -121,16 +124,47 @@ nonisolated struct LiveChatService: ChatServicing {
     }
   }
 
-  func sendMessage(roomID: String, text: String) async throws -> ChatMessage {
+  func uploadFiles(
+    roomID: String,
+    selections: [PhotoPickerUploadSelection],
+    preset: ImageUploadPreset
+  ) async throws -> [String] {
     do {
-      let request = ChatSendRequestDTO(content: text)
+      let fileParts = try imageUploadUseCase.multipartFiles(from: selections, preset: preset)
+      let response = try await networkManager.request(
+        ChatApiRouter.uploadFiles(roomID: roomID),
+        multipartFiles: fileParts
+      )
+      guard (200..<300).contains(response.statusCode) else {
+        throw ChatServiceError.serverError
+      }
+      let dto = try decoder.decode(FileResponseDTO.self, from: response.data)
+      print("이미지 업로드 성공 \(dto)")
+      return dto.files
+    } catch let error as ChatServiceError {
+      throw error
+    } catch is DecodingError {
+      throw ChatServiceError.decoding
+    } catch is ImageCompressionError {
+      throw ChatServiceError.decoding
+    } catch {
+      throw ChatServiceError.transport
+    }
+  }
+
+  func sendMessage(roomID: String, text: String, files: [String]) async throws -> ChatMessage {
+    do {
+      let request = ChatSendRequestDTO(content: text, files: files.isEmpty ? nil : files)
+      print(request)
       let response = try await networkManager.request(ChatApiRouter.sendChat(roomID: roomID), body: request)
+      print(response)
       guard (200..<300).contains(response.statusCode) else {
         throw ChatServiceError.serverError
       }
       let dto = try decoder.decode(ChatResponseDTO.self, from: response.data)
       return try dto.domain()
     } catch let error as ChatServiceError {
+      print(error)
       throw error
     } catch is DecodingError {
       throw ChatServiceError.decoding

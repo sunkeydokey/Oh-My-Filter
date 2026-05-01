@@ -61,6 +61,31 @@ struct AuthenticatedNetworkManagerTests {
     #expect(await tokenRefreshCoordinator.clearTokensCallCount == 1)
     #expect(await networkManager.requestCount == 1)
   }
+
+  @Test("authenticated multipart request sends authorization header")
+  func multipartRequestSendsAuthorizationHeader() async throws {
+    let networkManager = MockAuthenticatedBaseNetworkManager()
+    let tokenRefreshCoordinator = MockTokenRefreshCoordinator(accessToken: "valid-access-token")
+    await networkManager.enqueueResponse(NetworkResponse(data: Data(), statusCode: 200))
+    let manager = AuthenticatedNetworkManager(
+      networkManager: networkManager,
+      tokenRefreshCoordinator: tokenRefreshCoordinator
+    )
+    let multipartFiles = [
+      MultipartFilePart(
+        fieldName: "files",
+        fileName: "chat.jpg",
+        mimeType: "image/jpeg",
+        data: Data("jpeg".utf8)
+      ),
+    ]
+
+    let response = try await manager.request(AuthenticatedTestRouter.profile, multipartFiles: multipartFiles)
+
+    #expect(response.statusCode == 200)
+    #expect(await networkManager.capturedHeaders == [["Authorization": "valid-access-token"]])
+    #expect(await networkManager.capturedMultipartFiles == [multipartFiles])
+  }
 }
 
 private enum AuthenticatedTestRouter: ApiRouter {
@@ -82,6 +107,7 @@ private enum AuthenticatedTestRouter: ApiRouter {
 private actor MockAuthenticatedBaseNetworkManager: BaseNetworkManaging {
   private var queuedResults: [Result<NetworkResponse, Error>] = []
   private(set) var capturedHeaders: [[String: String]] = []
+  private(set) var capturedMultipartFiles: [[MultipartFilePart]] = []
   private(set) var requestCount = 0
 
   func enqueueResponse(_ response: NetworkResponse) {
@@ -105,6 +131,18 @@ private actor MockAuthenticatedBaseNetworkManager: BaseNetworkManaging {
     parameters: RequestQuery
   ) async throws -> NetworkResponse {
     try await request(router, headers: headers, parameters: parameters)
+  }
+
+  func request<Router: ApiRouter>(
+    _ router: Router,
+    multipartFiles: [MultipartFilePart],
+    headers: [String: String],
+    parameters: RequestQuery
+  ) async throws -> NetworkResponse {
+    requestCount += 1
+    capturedHeaders.append(headers)
+    capturedMultipartFiles.append(multipartFiles)
+    return try nextResult()
   }
 
   private func nextResult() throws -> NetworkResponse {

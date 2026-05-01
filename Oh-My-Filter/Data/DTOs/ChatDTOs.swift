@@ -70,10 +70,6 @@ nonisolated struct ChatResponseDTO: Decodable, Equatable, Sendable {
   }
 }
 
-nonisolated struct ChatFileResponseDTO: Decodable, Equatable, Sendable {
-  let files: [String]
-}
-
 nonisolated struct ChatUserInfoResponseDTO: Decodable, Equatable, Sendable {
   let userId: String
   let nick: String

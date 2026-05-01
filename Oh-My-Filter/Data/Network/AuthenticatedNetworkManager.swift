@@ -68,6 +68,21 @@ nonisolated struct AuthenticatedNetworkManager: AuthenticatedNetworkManaging {
     }
   }
 
+  func request<Router: ApiRouter>(
+    _ router: Router,
+    multipartFiles: [MultipartFilePart],
+    parameters: RequestQuery
+  ) async throws -> NetworkResponse {
+    try await performAuthenticatedRequest { accessToken in
+      try await networkManager.request(
+        router,
+        multipartFiles: multipartFiles,
+        headers: authorizationHeaders(accessToken: accessToken),
+        parameters: parameters
+      )
+    }
+  }
+
   private func performAuthenticatedRequest(
     operation: (String) async throws -> NetworkResponse
   ) async throws -> NetworkResponse {
