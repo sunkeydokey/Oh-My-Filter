@@ -2,7 +2,7 @@ import Foundation
 import Kingfisher
 
 enum AuthenticatedRemoteImageSupport {
-  static func url(from pathOrURLString: String?) -> URL? {
+  nonisolated static func url(from pathOrURLString: String?) -> URL? {
     guard let pathOrURLString, pathOrURLString.isEmpty == false else {
       return nil
     }

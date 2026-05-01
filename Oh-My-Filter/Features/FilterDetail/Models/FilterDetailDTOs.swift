@@ -172,7 +172,7 @@ nonisolated struct FilterReplyDTO: Decodable, Sendable {
 }
 
 private extension KeyedDecodingContainer {
-  func decodeFlexibleString(forKey key: Key) throws -> String? {
+  nonisolated func decodeFlexibleString(forKey key: Key) throws -> String? {
     if let value = try decodeIfPresent(String.self, forKey: key) {
       return value
     }
@@ -184,7 +184,7 @@ private extension KeyedDecodingContainer {
     return nil
   }
 
-  func decodeFlexibleInt(forKey key: Key) throws -> Int? {
+  nonisolated func decodeFlexibleInt(forKey key: Key) throws -> Int? {
     if let value = try decodeIfPresent(Int.self, forKey: key) {
       return value
     }
@@ -196,7 +196,7 @@ private extension KeyedDecodingContainer {
     return nil
   }
 
-  func decodeFlexibleBool(forKey key: Key) throws -> Bool? {
+  nonisolated func decodeFlexibleBool(forKey key: Key) throws -> Bool? {
     if let value = try decodeIfPresent(Bool.self, forKey: key) {
       return value
     }

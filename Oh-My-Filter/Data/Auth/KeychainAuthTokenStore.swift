@@ -1,7 +1,7 @@
 import Foundation
 import Security
 
-actor KeychainAuthTokenStore: AuthTokenStoring {
+actor KeychainAuthTokenStore {
   private let service: String
   private let account: String
   private let encoder: JSONEncoder
@@ -86,3 +86,5 @@ enum KeychainAuthTokenStoreError: Error, Equatable, Sendable {
   case invalidData
   case unhandledStatus(OSStatus)
 }
+
+extension KeychainAuthTokenStore: AuthTokenStoring {}

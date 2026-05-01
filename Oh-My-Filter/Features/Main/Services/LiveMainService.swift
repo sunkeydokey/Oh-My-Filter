@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-struct LiveMainService: MainServicing {
+actor LiveMainService: MainServicing {
   private let networkManager: any AuthenticatedNetworkManaging
   private let decoder: JSONDecoder
   private static let logger = Logger(
@@ -147,7 +147,7 @@ struct LiveMainService: MainServicing {
 }
 
 private extension MainTodayFilterDTO {
-  func toDomain() -> MainTodayFilter {
+  nonisolated func toDomain() -> MainTodayFilter {
     MainTodayFilter(
       id: filterId,
       title: title,
@@ -161,7 +161,7 @@ private extension MainTodayFilterDTO {
 }
 
 private extension MainBannerDTO {
-  func toDomain() -> MainBanner {
+  nonisolated func toDomain() -> MainBanner {
     MainBanner(
       id: name,
       title: name,
@@ -172,7 +172,7 @@ private extension MainBannerDTO {
 }
 
 private extension MainHotTrendFilterDTO {
-  func toDomain() -> MainHotTrendFilter {
+  nonisolated func toDomain() -> MainHotTrendFilter {
     MainHotTrendFilter(
       id: filterId,
       title: title,
@@ -184,7 +184,7 @@ private extension MainHotTrendFilterDTO {
 }
 
 private extension MainTodayAuthorResponseDTO {
-  func toDomain() -> MainTodayAuthor {
+  nonisolated func toDomain() -> MainTodayAuthor {
     MainTodayAuthor(
       userID: author.userId,
       nick: author.nick,
@@ -199,7 +199,7 @@ private extension MainTodayAuthorResponseDTO {
 }
 
 private extension MainTodayAuthorFilterDTO {
-  func toDomain() -> MainTodayAuthorFilter {
+  nonisolated func toDomain() -> MainTodayAuthorFilter {
     MainTodayAuthorFilter(
       id: filterId,
       title: title,

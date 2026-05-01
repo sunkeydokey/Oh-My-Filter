@@ -2,7 +2,7 @@ import Foundation
 import KakaoSDKAuth
 import KakaoSDKUser
 
-struct LiveKakaoOAuthProvider: KakaoOAuthProviding {
+nonisolated struct LiveKakaoOAuthProvider: KakaoOAuthProviding {
   func accessToken() async throws -> String {
     let token = if UserApi.isKakaoTalkLoginAvailable() {
       try await loginWithKakaoTalk()

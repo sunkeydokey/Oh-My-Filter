@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-nonisolated struct LiveFilterDetailService: FilterDetailServicing {
+actor LiveFilterDetailService: FilterDetailServicing {
   private let networkManager: any AuthenticatedNetworkManaging
   private let decoder: JSONDecoder
   private static let logger = Logger(
@@ -65,7 +65,7 @@ nonisolated struct LiveFilterDetailService: FilterDetailServicing {
 }
 
 private extension FilterResponseDTO {
-  func toDomain() -> FilterDetail {
+  nonisolated func toDomain() -> FilterDetail {
     let fallbackCreator = FilterDetailCreator(
       id: creator?.userId ?? "",
       nick: creator?.nick ?? "알 수 없음",
@@ -107,7 +107,7 @@ private extension FilterResponseDTO {
 }
 
 private extension FilterMetadataDTO {
-  func toDomain() -> FilterDetailMetadata {
+  nonisolated func toDomain() -> FilterDetailMetadata {
     FilterDetailMetadata(
       camera: camera,
       lens: lens,
@@ -120,7 +120,7 @@ private extension FilterMetadataDTO {
 }
 
 private extension FilterValuesDTO {
-  func toDomain() -> FilterValues {
+  nonisolated func toDomain() -> FilterValues {
     FilterValues(
       brightness: brightness ?? FilterValues.neutral.brightness,
       contrast: contrast ?? FilterValues.neutral.contrast,
@@ -140,7 +140,7 @@ private extension FilterValuesDTO {
 }
 
 private extension FilterCommentDTO {
-  func toDomain() -> FilterDetailComment {
+  nonisolated func toDomain() -> FilterDetailComment {
     FilterDetailComment(
       id: commentId,
       user: user.toCommentUser(),
@@ -152,7 +152,7 @@ private extension FilterCommentDTO {
 }
 
 private extension FilterReplyDTO {
-  func toDomain() -> FilterDetailReply {
+  nonisolated func toDomain() -> FilterDetailReply {
     FilterDetailReply(
       id: replyId,
       user: user.toCommentUser(),
@@ -163,7 +163,7 @@ private extension FilterReplyDTO {
 }
 
 private extension Optional where Wrapped == FilterDetailUserDTO {
-  func toCommentUser() -> FilterDetailCommentUser {
+  nonisolated func toCommentUser() -> FilterDetailCommentUser {
     FilterDetailCommentUser(
       id: self?.userId ?? "",
       nick: self?.nick ?? "알 수 없음",
