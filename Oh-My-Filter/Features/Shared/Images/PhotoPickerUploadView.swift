@@ -6,7 +6,13 @@ struct PhotoPickerUploadView: View {
   @Binding var selections: [PhotoPickerUploadSelection]
 
   @State private var pickerItems: [PhotosPickerItem] = []
+  @State private var pickedImages: [PickedImage] = []
+  @State private var loadGeneration = 0
   @State private var statusMessage: String?
+
+  private var displayedSelections: [PhotoPickerUploadSelection] {
+    pickedImages.map(\.selection)
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -24,17 +30,17 @@ struct PhotoPickerUploadView: View {
             .background(ColorToken.sesacFilterBrightTurquoise.color, in: .rect(cornerRadius: 8))
         }
 
-        Text("\(selections.count)/\(preset.maxCount)")
+        Text("\(displayedSelections.count)/\(preset.maxCount)")
           .font(TypographyToken.pretendardCaption1.font)
           .foregroundStyle(ColorToken.grayScale45.color)
 
         Spacer()
       }
 
-      if selections.isEmpty == false {
+      if displayedSelections.isEmpty == false {
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: 8) {
-            ForEach(Array(selections.enumerated()), id: \.element.id) { index, selection in
+            ForEach(Array(displayedSelections.enumerated()), id: \.element.id) { index, selection in
               selectedImageChip(index: index, selection: selection)
             }
           }
@@ -52,6 +58,10 @@ struct PhotoPickerUploadView: View {
         await loadSelections(from: newItems)
       }
     }
+    .onChange(of: selections) { _, newSelections in
+      guard newSelections.isEmpty else { return }
+      resetPickedImages()
+    }
   }
 
   private func selectedImageChip(
@@ -67,8 +77,7 @@ struct PhotoPickerUploadView: View {
         .lineLimit(1)
 
       Button {
-        selections.removeAll { $0.id == selection.id }
-        pickerItems = Array(pickerItems.prefix(selections.count))
+        removeSelection(id: selection.id)
       } label: {
         Image(systemName: "xmark")
           .font(.system(size: 11, weight: .bold))
@@ -81,23 +90,59 @@ struct PhotoPickerUploadView: View {
     .background(ColorToken.grayScale90.color, in: .rect(cornerRadius: 8))
   }
 
+  private func removeSelection(id: PhotoPickerUploadSelection.ID) {
+    pickedImages.removeAll { $0.selection.id == id }
+    pickerItems = pickedImages.map(\.item)
+    selections = displayedSelections
+    statusMessage = nil
+  }
+
+  private func resetPickedImages() {
+    loadGeneration += 1
+    pickedImages = []
+    pickerItems = []
+    statusMessage = nil
+  }
+
   @MainActor
   private func loadSelections(from items: [PhotosPickerItem]) async {
+    loadGeneration += 1
+    let generation = loadGeneration
     let limitedItems = Array(items.prefix(preset.maxCount))
     statusMessage = items.count > preset.maxCount ? preset.maximumSelectionMessage : nil
 
-    var loadedSelections: [PhotoPickerUploadSelection] = []
+    var loadedImages: [PickedImage] = []
     for (index, item) in limitedItems.enumerated() {
+      if let pickedImage = pickedImages.first(where: { $0.item == item }) {
+        loadedImages.append(pickedImage)
+        continue
+      }
+
       guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
-      loadedSelections.append(PhotoPickerUploadSelection(
-        data: data,
-        fileName: "image-\(index + 1).jpg"
+      guard generation == loadGeneration else { return }
+      loadedImages.append(PickedImage(
+        item: item,
+        selection: PhotoPickerUploadSelection(
+          data: data,
+          fileName: "image-\(index + 1).jpg"
+        )
       ))
     }
 
-    selections = loadedSelections
+    guard generation == loadGeneration else { return }
+    pickedImages = loadedImages
+    selections = displayedSelections
     if pickerItems.count != limitedItems.count {
       pickerItems = limitedItems
     }
+  }
+}
+
+private struct PickedImage: Identifiable {
+  let item: PhotosPickerItem
+  let selection: PhotoPickerUploadSelection
+
+  var id: PhotoPickerUploadSelection.ID {
+    selection.id
   }
 }
