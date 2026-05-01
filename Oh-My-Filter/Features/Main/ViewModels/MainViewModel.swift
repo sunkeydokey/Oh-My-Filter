@@ -91,9 +91,6 @@ final class MainViewModel {
     await mainBannersResult
     await hotTrendFiltersResult
     await todayAuthorResult
-
-    let completionMessage = "⬅️ [MainViewModel] load finished state=\(state)"
-    Self.logger.debug("\(completionMessage, privacy: .public)")
   }
 
   private func loadTodayFilter() async {
@@ -102,8 +99,6 @@ final class MainViewModel {
     do {
       let todayFilter = try await useCase.loadTodayFilter()
       state.todayFilter = .loaded(todayFilter)
-      let message = "✅ [MainViewModel] todayFilter loaded id=\(todayFilter.id) title=\(todayFilter.title)"
-      Self.logger.debug("\(message, privacy: .public)")
     } catch is CancellationError {
       state.todayFilter = previous.map { .loaded($0) } ?? .idle
     } catch {
@@ -119,8 +114,6 @@ final class MainViewModel {
     do {
       let mainBanners = try await useCase.loadMainBanners()
       state.mainBanners = .loaded(mainBanners)
-      let message = "✅ [MainViewModel] mainBanners loaded count=\(mainBanners.count)"
-      Self.logger.debug("\(message, privacy: .public)")
     } catch is CancellationError {
       state.mainBanners = previous.map { .loaded($0) } ?? .idle
     } catch {
@@ -136,8 +129,6 @@ final class MainViewModel {
     do {
       let hotTrendFilters = try await useCase.loadHotTrendFilters()
       state.hotTrendFilters = .loaded(hotTrendFilters)
-      let message = "✅ [MainViewModel] hotTrendFilters loaded count=\(hotTrendFilters.count)"
-      Self.logger.debug("\(message, privacy: .public)")
     } catch is CancellationError {
       state.hotTrendFilters = previous.map { .loaded($0) } ?? .idle
     } catch {
@@ -153,10 +144,6 @@ final class MainViewModel {
     do {
       let todayAuthor = try await useCase.loadTodayAuthor()
       state.todayAuthor = .loaded(todayAuthor)
-      let profileImageUrl = todayAuthor.profileImageUrl?.absoluteString ?? "<nil>"
-      let introduction = todayAuthor.introduction ?? "<nil>"
-      let message = "✅ [MainViewModel] todayAuthor loaded userID=\(todayAuthor.userID) nick=\(todayAuthor.nick) profileImageUrl=\(profileImageUrl) introduction=\(introduction)"
-      Self.logger.debug("\(message, privacy: .public)")
     } catch is CancellationError {
       state.todayAuthor = previous.map { .loaded($0) } ?? .idle
     } catch {

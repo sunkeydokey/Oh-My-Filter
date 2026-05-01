@@ -26,8 +26,6 @@ actor LiveFilterDetailService: FilterDetailServicing {
 
   func loadFilterDetail(filterID: String) async throws -> FilterDetail {
     let router = FilterApiRouter.detail(filterID: filterID)
-    Self.logger.debug("➡️ [FilterDetailAPI] GET \(router.url, privacy: .public) started")
-
     let response: NetworkResponse
     do {
       response = try await networkManager.request(router)
