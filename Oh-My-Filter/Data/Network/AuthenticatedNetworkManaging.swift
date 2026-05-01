@@ -11,9 +11,23 @@ nonisolated protocol AuthenticatedNetworkManaging: Sendable {
     body: Body,
     parameters: RequestQuery
   ) async throws -> NetworkResponse
+
+  func request<Router: ApiRouter>(
+    _ router: Router,
+    multipartFiles: [MultipartFilePart],
+    parameters: RequestQuery
+  ) async throws -> NetworkResponse
 }
 
 extension AuthenticatedNetworkManaging {
+  func request<Router: ApiRouter>(
+    _ router: Router,
+    multipartFiles: [MultipartFilePart],
+    parameters: RequestQuery
+  ) async throws -> NetworkResponse {
+    throw NetworkError.invalidRequest
+  }
+
   func request<Router: ApiRouter>(_ router: Router) async throws -> NetworkResponse {
     try await request(router, parameters: .empty)
   }
@@ -23,6 +37,13 @@ extension AuthenticatedNetworkManaging {
     body: Body
   ) async throws -> NetworkResponse {
     try await request(router, body: body, parameters: .empty)
+  }
+
+  func request<Router: ApiRouter>(
+    _ router: Router,
+    multipartFiles: [MultipartFilePart]
+  ) async throws -> NetworkResponse {
+    try await request(router, multipartFiles: multipartFiles, parameters: .empty)
   }
 }
 

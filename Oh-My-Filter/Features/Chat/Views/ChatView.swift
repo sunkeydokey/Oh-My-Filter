@@ -1,8 +1,11 @@
+import Kingfisher
 import SwiftUI
 
 struct ChatView: View {
   @Environment(\.dismiss) private var dismiss
   @State private var viewModel: ChatViewModel
+  @State private var imagePreview: ChatImagePreview?
+  @State private var isPresentingImageViewer = false
   @FocusState private var isComposerFocused: Bool
 
   init(
@@ -39,7 +42,18 @@ struct ChatView: View {
       await viewModel.send(.task)
     }
     .onDisappear {
+      guard isPresentingImageViewer == false else { return }
       Task { await viewModel.send(.disappear) }
+    }
+    .fullScreenCover(item: $imagePreview, onDismiss: {
+      isPresentingImageViewer = false
+    }) { preview in
+      FullScreenImageViewer(
+        files: preview.files,
+        initialIndex: preview.initialIndex
+      ) {
+        imagePreview = nil
+      }
     }
     .alert("전송 실패", isPresented: Binding(
       get: { viewModel.state.alert != nil },
@@ -102,7 +116,10 @@ struct ChatView: View {
             ChatMessageBubbleView(
               message: message,
               isMine: message.sender.id == viewModel.state.currentUserID
-            )
+            ) { files, index in
+              isPresentingImageViewer = true
+              imagePreview = ChatImagePreview(files: files, initialIndex: index)
+            }
             .id(message.id)
           }
         }
@@ -119,34 +136,50 @@ struct ChatView: View {
   }
 
   private var composer: some View {
-    HStack(alignment: .bottom, spacing: 12) {
-      TextField("메시지를 입력하세요...", text: Binding(
-        get: { viewModel.state.composerText },
-        set: { text in Task { await viewModel.send(.composerChanged(text)) } }
-      ), axis: .vertical)
-      .lineLimit(1...3)
-      .focused($isComposerFocused)
-      .font(TypographyToken.pretendardBody3.font)
-      .foregroundStyle(ColorToken.grayScale0.color)
-      .textInputAutocapitalization(.never)
-      .autocorrectionDisabled()
+    VStack(alignment: .leading, spacing: 10) {
+      PhotoPickerUploadView(
+        preset: .chat,
+        selections: Binding(
+          get: { viewModel.state.selectedImages },
+          set: { selections in Task { await viewModel.send(.imageSelectionChanged(selections)) } }
+        )
+      )
 
-      Button {
-        Task { await viewModel.send(.sendTapped) }
-      } label: {
-        Image(systemName: "arrow.up")
-          .font(.system(size: 16, weight: .bold))
-          .foregroundStyle(ColorToken.brandBlackSprout.color)
-          .frame(width: 40, height: 40)
-          .background(
-            viewModel.state.canSend ? ColorToken.sesacFilterBrightTurquoise.color : ColorToken.grayScale75.color,
-            in: .rect(cornerRadius: 20)
-          )
+      if let imageSelectionMessage = viewModel.state.imageSelectionMessage {
+        Text(imageSelectionMessage)
+          .font(TypographyToken.pretendardCaption2.font)
+          .foregroundStyle(ColorToken.sesacFilterBrightTurquoise.color)
       }
-      .disabled(viewModel.state.canSend == false)
+
+      HStack(alignment: .bottom, spacing: 12) {
+        TextField("메시지를 입력하세요...", text: Binding(
+          get: { viewModel.state.composerText },
+          set: { text in Task { await viewModel.send(.composerChanged(text)) } }
+        ), axis: .vertical)
+        .lineLimit(1...3)
+        .focused($isComposerFocused)
+        .font(TypographyToken.pretendardBody3.font)
+        .foregroundStyle(ColorToken.grayScale0.color)
+        .textInputAutocapitalization(.never)
+        .autocorrectionDisabled()
+
+        Button {
+          Task { await viewModel.send(.sendTapped) }
+        } label: {
+          Image(systemName: "arrow.up")
+            .font(.system(size: 16, weight: .bold))
+            .foregroundStyle(ColorToken.brandBlackSprout.color)
+            .frame(width: 40, height: 40)
+            .background(
+              viewModel.state.canSend ? ColorToken.sesacFilterBrightTurquoise.color : ColorToken.grayScale75.color,
+              in: .rect(cornerRadius: 20)
+            )
+        }
+        .disabled(viewModel.state.canSend == false)
+      }
     }
     .padding(.horizontal, 14)
-    .padding(.vertical, 8)
+    .padding(.vertical, 10)
     .background(ColorToken.grayScale100.color, in: .rect(cornerRadius: 18))
     .overlay {
       RoundedRectangle(cornerRadius: 18)
@@ -173,9 +206,16 @@ struct ChatView: View {
   }
 }
 
+private struct ChatImagePreview: Identifiable, Equatable {
+  let id = UUID()
+  let files: [String]
+  let initialIndex: Int
+}
+
 private struct ChatMessageBubbleView: View {
   let message: ChatMessage
   let isMine: Bool
+  let onImageTapped: ([String], Int) -> Void
 
   var body: some View {
     HStack {
@@ -184,19 +224,27 @@ private struct ChatMessageBubbleView: View {
       }
 
       VStack(alignment: isMine ? .trailing : .leading, spacing: 4) {
-        Text(message.content)
-          .font(TypographyToken.pretendardBody3.font.weight(isMine ? .semibold : .regular))
-          .foregroundStyle(isMine ? ColorToken.brandBlackSprout.color : ColorToken.grayScale0.color)
-          .padding(.horizontal, 14)
-          .padding(.vertical, 12)
-          .frame(maxWidth: 260, alignment: .leading)
-          .background(isMine ? ColorToken.sesacFilterBrightTurquoise.color : ColorToken.grayScale100.color, in: .rect(cornerRadius: 12))
-          .overlay {
-            if isMine == false {
-              RoundedRectangle(cornerRadius: 12)
-                .stroke(ColorToken.grayScale90.color.opacity(0.5), lineWidth: 1)
-            }
+        if message.files.isEmpty == false {
+          ChatMessageImagePreviewView(files: message.files) {
+            onImageTapped(message.files, 0)
           }
+        }
+
+        if shouldShowText {
+          Text(message.content)
+            .font(TypographyToken.pretendardBody3.font.weight(isMine ? .semibold : .regular))
+            .foregroundStyle(isMine ? ColorToken.brandBlackSprout.color : ColorToken.grayScale0.color)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: 260, alignment: .leading)
+            .background(isMine ? ColorToken.sesacFilterBrightTurquoise.color : ColorToken.grayScale100.color, in: .rect(cornerRadius: 12))
+            .overlay {
+              if isMine == false {
+                RoundedRectangle(cornerRadius: 12)
+                  .stroke(ColorToken.grayScale90.color.opacity(0.5), lineWidth: 1)
+              }
+            }
+        }
 
         Text(messageDate(message.createdAt))
           .font(TypographyToken.pretendardCaption2.font)
@@ -210,10 +258,66 @@ private struct ChatMessageBubbleView: View {
     .frame(maxWidth: .infinity)
   }
 
+  private var shouldShowText: Bool {
+    message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+  }
+
   private func messageDate(_ date: Date) -> String {
     if Calendar.current.isDateInToday(date) {
       return date.formatted(date: .omitted, time: .shortened)
     }
     return date.formatted(date: .abbreviated, time: .shortened)
+  }
+}
+
+private struct ChatMessageImagePreviewView: View {
+  let files: [String]
+  let onTap: () -> Void
+
+  var body: some View {
+    Button {
+      onTap()
+    } label: {
+      ZStack(alignment: .bottomTrailing) {
+        Group {
+          if let url = AuthenticatedRemoteImageSupport.url(from: files.first) {
+            KFImage(url)
+              .requestModifier(AuthenticatedRemoteImageSupport.requestModifier)
+              .placeholder {
+                imagePlaceholder
+              }
+              .resizable()
+              .scaledToFill()
+          } else {
+            imagePlaceholder
+          }
+        }
+        .frame(width: 220, height: 180)
+        .clipped()
+
+        Text("1 / \(files.count)")
+          .font(TypographyToken.pretendardCaption2.font.weight(.semibold))
+          .foregroundStyle(ColorToken.grayScale0.color)
+          .padding(.horizontal, 8)
+          .frame(height: 26)
+          .background(ColorToken.brandBlackSprout.color.opacity(0.72), in: Capsule())
+          .padding(8)
+      }
+      .clipShape(.rect(cornerRadius: 12))
+      .overlay {
+        RoundedRectangle(cornerRadius: 12)
+          .stroke(ColorToken.grayScale90.color.opacity(0.45), lineWidth: 1)
+      }
+    }
+    .buttonStyle(.plain)
+  }
+
+  private var imagePlaceholder: some View {
+    ZStack {
+      ColorToken.grayScale90.color
+      Image(systemName: "photo")
+        .font(.system(size: 28, weight: .regular))
+        .foregroundStyle(ColorToken.grayScale45.color)
+    }
   }
 }

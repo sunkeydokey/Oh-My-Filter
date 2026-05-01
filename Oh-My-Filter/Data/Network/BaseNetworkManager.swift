@@ -55,13 +55,51 @@ nonisolated struct BaseNetworkManager: BaseNetworkManaging {
     )
   }
 
+  func request<Router: ApiRouter>(
+    _ router: Router,
+    multipartFiles: [MultipartFilePart],
+    headers: [String: String],
+    parameters: RequestQuery
+  ) async throws -> NetworkResponse {
+    let formData = MultipartFormDataBuilder.build(files: multipartFiles)
+    return try await performRequest(
+      router: router,
+      headers: headers,
+      parameters: parameters,
+      contentType: formData.contentType,
+      body: formData.body
+    )
+  }
+
   private func performRequest<Router: ApiRouter>(
     router: Router,
     headers: [String: String],
     parameters: RequestQuery,
     body: Data?
   ) async throws -> NetworkResponse {
-    let request = try await makeRequest(router: router, headers: headers, parameters: parameters, body: body)
+    try await performRequest(
+      router: router,
+      headers: headers,
+      parameters: parameters,
+      contentType: router.contentType.rawValue,
+      body: body
+    )
+  }
+
+  private func performRequest<Router: ApiRouter>(
+    router: Router,
+    headers: [String: String],
+    parameters: RequestQuery,
+    contentType: String,
+    body: Data?
+  ) async throws -> NetworkResponse {
+    let request = try await makeRequest(
+      router: router,
+      headers: headers,
+      parameters: parameters,
+      contentType: contentType,
+      body: body
+    )
 
     do {
       let (data, response) = try await session.data(for: request)
@@ -81,6 +119,7 @@ nonisolated struct BaseNetworkManager: BaseNetworkManaging {
     router: Router,
     headers: [String: String],
     parameters: RequestQuery,
+    contentType: String,
     body: Data?
   ) async throws -> URLRequest {
     guard var components = URLComponents(string: router.url),
@@ -99,7 +138,7 @@ nonisolated struct BaseNetworkManager: BaseNetworkManaging {
 
     var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
     request.httpMethod = router.method.rawValue
-    request.setValue(router.contentType.rawValue, forHTTPHeaderField: "Content-Type")
+    request.setValue(contentType, forHTTPHeaderField: "Content-Type")
     request.setValue(ContentType.json.rawValue, forHTTPHeaderField: "Accept")
     request.setValue(Server.apiKey(), forHTTPHeaderField: "SeSACKey")
     for (field, value) in headers {

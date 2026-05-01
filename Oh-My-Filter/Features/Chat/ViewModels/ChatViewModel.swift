@@ -48,12 +48,17 @@ final class ChatViewModel {
       try? store.markRoomSeen(roomID: state.roomID, at: .now)
     case let .composerChanged(text):
       state.composerText = text
+    case let .imageSelectionChanged(selections):
+      updateImageSelections(selections)
+    case let .removeSelectedImage(id):
+      state.selectedImages.removeAll { $0.id == id }
+      state.imageSelectionMessage = nil
     case .sendTapped:
-      await sendMessage(text: state.composerText)
+      await sendMessage(text: state.composerText, imageSelections: state.selectedImages)
     case .retryPending:
       guard let pending = state.alert else { return }
       state.alert = nil
-      await sendMessage(text: pending.text)
+      await sendMessage(text: pending.text, imageSelections: pending.imageSelections)
     case .deletePending:
       state.alert = nil
     }
@@ -81,19 +86,46 @@ final class ChatViewModel {
     }
   }
 
-  private func sendMessage(text: String) async {
+  private func updateImageSelections(_ selections: [PhotoPickerUploadSelection]) {
+    let maxCount = ImageUploadPreset.chat.maxCount
+    state.selectedImages = Array(selections.prefix(maxCount))
+    state.imageSelectionMessage = selections.count > maxCount ? ImageUploadPreset.chat.maximumSelectionMessage : nil
+  }
+
+  private func sendMessage(
+    text: String,
+    imageSelections: [PhotoPickerUploadSelection]
+  ) async {
     let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard trimmedText.isEmpty == false else { return }
 
     state.composerText = ""
+    state.selectedImages = []
+    state.imageSelectionMessage = nil
     do {
-      let message = try await service.sendMessage(roomID: state.roomID, text: trimmedText)
+      let uploadedFiles: [String]
+      if imageSelections.isEmpty {
+        uploadedFiles = []
+      } else {
+        uploadedFiles = try await service.uploadFiles(
+          roomID: state.roomID,
+          selections: imageSelections,
+          preset: .chat
+        )
+      }
+
+      let message = try await service.sendMessage(
+        roomID: state.roomID,
+        text: trimmedText,
+        files: uploadedFiles
+      )
       try store.upsertMessage(message)
       state.messages = try store.fetchMessages(roomID: state.roomID)
       try store.markRoomSeen(roomID: state.roomID, at: message.createdAt)
     } catch {
       state.alert = ChatPendingMessageAlert(
         text: trimmedText,
+        imageSelections: imageSelections,
         message: "메시지를 보내지 못했습니다."
       )
     }

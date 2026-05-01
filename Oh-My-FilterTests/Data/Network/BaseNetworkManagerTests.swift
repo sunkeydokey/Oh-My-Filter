@@ -75,6 +75,67 @@ struct BaseNetworkManagerTests {
     #expect(response.statusCode == 200)
   }
 
+  @Test("multipart request sends body without JSON encoding")
+  func multipartRequestBuildsExpectedBody() async throws {
+    let session = makeSession()
+    let manager = BaseNetworkManager(session: session)
+    defer { TestURLProtocol.reset() }
+
+    TestURLProtocol.setRequestHandler { request in
+      let contentType = try #require(request.value(forHTTPHeaderField: "Content-Type"))
+      #expect(contentType.starts(with: "multipart/form-data; boundary="))
+      #expect(request.value(forHTTPHeaderField: "Accept") == ContentType.json.rawValue)
+      #expect(request.value(forHTTPHeaderField: "SeSACKey") == Server.apiKey())
+
+      let body = try #require(requestBodyData(from: request))
+      let bodyString = try #require(String(data: body, encoding: .utf8))
+      #expect(bodyString.contains("Content-Disposition: form-data; name=\"files\"; filename=\"chat.jpg\""))
+      #expect(bodyString.contains("Content-Type: image/jpeg"))
+      #expect(bodyString.contains("jpeg-data"))
+      #expect(bodyString.contains("--Boundary-"))
+      #expect(bodyString.hasSuffix("--\r\n"))
+
+      return TestURLProtocol.StubResponse(statusCode: 200)
+    }
+
+    let response = try await manager.request(
+      TestRouter.upload,
+      multipartFiles: [
+        MultipartFilePart(
+          fieldName: "files",
+          fileName: "chat.jpg",
+          mimeType: "image/jpeg",
+          data: Data("jpeg-data".utf8)
+        ),
+      ]
+    )
+
+    #expect(response.statusCode == 200)
+  }
+
+  @Test("multipart form data builder includes field and delimiter")
+  func multipartFormDataBuilder() throws {
+    let formData = MultipartFormDataBuilder.build(
+      files: [
+        MultipartFilePart(
+          fieldName: "files",
+          fileName: "profile.jpg",
+          mimeType: "image/jpeg",
+          data: Data("image".utf8)
+        ),
+      ],
+      boundary: "TestBoundary"
+    )
+
+    #expect(formData.contentType == "multipart/form-data; boundary=TestBoundary")
+    let bodyString = try #require(String(data: formData.body, encoding: .utf8))
+    #expect(bodyString.contains("--TestBoundary\r\n"))
+    #expect(bodyString.contains("name=\"files\"; filename=\"profile.jpg\""))
+    #expect(bodyString.contains("Content-Type: image/jpeg"))
+    #expect(bodyString.contains("\r\n\r\nimage\r\n"))
+    #expect(bodyString.hasSuffix("--TestBoundary--\r\n"))
+  }
+
   @Test("request injects SeSACKey without implicit authorization")
   func requestInjectsDefaultHeaders() async throws {
     let session = makeSession()
@@ -149,6 +210,7 @@ private nonisolated func requestBodyData(from request: URLRequest) -> Data? {
 private enum TestRouter: ApiRouter {
   case join
   case search
+  case upload
 
   var url: String {
     switch self {
@@ -156,12 +218,14 @@ private enum TestRouter: ApiRouter {
       "https://example.com/users/join"
     case .search:
       "https://example.com/users/search"
+    case .upload:
+      "https://example.com/files"
     }
   }
 
   var method: HttpMethod {
     switch self {
-    case .join:
+    case .join, .upload:
       .post
     case .search:
       .get
@@ -169,7 +233,12 @@ private enum TestRouter: ApiRouter {
   }
 
   var contentType: ContentType {
-    .json
+    switch self {
+    case .upload:
+      .multipart
+    case .join, .search:
+      .json
+    }
   }
 
   var requiresAuthorizationHeader: Bool {

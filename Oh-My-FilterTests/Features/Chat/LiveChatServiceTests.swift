@@ -52,13 +52,33 @@ struct LiveChatServiceTests {
     let service = LiveChatService(networkManager: manager)
 
     await manager.enqueueResponse(NetworkResponse(data: Self.chatData(id: "sent-1"), statusCode: 200))
-    let message = try await service.sendMessage(roomID: "room-1", text: "hello")
+    let message = try await service.sendMessage(roomID: "room-1", text: "hello", files: ["/uploads/1.jpg"])
     #expect(message.id == "sent-1")
+    #expect(await manager.capturedChatBodies == [ChatSendRequestDTO(content: "hello", files: ["/uploads/1.jpg"])])
 
     await manager.enqueueResponse(NetworkResponse(data: Data(), statusCode: 500))
     await #expect(throws: ChatServiceError.serverError) {
-      _ = try await service.sendMessage(roomID: "room-1", text: "fail")
+      _ = try await service.sendMessage(roomID: "room-1", text: "fail", files: [])
     }
+  }
+
+  @Test("file upload returns common file response paths")
+  func fileUpload() async throws {
+    let manager = MockChatNetworkManager()
+    let service = LiveChatService(
+      networkManager: manager,
+      imageUploadUseCase: StubImageUploadUseCase()
+    )
+    let selection = PhotoPickerUploadSelection(data: Data("raw".utf8), fileName: "chat.jpg")
+
+    await manager.enqueueResponse(NetworkResponse(data: Data(#"{"files":["/files/chat.jpg"]}"#.utf8), statusCode: 200))
+    let files = try await service.uploadFiles(roomID: "room-1", selections: [selection], preset: .chat)
+
+    #expect(files == ["/files/chat.jpg"])
+    #expect(await manager.capturedURLs == ["http://filter.sesac.kr:42598/v1/chats/room-1/files"])
+    #expect(await manager.capturedMultipartFiles == [
+      [MultipartFilePart(fieldName: "files", fileName: "chat.jpg", mimeType: "image/jpeg", data: Data("jpeg".utf8))],
+    ])
   }
 
   @Test("user search uses nick query and maps users")
@@ -101,6 +121,8 @@ struct LiveChatServiceTests {
 private actor MockChatNetworkManager: AuthenticatedNetworkManaging {
   private var queuedResults: [Result<NetworkResponse, Error>] = []
   private(set) var capturedURLs: [String] = []
+  private(set) var capturedChatBodies: [ChatSendRequestDTO] = []
+  private(set) var capturedMultipartFiles: [[MultipartFilePart]] = []
   private var capturedParameters: [RequestQuery] = []
 
   var capturedParametersAreEmpty: [Bool] {
@@ -131,6 +153,20 @@ private actor MockChatNetworkManager: AuthenticatedNetworkManaging {
   ) async throws -> NetworkResponse {
     capturedURLs.append(router.url)
     capturedParameters.append(parameters)
+    if let body = body as? ChatSendRequestDTO {
+      capturedChatBodies.append(body)
+    }
+    return try nextResult()
+  }
+
+  func request<Router: ApiRouter>(
+    _ router: Router,
+    multipartFiles: [MultipartFilePart],
+    parameters: RequestQuery
+  ) async throws -> NetworkResponse {
+    capturedURLs.append(router.url)
+    capturedParameters.append(parameters)
+    capturedMultipartFiles.append(multipartFiles)
     return try nextResult()
   }
 
@@ -139,6 +175,22 @@ private actor MockChatNetworkManager: AuthenticatedNetworkManaging {
       throw NetworkError.invalidResponse
     }
     return try queuedResults.removeFirst().get()
+  }
+}
+
+private struct StubImageUploadUseCase: ImageUploadUseCase {
+  func multipartFiles(
+    from selections: [PhotoPickerUploadSelection],
+    preset: ImageUploadPreset
+  ) throws -> [MultipartFilePart] {
+    selections.map {
+      MultipartFilePart(
+        fieldName: preset.multipartFieldName,
+        fileName: $0.fileName,
+        mimeType: "image/jpeg",
+        data: Data("jpeg".utf8)
+      )
+    }
   }
 }
 
