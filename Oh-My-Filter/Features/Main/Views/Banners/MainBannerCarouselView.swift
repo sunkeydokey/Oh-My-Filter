@@ -11,7 +11,7 @@ struct MainBannerCarouselView: View {
       }
     }
     .frame(maxWidth: .infinity)
-    .frame(height: 160)
+    .frame(height: 110)
     .tabViewStyle(.page(indexDisplayMode: .never))
   }
 }
