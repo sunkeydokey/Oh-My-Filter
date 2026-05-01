@@ -9,7 +9,7 @@ nonisolated struct TokenRefreshResponseDTO: Codable, Sendable {
       accessToken: accessToken,
       refreshToken: refreshToken,
       accessTokenExpiresAt: now.addingTimeInterval(5 * 60),
-      refreshTokenExpiresAt: now.addingTimeInterval(12_000 * 60)
+      refreshTokenExpiresAt: now.addingTimeInterval(1200 * 60)
     )
   }
 }
