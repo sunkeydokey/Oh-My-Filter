@@ -48,6 +48,20 @@ nonisolated enum EndPoint {
     }
   }
 
+  nonisolated enum Posts {
+    static let geolocation = "\(EndPoint.baseUrl)/posts/geolocation"
+    static let search = "\(EndPoint.baseUrl)/posts/search"
+    static let likedMe = "\(EndPoint.baseUrl)/posts/likes/me"
+
+    static func detail(postID: String) -> String {
+      "\(EndPoint.baseUrl)/posts/\(postID)"
+    }
+  }
+
+  nonisolated enum Videos {
+    static let list = "\(EndPoint.baseUrl)/videos"
+  }
+
   nonisolated enum Banners {
     static let main = "\(EndPoint.baseUrl)/banners/main"
   }

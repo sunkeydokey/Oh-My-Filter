@@ -3,6 +3,7 @@ import SwiftUI
 private enum AuthenticatedTab: Hashable {
   case main
   case feed
+  case community
   case chat
   case profile
 }
@@ -11,6 +12,7 @@ struct AuthenticatedRootView: View {
   @State private var selectedTab: AuthenticatedTab = .main
   @State private var mainPath: [MainRoute] = []
   @State private var feedPath: [MainRoute] = []
+  @State private var communityPath: [CommunityRoute] = []
 
   var body: some View {
     TabView(selection: $selectedTab) {
@@ -45,6 +47,22 @@ struct AuthenticatedRootView: View {
               MakeFilterView()
             case let .filterEdit(draft):
               FilterEditView(draft: draft)
+            }
+          }
+        }
+      }
+
+      Tab("커뮤니티", systemImage: "person.3.fill", value: .community) {
+        NavigationStack(path: $communityPath) {
+          CommunityView { route in
+            communityPath.append(route)
+          }
+          .navigationDestination(for: CommunityRoute.self) { route in
+            switch route {
+            case let .postDetail(postID):
+              PostDetailView(postID: postID)
+            case let .videoDetail(video):
+              VideoDetailView(video: video)
             }
           }
         }
