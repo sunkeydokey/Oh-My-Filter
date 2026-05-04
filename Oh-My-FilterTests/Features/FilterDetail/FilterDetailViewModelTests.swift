@@ -197,6 +197,10 @@ private struct MockImageFilterRenderer: ImageFilterRendering {
   func render(originalImageURL: URL, filterValues: FilterValues) async throws -> RenderedFilterImages {
     try result.get()
   }
+
+  func render(originalImageData: Data, filterValues: FilterValues) async throws -> RenderedFilterImages {
+    try result.get()
+  }
 }
 
 private actor MockOrderCreateUseCase: OrderCreateUseCase {

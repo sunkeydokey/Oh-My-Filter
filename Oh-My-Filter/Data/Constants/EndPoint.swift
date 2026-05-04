@@ -39,6 +39,7 @@ nonisolated enum EndPoint {
 
   nonisolated enum Filters {
     static let list = "\(EndPoint.baseUrl)/filters"
+    static let files = "\(EndPoint.baseUrl)/filters/files"
     static let today = "\(EndPoint.baseUrl)/filters/today-filter"
     static let hotTrend = "\(EndPoint.baseUrl)/filters/hot-trend"
 

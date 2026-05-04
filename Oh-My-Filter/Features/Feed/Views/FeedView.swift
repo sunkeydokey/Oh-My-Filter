@@ -20,6 +20,20 @@ struct FeedView: View {
     .scrollIndicators(.hidden)
     .background(ColorToken.brandBlackSprout.color.ignoresSafeArea())
     .mulgyeolNavigationTitle("FEED")
+    .toolbar {
+      ToolbarItem(placement: .topBarTrailing) {
+        Button {
+          navigate(.filterMake)
+        } label: {
+          Image(systemName: IconToken.add.symbolName)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(ColorToken.brandBlackSprout.color)
+            .frame(width: 40, height: 40)
+            .background(ColorToken.grayScale0.color, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .accessibilityLabel("필터 만들기")
+      }
+    }
     .task {
       await viewModel.send(.task)
     }

@@ -2,10 +2,17 @@ import SwiftUI
 
 struct SearchView: View {
   var body: some View {
-    TabScreenView(
-      title: "검색",
-      subtitle: "필터와 콘텐츠를 빠르게 찾는 화면입니다.",
-      symbolName: IconToken.search.symbolName
-    )
+    VStack(spacing: 12) {
+      Image(systemName: IconToken.search.symbolName)
+        .font(.system(size: 28, weight: .semibold))
+
+      Text("검색")
+        .font(TypographyToken.pretendardBody1.font)
+        .bold()
+    }
+    .foregroundStyle(ColorToken.grayScale45.color)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(ColorToken.brandBlackSprout.color.ignoresSafeArea())
+    .mulgyeolNavigationTitle("SEARCH")
   }
 }
