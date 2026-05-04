@@ -41,6 +41,7 @@ actor LiveFilterDetailService: FilterDetailServicing {
     case 200 ..< 300:
       do {
         let dto = try decoder.decode(FilterResponseDTO.self, from: response.data)
+        print(dto)
         return dto.toDomain()
       } catch {
         Self.logger.error("❌ [FilterDetailAPI] decode failed \(String(describing: error), privacy: .public)")
@@ -124,14 +125,13 @@ private extension FilterValuesDTO {
       contrast: contrast ?? FilterValues.neutral.contrast,
       saturation: saturation ?? FilterValues.neutral.saturation,
       exposure: exposure ?? FilterValues.neutral.exposure,
-      sharpen: sharpen ?? FilterValues.neutral.sharpen,
+      sharpen: sharpness ?? sharpen ?? FilterValues.neutral.sharpen,
       blur: blur ?? FilterValues.neutral.blur,
       vignette: vignette ?? FilterValues.neutral.vignette,
       noiseReduction: noiseReduction ?? FilterValues.neutral.noiseReduction,
       highlights: highlights ?? FilterValues.neutral.highlights,
       shadows: shadows ?? FilterValues.neutral.shadows,
       temperature: temperature ?? FilterValues.neutral.temperature,
-      tint: tint ?? FilterValues.neutral.tint,
       blackPoint: blackPoint ?? FilterValues.neutral.blackPoint
     )
   }

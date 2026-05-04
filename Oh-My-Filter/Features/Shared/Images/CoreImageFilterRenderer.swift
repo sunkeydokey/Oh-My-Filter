@@ -1,6 +1,7 @@
 import CoreGraphics
 import CoreImage
 import Foundation
+import ImageIO
 
 nonisolated struct CoreImageFilterRenderer: ImageFilterRendering {
   private let session: URLSession
@@ -25,17 +26,50 @@ nonisolated struct CoreImageFilterRenderer: ImageFilterRendering {
     }
 
     let (data, _) = try await session.data(for: request)
+    return try render(data: data, filterValues: filterValues)
+  }
+
+  func render(originalImageData: Data, filterValues: FilterValues) async throws -> RenderedFilterImages {
+    try render(data: originalImageData, filterValues: filterValues)
+  }
+
+  private func render(data: Data, filterValues: FilterValues) throws -> RenderedFilterImages {
     guard let originalImage = CIImage(data: data) else {
       throw ImageFilterRenderingError.invalidImageData
     }
 
-    let filteredImage = apply(filterValues, to: originalImage)
-    guard let originalCGImage = context.createCGImage(originalImage, from: originalImage.extent),
-          let filteredCGImage = context.createCGImage(filteredImage, from: originalImage.extent) else {
+    let orientedImage = originalImage.oriented(forExifOrientation: exifOrientation(from: data))
+    let filteredImage = apply(filterValues, to: orientedImage)
+    guard let originalCGImage = context.createCGImage(orientedImage, from: orientedImage.extent),
+          let filteredCGImage = context.createCGImage(filteredImage, from: orientedImage.extent) else {
       throw ImageFilterRenderingError.renderFailed
     }
 
     return RenderedFilterImages(original: originalCGImage, filtered: filteredCGImage)
+  }
+
+  private func exifOrientation(from data: Data) -> Int32 {
+    guard
+      let source = CGImageSourceCreateWithData(data as CFData, nil),
+      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+      let orientation = properties[kCGImagePropertyOrientation]
+    else {
+      return 1
+    }
+
+    if let value = orientation as? Int32 {
+      return value
+    }
+
+    if let value = orientation as? Int {
+      return Int32(value)
+    }
+
+    if let value = orientation as? NSNumber {
+      return value.int32Value
+    }
+
+    return 1
   }
 
   private func apply(_ values: FilterValues, to image: CIImage) -> CIImage {
@@ -54,12 +88,12 @@ nonisolated struct CoreImageFilterRenderer: ImageFilterRendering {
       output = output.applyingFilter("CIExposureAdjust", parameters: [kCIInputEVKey: values.exposure])
     }
 
-    if values.temperature != 0 || values.tint != 0 {
+    if values.temperature != FilterValues.neutral.temperature {
       output = output.applyingFilter(
         "CITemperatureAndTint",
         parameters: [
-          "inputNeutral": CIVector(x: 6500 + values.temperature, y: values.tint),
-          "inputTargetNeutral": CIVector(x: 6500, y: 0)
+          "inputNeutral": CIVector(x: values.temperature, y: 0),
+          "inputTargetNeutral": CIVector(x: FilterValues.neutral.temperature, y: 0)
         ]
       )
     }

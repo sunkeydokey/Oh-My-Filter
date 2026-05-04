@@ -3,6 +3,7 @@ import Foundation
 
 nonisolated protocol ImageFilterRendering: Sendable {
   func render(originalImageURL: URL, filterValues: FilterValues) async throws -> RenderedFilterImages
+  func render(originalImageData: Data, filterValues: FilterValues) async throws -> RenderedFilterImages
 }
 
 nonisolated enum ImageFilterRenderingError: Error, Equatable, Sendable {

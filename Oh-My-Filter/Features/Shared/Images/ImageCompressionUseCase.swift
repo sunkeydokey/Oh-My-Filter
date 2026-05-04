@@ -3,7 +3,7 @@ import CoreGraphics
 import ImageIO
 import UniformTypeIdentifiers
 
-protocol ImageCompressionUseCase: Sendable {
+nonisolated protocol ImageCompressionUseCase: Sendable {
   func jpegData(from imageData: Data, preset: ImageUploadPreset) throws -> Data
 }
 

@@ -25,7 +25,6 @@ struct CoreImageFilterRendererTests {
         highlights: 0,
         shadows: 0,
         temperature: 0,
-        tint: 0,
         blackPoint: 0
       )
     )
@@ -61,6 +60,25 @@ struct CoreImageFilterRendererTests {
     #expect(images.original.height == images.filtered.height)
   }
 
+  @Test("EXIF orientation is applied before rendering")
+  func exifOrientationIsAppliedBeforeRendering() async throws {
+    let imageURL = try Self.writeTemporaryImageData(
+      try Self.jpegData(width: 2, height: 3, orientation: 6),
+      fileName: "oriented.jpeg"
+    )
+    let renderer = CoreImageFilterRenderer()
+
+    let images = try await renderer.render(
+      originalImageURL: imageURL,
+      filterValues: .neutral
+    )
+
+    #expect(images.original.width == 3)
+    #expect(images.original.height == 2)
+    #expect(images.filtered.width == 3)
+    #expect(images.filtered.height == 2)
+  }
+
   private static func pngData() throws -> Data {
     let data = NSMutableData()
     let destination = try #require(CGImageDestinationCreateWithData(
@@ -72,6 +90,39 @@ struct CoreImageFilterRendererTests {
     CGImageDestinationAddImage(destination, TestImageFactory.makeCGImage(), nil)
     #expect(CGImageDestinationFinalize(destination))
     return data as Data
+  }
+
+  private static func jpegData(width: Int, height: Int, orientation: Int) throws -> Data {
+    let data = NSMutableData()
+    let destination = try #require(CGImageDestinationCreateWithData(
+      data,
+      UTType.jpeg.identifier as CFString,
+      1,
+      nil
+    ))
+    CGImageDestinationAddImage(
+      destination,
+      makeCGImage(width: width, height: height),
+      [kCGImagePropertyOrientation: orientation] as CFDictionary
+    )
+    #expect(CGImageDestinationFinalize(destination))
+    return data as Data
+  }
+
+  private static func makeCGImage(width: Int, height: Int) -> CGImage {
+    let colorSpace = CGColorSpaceCreateDeviceRGB()
+    let context = CGContext(
+      data: nil,
+      width: width,
+      height: height,
+      bitsPerComponent: 8,
+      bytesPerRow: 0,
+      space: colorSpace,
+      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    )!
+    context.setFillColor(CGColor(red: 0.2, green: 0.8, blue: 0.6, alpha: 1))
+    context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+    return context.makeImage()!
   }
 
   private static func writeTemporaryImageData(_ data: Data, fileName: String) throws -> URL {

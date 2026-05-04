@@ -1,6 +1,6 @@
 import Foundation
 
-protocol ImageUploadUseCase: Sendable {
+nonisolated protocol ImageUploadUseCase: Sendable {
   func multipartFiles(
     from selections: [PhotoPickerUploadSelection],
     preset: ImageUploadPreset

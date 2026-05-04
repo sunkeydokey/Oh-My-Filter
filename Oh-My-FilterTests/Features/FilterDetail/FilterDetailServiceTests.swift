@@ -167,7 +167,6 @@ private extension FilterDetailServiceTests {
           "highlights": -0.1,
           "shadows": 0.2,
           "temperature": 200,
-          "tint": 10,
           "black_point": 0.05
         },
         "comments": [

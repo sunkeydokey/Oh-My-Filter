@@ -113,6 +113,7 @@ nonisolated struct FilterValuesDTO: Decodable, Sendable {
   let contrast: Double?
   let saturation: Double?
   let exposure: Double?
+  let sharpness: Double?
   let sharpen: Double?
   let blur: Double?
   let vignette: Double?
@@ -120,8 +121,23 @@ nonisolated struct FilterValuesDTO: Decodable, Sendable {
   let highlights: Double?
   let shadows: Double?
   let temperature: Double?
-  let tint: Double?
   let blackPoint: Double?
+
+  private enum CodingKeys: String, CodingKey {
+    case brightness
+    case contrast
+    case saturation
+    case exposure
+    case sharpness
+    case sharpen
+    case blur
+    case vignette
+    case noiseReduction = "noise_reduction"
+    case highlights
+    case shadows
+    case temperature
+    case blackPoint = "black_point"
+  }
 }
 
 nonisolated struct FilterCommentDTO: Decodable, Sendable {

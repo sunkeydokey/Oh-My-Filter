@@ -52,7 +52,7 @@ nonisolated struct FilterDetailCreator: Equatable, Sendable {
   }
 }
 
-nonisolated struct FilterDetailMetadata: Equatable, Sendable {
+nonisolated struct FilterDetailMetadata: Equatable, Hashable, Sendable {
   let camera: String?
   let lens: String?
   let focalLength: String?
@@ -67,7 +67,7 @@ nonisolated struct FilterDetailMetadata: Equatable, Sendable {
       ("Focal", focalLength),
       ("Aperture", aperture),
       ("Shutter", shutterSpeed),
-      ("ISO", iso)
+      ("ISO", iso),
     ].compactMap { label, value in
       guard let value, value.isEmpty == false else { return nil }
       return (label, value)
@@ -91,7 +91,6 @@ nonisolated struct FilterValues: Equatable, Sendable {
   let highlights: Double
   let shadows: Double
   let temperature: Double
-  let tint: Double
   let blackPoint: Double
 
   static let neutral = FilterValues(
@@ -105,8 +104,7 @@ nonisolated struct FilterValues: Equatable, Sendable {
     noiseReduction: 0,
     highlights: 0,
     shadows: 0,
-    temperature: 0,
-    tint: 0,
+    temperature: 5500,
     blackPoint: 0
   )
 
@@ -123,7 +121,7 @@ nonisolated struct FilterValues: Equatable, Sendable {
       .init(title: "Highlight", value: highlights),
       .init(title: "Shadow", value: shadows),
       .init(title: "Temp", value: temperature),
-      .init(title: "Tint", value: tint)
+      .init(title: "Black Point", value: blackPoint),
     ]
   }
 }
