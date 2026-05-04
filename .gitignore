@@ -113,3 +113,4 @@ AGENTS.md
 *.pen
 GoogleService-Info.plist
 *.p8
+**/Docs/*
