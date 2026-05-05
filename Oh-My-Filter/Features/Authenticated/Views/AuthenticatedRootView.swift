@@ -62,7 +62,7 @@ struct AuthenticatedRootView: View {
             case let .postDetail(postID):
               PostDetailView(postID: postID)
             case let .videoDetail(video):
-              VideoDetailView(video: video)
+              VideoPlayerView(video: video)
             }
           }
         }

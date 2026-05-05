@@ -60,6 +60,14 @@ nonisolated enum EndPoint {
 
   nonisolated enum Videos {
     static let list = "\(EndPoint.baseUrl)/videos"
+
+    static func stream(videoId: String) -> String {
+      "\(EndPoint.baseUrl)/videos/\(videoId)/stream"
+    }
+
+    static func like(videoId: String) -> String {
+      "\(EndPoint.baseUrl)/videos/\(videoId)/like"
+    }
   }
 
   nonisolated enum Banners {
