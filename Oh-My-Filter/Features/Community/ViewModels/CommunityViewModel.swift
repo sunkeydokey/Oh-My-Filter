@@ -67,6 +67,8 @@ final class CommunityViewModel {
       updatePhaseForVisibleContent()
     case let .scroll(event):
       await handleScroll(event)
+    case .createPostTapped:
+      state.route = .postCreate
     case let .postTapped(postID):
       state.route = .postDetail(postID: postID)
     case let .videoTapped(video):

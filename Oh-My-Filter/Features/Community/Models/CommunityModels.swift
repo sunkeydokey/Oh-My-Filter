@@ -36,15 +36,59 @@ nonisolated struct CommunityPost: Equatable, Identifiable, Sendable {
   let content: String
   let creator: CommunityCreator
   let imageURLs: [URL]
+  let imagePaths: [String]
   let isLiked: Bool
   let likeCount: Int
-  let commentCount: Int
+  let comments: [CommunityComment]
   let createdAt: String
   let updatedAt: String
 
   var summary: String {
     content
   }
+
+  var commentCount: Int {
+    comments.count + comments.reduce(0) { $0 + $1.replies.count }
+  }
+}
+
+nonisolated struct CommunityComment: Equatable, Identifiable, Sendable {
+  let id: String
+  let content: String
+  let createdAt: String
+  let creator: CommunityCreator
+  let replies: [CommunityReply]
+}
+
+nonisolated struct CommunityReply: Equatable, Identifiable, Sendable {
+  let id: String
+  let content: String
+  let createdAt: String
+  let creator: CommunityCreator
+}
+
+nonisolated struct CommunityPostDraft: Equatable, Sendable {
+  var category: String
+  var title: String
+  var content: String
+  var existingFilePaths: [String]
+
+  init(
+    category: String = "",
+    title: String = "",
+    content: String = "",
+    existingFilePaths: [String] = []
+  ) {
+    self.category = category
+    self.title = title
+    self.content = content
+    self.existingFilePaths = existingFilePaths
+  }
+}
+
+nonisolated enum CommunityPostMutationMode: Equatable, Sendable {
+  case create
+  case edit(postID: String)
 }
 
 nonisolated struct CommunityVideo: Equatable, Identifiable, Sendable, Hashable {
@@ -79,7 +123,9 @@ nonisolated enum CommunityFeedItem: Equatable, Identifiable, Sendable {
 }
 
 nonisolated enum CommunityRoute: Hashable, Sendable {
+  case postCreate
   case postDetail(postID: String)
+  case postEdit(postID: String)
   case videoDetail(video: CommunityVideo)
 }
 

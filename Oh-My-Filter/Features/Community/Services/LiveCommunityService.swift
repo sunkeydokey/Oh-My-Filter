@@ -4,6 +4,9 @@ import OSLog
 actor LiveCommunityService: CommunityServicing {
   private let networkManager: any AuthenticatedNetworkManaging
   private let decoder: JSONDecoder
+  private let imageUploadUseCase: any ImageUploadUseCase
+  private static let defaultLatitude = 37.654215
+  private static let defaultLongitude = 127.049914
   private static let logger = Logger(
     subsystem: Bundle.main.bundleIdentifier ?? "Oh-My-Filter",
     category: "CommunityAPI"
@@ -11,17 +14,52 @@ actor LiveCommunityService: CommunityServicing {
 
   init(
     networkManager: any AuthenticatedNetworkManaging,
-    decoder: JSONDecoder = JSONDecoder()
+    decoder: JSONDecoder = JSONDecoder(),
+    imageUploadUseCase: any ImageUploadUseCase = LiveImageUploadUseCase()
   ) {
     self.networkManager = networkManager
     let configuredDecoder = decoder
     configuredDecoder.keyDecodingStrategy = .convertFromSnakeCase
     self.decoder = configuredDecoder
+    self.imageUploadUseCase = imageUploadUseCase
   }
 
   @MainActor
   init(decoder: JSONDecoder = JSONDecoder()) {
     self.init(networkManager: AuthenticatedNetworkManager(), decoder: decoder)
+  }
+
+  func loadCurrentUserID() async throws -> String {
+    let response = try await request(UserApiRouter.getOwnProfile, parameters: .empty)
+    let profile = try decode(CurrentUserProfileResponseDTO.self, from: response)
+    guard profile.userId.isEmpty == false else { throw CommunityServiceError.invalidResponse }
+    return profile.userId
+  }
+
+  func uploadPostFiles(selections: [PhotoPickerUploadSelection]) async throws -> [String] {
+    guard selections.isEmpty == false else { return [] }
+
+    do {
+      let fileParts = try imageUploadUseCase.multipartFiles(from: selections, preset: .communityPost)
+      let response = try await networkManager.request(CommunityApiRouter.uploadFiles, multipartFiles: fileParts)
+      return try decode(FileResponseDTO.self, from: response).files
+    } catch let error as CommunityServiceError {
+      throw error
+    } catch is ImageCompressionError {
+      throw CommunityServiceError.invalidRequest
+    } catch let error as NetworkError {
+      throw mappedNetworkError(error)
+    } catch {
+      Self.logger.error("❌ [CommunityAPI] upload failed error=\(String(describing: error), privacy: .public)")
+      throw CommunityServiceError.transport
+    }
+  }
+
+  func createPost(draft: CommunityPostDraft, newImages: [PhotoPickerUploadSelection]) async throws -> CommunityPost {
+    let files = try await uploadPostFiles(selections: newImages)
+    let body = postRequestBody(draft: draft, files: files)
+    let response = try await requestWithBody(CommunityApiRouter.createPost, body: body, parameters: .empty)
+    return try decode(CommunityPostDTO.self, from: response).toDomain()
   }
 
   func loadPosts(nextCursor: String?, limit: Int, orderBy: String) async throws -> CommunityPostPage {
@@ -60,6 +98,40 @@ actor LiveCommunityService: CommunityServicing {
     return try decode(CommunityPostDTO.self, from: response).toDomain()
   }
 
+  func updatePost(postID: String, draft: CommunityPostDraft, newImages: [PhotoPickerUploadSelection]) async throws -> CommunityPost {
+    guard postID.isEmpty == false else { throw CommunityServiceError.invalidRequest }
+
+    let uploadedFiles = try await uploadPostFiles(selections: newImages)
+    let body = postRequestBody(draft: draft, files: draft.existingFilePaths + uploadedFiles)
+    let response = try await requestWithBody(CommunityApiRouter.updatePost(postID: postID), body: body, parameters: .empty)
+    return try decode(CommunityPostDTO.self, from: response).toDomain()
+  }
+
+  func deletePost(postID: String) async throws {
+    guard postID.isEmpty == false else { throw CommunityServiceError.invalidRequest }
+
+    let response = try await request(CommunityApiRouter.deletePost(postID: postID), parameters: .empty)
+    try validateEmptyResponse(response)
+  }
+
+  func toggleLike(postID: String, status: Bool) async throws -> Bool {
+    guard postID.isEmpty == false else { throw CommunityServiceError.invalidRequest }
+
+    let body = CommunityPostLikeRequestDTO(like_status: status)
+    let response = try await requestWithBody(CommunityApiRouter.like(postID: postID), body: body, parameters: .empty)
+    return try decode(CommunityPostLikeResponseDTO.self, from: response).likeStatus
+  }
+
+  func createComment(postID: String, parentCommentID: String?, content: String) async throws -> CommunityReply {
+    guard postID.isEmpty == false, content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
+      throw CommunityServiceError.invalidRequest
+    }
+
+    let body = CommunityPostCommentRequestDTO(parent_comment_id: parentCommentID, content: content)
+    let response = try await requestWithBody(CommunityApiRouter.createComment(postID: postID), body: body, parameters: .empty)
+    return try decode(CommunityPostReplyDTO.self, from: response).toDomain()
+  }
+
   func loadVideos(nextCursor: String?, limit: Int) async throws -> CommunityVideoPage {
     guard limit > 0 else { throw CommunityServiceError.invalidRequest }
 
@@ -67,9 +139,36 @@ actor LiveCommunityService: CommunityServicing {
     return try decode(CommunityVideoPageDTO.self, from: response).toDomain()
   }
 
+  private func postRequestBody(draft: CommunityPostDraft, files: [String]) -> CommunityPostRequestDTO {
+    CommunityPostRequestDTO(
+      category: draft.category.trimmingCharacters(in: .whitespacesAndNewlines),
+      title: draft.title.trimmingCharacters(in: .whitespacesAndNewlines),
+      content: draft.content.trimmingCharacters(in: .whitespacesAndNewlines),
+      latitude: Self.defaultLatitude,
+      longitude: Self.defaultLongitude,
+      files: files
+    )
+  }
+
   private func request<Router: ApiRouter>(_ router: Router, parameters: RequestQuery) async throws -> NetworkResponse {
     do {
       return try await networkManager.request(router, parameters: parameters)
+    } catch let error as NetworkError {
+      Self.logger.error("❌ [CommunityAPI] transport failed error=\(String(describing: error), privacy: .public)")
+      throw mappedNetworkError(error)
+    } catch {
+      Self.logger.error("❌ [CommunityAPI] unexpected failure error=\(String(describing: error), privacy: .public)")
+      throw CommunityServiceError.transport
+    }
+  }
+
+  private func requestWithBody<Router: ApiRouter, Body: Encodable>(
+    _ router: Router,
+    body: Body,
+    parameters: RequestQuery
+  ) async throws -> NetworkResponse {
+    do {
+      return try await networkManager.request(router, body: body, parameters: parameters)
     } catch let error as NetworkError {
       Self.logger.error("❌ [CommunityAPI] transport failed error=\(String(describing: error), privacy: .public)")
       throw mappedNetworkError(error)
@@ -92,6 +191,23 @@ actor LiveCommunityService: CommunityServicing {
       throw CommunityServiceError.invalidRequest
     case 404:
       throw CommunityServiceError.notFound
+    case 445:
+      throw CommunityServiceError.permissionDenied
+    default:
+      throw CommunityServiceError.serverError
+    }
+  }
+
+  private func validateEmptyResponse(_ response: NetworkResponse) throws {
+    switch response.statusCode {
+    case 200 ..< 300:
+      return
+    case 400:
+      throw CommunityServiceError.invalidRequest
+    case 404:
+      throw CommunityServiceError.notFound
+    case 445:
+      throw CommunityServiceError.permissionDenied
     default:
       throw CommunityServiceError.serverError
     }

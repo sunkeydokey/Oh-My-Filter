@@ -62,6 +62,28 @@ nonisolated struct CommunityPostReplyDTO: Codable, Sendable {
   let creator: CommunityCreatorDTO
 }
 
+nonisolated struct CommunityPostRequestDTO: Encodable, Sendable {
+  let category: String
+  let title: String
+  let content: String
+  let latitude: Double
+  let longitude: Double
+  let files: [String]
+}
+
+nonisolated struct CommunityPostLikeRequestDTO: Encodable, Sendable {
+  let like_status: Bool
+}
+
+nonisolated struct CommunityPostLikeResponseDTO: Decodable, Sendable {
+  let likeStatus: Bool
+}
+
+nonisolated struct CommunityPostCommentRequestDTO: Encodable, Sendable {
+  let parent_comment_id: String?
+  let content: String
+}
+
 nonisolated struct CommunityVideoPageDTO: Codable, Sendable {
   let data: [CommunityVideoDTO]
   let nextCursor: String?
@@ -105,9 +127,10 @@ extension CommunityPostDTO {
       content: content,
       creator: creator.toDomain(),
       imageURLs: files.compactMap { AuthenticatedRemoteImageSupport.url(from: $0) },
+      imagePaths: files,
       isLiked: isLike,
       likeCount: likeCount,
-      commentCount: comments?.count ?? 0,
+      comments: comments?.map { $0.toDomain() } ?? [],
       createdAt: createdAt,
       updatedAt: updatedAt
     )
@@ -123,6 +146,29 @@ extension CommunityCreatorDTO {
       profileImageURL: AuthenticatedRemoteImageSupport.url(from: profileImage),
       introduction: introduction,
       hashTags: hashTags ?? []
+    )
+  }
+}
+
+extension CommunityPostCommentDTO {
+  nonisolated func toDomain() -> CommunityComment {
+    CommunityComment(
+      id: commentId,
+      content: content,
+      createdAt: createdAt,
+      creator: creator.toDomain(),
+      replies: replies?.map { $0.toDomain() } ?? []
+    )
+  }
+}
+
+extension CommunityPostReplyDTO {
+  nonisolated func toDomain() -> CommunityReply {
+    CommunityReply(
+      id: commentId,
+      content: content,
+      createdAt: createdAt,
+      creator: creator.toDomain()
     )
   }
 }
