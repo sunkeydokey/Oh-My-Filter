@@ -162,11 +162,16 @@ private extension MainTodayFilterDTO {
 
 private extension MainBannerDTO {
   nonisolated func toDomain() -> MainBanner {
-    MainBanner(
+    let webViewURL: URL? = {
+      guard payload.type == .webview else { return nil }
+      return URL(string: Server.webViewBaseUrl() + payload.value)
+    }()
+    return MainBanner(
       id: name,
       title: name,
       subtitle: "",
-      imageUrl: AuthenticatedRemoteImageSupport.url(from: imageUrl)
+      imageUrl: AuthenticatedRemoteImageSupport.url(from: imageUrl),
+      webViewURL: webViewURL
     )
   }
 }
