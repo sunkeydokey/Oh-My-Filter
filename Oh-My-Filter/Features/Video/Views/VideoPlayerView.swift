@@ -1,0 +1,445 @@
+import AVFoundation
+import Kingfisher
+import SwiftUI
+
+struct VideoPlayerView: View {
+  @State private var viewModel: VideoPlayerViewModel
+  @Environment(\.dismiss) private var dismiss
+
+  private static let cardBackground = Color(red: 20 / 255, green: 20 / 255, blue: 26 / 255)
+  private static let cardStroke = Color(red: 38 / 255, green: 38 / 255, blue: 43 / 255).opacity(0.5)
+
+  init(video: CommunityVideo) {
+    _viewModel = State(wrappedValue: VideoPlayerViewModel(video: video))
+  }
+
+  var body: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 16) {
+        navigationBar
+        playerContainer
+        coreMetadata
+        actionRow
+        expandableDescription
+        qualitySection
+      }
+      .padding(.horizontal, 20)
+      .padding(.bottom, 24)
+    }
+    .background(ColorToken.grayScale100.color.ignoresSafeArea())
+    .toolbar(.hidden, for: .navigationBar)
+    .task { await viewModel.send(.task) }
+  }
+
+  // MARK: - Navigation Bar
+
+  private var navigationBar: some View {
+    HStack {
+      Button {
+        dismiss()
+      } label: {
+        Image(systemName: "chevron.left")
+          .font(.system(size: 22, weight: .medium))
+          .foregroundStyle(ColorToken.grayScale30.color)
+      }
+
+      Spacer()
+
+      Text("Video")
+        .font(TypographyToken.mulgyeolBody1.font)
+        .foregroundStyle(ColorToken.grayScale60.color)
+
+      Spacer()
+
+      Image(systemName: "ellipsis")
+        .font(.system(size: 22, weight: .medium))
+        .foregroundStyle(ColorToken.grayScale60.color)
+    }
+    .frame(height: 44)
+  }
+
+  // MARK: - Player Container
+
+  private var playerContainer: some View {
+    ZStack {
+      switch viewModel.playerPhase {
+      case .loading:
+        loadingPlayer
+      case .error:
+        errorPlayer
+      case .ready:
+        readyPlayer
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .frame(height: 197)
+    .background(ColorToken.brandBlackSprout.color)
+    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+  }
+
+  private var loadingPlayer: some View {
+    VStack(spacing: 12) {
+      ProgressView()
+        .tint(ColorToken.grayScale75.color)
+        .scaleEffect(1.3)
+      Text("비디오를 불러오는 중")
+        .font(TypographyToken.pretendardBody3.font)
+        .foregroundStyle(ColorToken.grayScale60.color)
+    }
+  }
+
+  private var errorPlayer: some View {
+    VStack(spacing: 12) {
+      Image(systemName: "exclamationmark.circle")
+        .font(.system(size: 34))
+        .foregroundStyle(ColorToken.grayScale75.color)
+      if case let .error(message) = viewModel.playerPhase {
+        Text(message)
+          .font(TypographyToken.pretendardBody2.font)
+          .foregroundStyle(ColorToken.grayScale30.color)
+      }
+      Button {
+        Task { await viewModel.send(.retry) }
+      } label: {
+        Text("다시 시도")
+          .font(TypographyToken.pretendardBody3.font)
+          .foregroundStyle(ColorToken.grayScale45.color)
+          .padding(.horizontal, 14)
+          .frame(height: 34)
+          .background(ColorToken.sesacFilterBrightTurquoise.color)
+          .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+      }
+    }
+  }
+
+  private var readyPlayer: some View {
+    let isPlaying: Bool
+    if case .ready(let playing) = viewModel.playerPhase {
+      isPlaying = playing
+    } else {
+      isPlaying = false
+    }
+
+    return ZStack(alignment: .topLeading) {
+      // Video layer
+      VideoPlayerLayerView(player: viewModel.player)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+      // Thumbnail overlay (visible when not playing)
+      if !isPlaying {
+        KFImage(viewModel.video.thumbnailURL)
+          .requestModifier(AuthenticatedRemoteImageSupport.requestModifier)
+          .placeholder { ColorToken.brandBlackSprout.color }
+          .resizable()
+          .scaledToFill()
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .clipped()
+      }
+
+      // Gradient overlay
+      LinearGradient(
+        colors: [.clear, Color.black.opacity(0.8)],
+        startPoint: .top,
+        endPoint: .bottom
+      )
+
+      // Controls
+      playerControls(isPlaying: isPlaying)
+    }
+  }
+
+  private func playerControls(isPlaying: Bool) -> some View {
+    ZStack(alignment: .topLeading) {
+      // Top-right: mute + fullscreen
+      HStack(spacing: 10) {
+        Button {
+          Task { await viewModel.send(.toggleMute) }
+        } label: {
+          Image(systemName: viewModel.isMuted ? "speaker.slash" : "speaker.wave.2")
+            .font(.system(size: 14))
+            .foregroundStyle(ColorToken.grayScale30.color)
+        }
+        Image(systemName: "arrow.up.left.and.arrow.down.right")
+          .font(.system(size: 14))
+          .foregroundStyle(ColorToken.grayScale30.color)
+      }
+      .padding([.top, .trailing], 14)
+      .frame(maxWidth: .infinity, alignment: .trailing)
+
+      // Center: play/pause
+      Button {
+        Task { await viewModel.send(.togglePlay) }
+      } label: {
+        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+          .font(.system(size: 22))
+          .foregroundStyle(ColorToken.grayScale30.color)
+          .frame(width: 64, height: 64)
+          .background(Color.black.opacity(0.8))
+          .clipShape(Circle())
+      }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+      // Bottom controls
+      VStack(alignment: .leading, spacing: 4) {
+        Spacer()
+
+        // Current time
+        Text(formatTime(viewModel.currentTime))
+          .font(.system(size: 12, weight: .bold))
+          .foregroundStyle(ColorToken.grayScale30.color)
+          .padding(.leading, 16)
+
+        // Quality chip + duration
+        HStack {
+          Button {
+            Task { await viewModel.send(.toggleQualityMenu) }
+          } label: {
+            HStack(spacing: 4) {
+              Text(viewModel.selectedQuality)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(ColorToken.grayScale30.color)
+              Image(systemName: "chevron.down")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(ColorToken.grayScale30.color)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.black.opacity(0.8))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+          }
+
+          Spacer()
+
+          Text(formatTime(viewModel.duration))
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(ColorToken.grayScale30.color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.black.opacity(0.8))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .padding(.horizontal, 16)
+
+        // Progress bar (bottom-most)
+        GeometryReader { proxy in
+          ZStack(alignment: .leading) {
+            Capsule()
+              .fill(ColorToken.grayScale75.color.opacity(0.5))
+              .frame(height: 3)
+            let progress = viewModel.duration > 0 ? viewModel.currentTime / viewModel.duration : 0
+            Capsule()
+              .fill(ColorToken.grayScale30.color)
+              .frame(width: proxy.size.width * progress, height: 3)
+          }
+        }
+        .frame(height: 3)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+      }
+    }
+  }
+
+  // MARK: - Core Metadata
+
+  private var coreMetadata: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text(viewModel.video.title)
+        .font(TypographyToken.pretendardTitle1.font)
+        .foregroundStyle(ColorToken.grayScale30.color)
+        .lineSpacing(4)
+
+      HStack(spacing: 8) {
+        Text("조회 \(viewModel.video.viewCount.formatted(.number))회")
+        Text("·")
+        Text(formattedDate(viewModel.video.createdAt))
+        Text("·")
+        Text("HLS · \(viewModel.selectedQuality)")
+      }
+      .font(TypographyToken.pretendardCaption1.font)
+      .foregroundStyle(ColorToken.grayScale75.color)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+
+  // MARK: - Action Row (Like only)
+
+  private var actionRow: some View {
+    HStack {
+      Button {
+        Task { await viewModel.send(.toggleLike) }
+      } label: {
+        HStack(spacing: 8) {
+          Image(systemName: viewModel.isLiked ? "heart.fill" : "heart")
+            .font(.system(size: 15))
+            .foregroundStyle(viewModel.isLiked ? ColorToken.grayScale45.color : ColorToken.grayScale60.color)
+          Text("좋아요 \(viewModel.likeCount.formatted(.number))")
+            .font(TypographyToken.pretendardBody3.font)
+            .foregroundStyle(viewModel.isLiked ? ColorToken.grayScale45.color : ColorToken.grayScale60.color)
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 42)
+        .frame(maxWidth: .infinity)
+        .background(viewModel.isLiked ? ColorToken.sesacFilterBrightTurquoise.color : ColorToken.brandBlackSprout.color)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+          if viewModel.isLiked {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+              .strokeBorder(ColorToken.brandDeepSprout.color, lineWidth: 1)
+          }
+        }
+      }
+    }
+  }
+
+  // MARK: - Expandable Description
+
+  private var expandableDescription: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      let desc = viewModel.video.description
+      let isEmpty = desc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
+      Text(isEmpty ? "등록된 설명이 없습니다" : desc)
+        .font(TypographyToken.pretendardBody3.font)
+        .foregroundStyle(ColorToken.grayScale60.color)
+        .lineSpacing(4)
+        .lineLimit(viewModel.isDescriptionExpanded ? nil : 3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+      if !isEmpty {
+        Button {
+          Task { await viewModel.send(.toggleDescription) }
+        } label: {
+          Text(viewModel.isDescriptionExpanded ? "접기" : "더보기")
+            .font(TypographyToken.pretendardBody3.font)
+            .foregroundStyle(ColorToken.grayScale30.color)
+        }
+      }
+    }
+    .padding(14)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Self.cardBackground)
+    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    .overlay {
+      RoundedRectangle(cornerRadius: 8, style: .continuous)
+        .strokeBorder(Self.cardStroke, lineWidth: 1)
+    }
+  }
+
+  // MARK: - Quality Section
+
+  @ViewBuilder
+  private var qualitySection: some View {
+    if viewModel.isQualityMenuVisible {
+      qualityMenu
+    } else {
+      qualitySelectorRow
+    }
+  }
+
+  private var qualitySelectorRow: some View {
+    let canChange = viewModel.qualities.count > 1
+
+    return Button {
+      guard canChange else { return }
+      Task { await viewModel.send(.toggleQualityMenu) }
+    } label: {
+      HStack {
+        HStack(spacing: 8) {
+          Image(systemName: "slider.horizontal.3")
+            .font(.system(size: 15))
+            .foregroundStyle(ColorToken.grayScale60.color)
+          Text("화질")
+            .font(TypographyToken.pretendardBody2.font)
+            .foregroundStyle(ColorToken.grayScale60.color)
+        }
+
+        Spacer()
+
+        if canChange {
+          HStack(spacing: 4) {
+            Text("\(viewModel.selectedQuality) 변경")
+              .font(TypographyToken.pretendardBody3.font)
+              .foregroundStyle(ColorToken.grayScale75.color)
+            Image(systemName: "chevron.right")
+              .font(.system(size: 13))
+              .foregroundStyle(ColorToken.grayScale75.color)
+          }
+        } else {
+          Text(viewModel.selectedQuality)
+            .font(TypographyToken.pretendardBody3.font)
+            .foregroundStyle(ColorToken.grayScale75.color)
+        }
+      }
+      .padding(.horizontal, 14)
+      .frame(height: 48)
+      .frame(maxWidth: .infinity)
+      .background(Self.cardBackground)
+      .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+      .overlay {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+          .strokeBorder(Self.cardStroke, lineWidth: 1)
+      }
+    }
+    .disabled(!canChange)
+  }
+
+  private var qualityMenu: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text("화질 선택")
+        .font(TypographyToken.pretendardBody1.font)
+        .foregroundStyle(ColorToken.grayScale30.color)
+
+      ForEach(viewModel.qualities) { quality in
+        let isSelected = quality.label == viewModel.selectedQuality
+
+        Button {
+          Task { await viewModel.send(.selectQuality(quality.label)) }
+        } label: {
+          HStack {
+            Text(quality.label)
+              .font(TypographyToken.pretendardBody2.font)
+              .foregroundStyle(isSelected ? ColorToken.grayScale45.color : ColorToken.grayScale60.color)
+            Spacer()
+            if isSelected {
+              Image(systemName: "checkmark")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(ColorToken.grayScale45.color)
+            }
+          }
+          .padding(.horizontal, 12)
+          .frame(height: 36)
+          .frame(maxWidth: .infinity)
+          .background(isSelected ? ColorToken.sesacFilterBrightTurquoise.color : ColorToken.brandBlackSprout.color)
+          .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+      }
+    }
+    .padding(14)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Self.cardBackground)
+    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    .overlay {
+      RoundedRectangle(cornerRadius: 8, style: .continuous)
+        .strokeBorder(Self.cardStroke, lineWidth: 1)
+    }
+  }
+
+  // MARK: - Helpers
+
+  private func formatTime(_ seconds: Double) -> String {
+    guard seconds.isFinite, seconds >= 0 else { return "0:00" }
+    let totalSeconds = Int(seconds)
+    let minutes = totalSeconds / 60
+    let secs = totalSeconds % 60
+    return String(format: "%d:%02d", minutes, secs)
+  }
+
+  private func formattedDate(_ isoString: String) -> String {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    guard let date = formatter.date(from: isoString) else { return isoString }
+    let display = DateFormatter()
+    display.dateFormat = "yyyy.MM.dd"
+    return display.string(from: date)
+  }
+}
