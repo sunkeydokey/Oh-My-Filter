@@ -46,5 +46,5 @@ nonisolated struct VideoLikeResponseDTO: Codable, Sendable {
 }
 
 nonisolated struct VideoLikeRequestBody: Encodable, Sendable {
-  let likeStatus: Bool
+  let like_status: Bool
 }

@@ -8,7 +8,10 @@
       "Bash(xargs ls -la)",
       "Bash(xcodebuild -scheme \"Oh-My-Filter\" -destination \"platform=iOS Simulator,name=iPhone 16\" build)",
       "Bash(xcodebuild -scheme \"Oh-My-Filter\" -destination \"platform=iOS Simulator,name=iPhone 17\" build)",
-      "Bash(xcodebuild test *)"
+      "Bash(xcodebuild test *)",
+      "Bash(xcodebuild -project \"Oh-My-Filter.xcodeproj\" -scheme \"Oh-My-Filter\" -destination \"generic/platform=iOS Simulator\" build)",
+      "Bash(python3 *)",
+      "Bash(swift *)"
     ]
   },
   "enabledPlugins": {

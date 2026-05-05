@@ -34,7 +34,7 @@ actor LiveVideoPlayerService: VideoPlayerServicing {
   func toggleLike(videoId: String, status: Bool) async throws -> Bool {
     guard videoId.isEmpty == false else { throw VideoPlayerServiceError.invalidRequest }
 
-    let body = VideoLikeRequestBody(likeStatus: status)
+    let body = VideoLikeRequestBody(like_status: status)
     let response = try await requestWithBody(VideoApiRouter.like(videoId: videoId), body: body, parameters: .empty)
     return try decode(VideoLikeResponseDTO.self, from: response).likeStatus
   }

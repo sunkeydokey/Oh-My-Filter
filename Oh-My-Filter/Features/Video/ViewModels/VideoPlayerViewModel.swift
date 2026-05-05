@@ -44,6 +44,7 @@ final class VideoPlayerViewModel {
   private let service: any VideoPlayerServicing
   private var timeObserver: Any?
   private var statusObservation: NSKeyValueObservation?
+  private var itemStatusObservation: NSKeyValueObservation?
 
   init(video: CommunityVideo, service: any VideoPlayerServicing) {
     self.video = video
@@ -92,8 +93,11 @@ final class VideoPlayerViewModel {
       }
 
       let url = qualityURL(for: selectedQuality, in: stream) ?? stream.streamURL
+      Self.logger.info("ℹ️ [VideoPlayerViewModel] loadStream url=\(String(describing: url), privacy: .public)")
+
       setupPlayer(url: url)
       playerPhase = .ready(isPlaying: false)
+      Self.logger.info("ℹ️ [VideoPlayerViewModel] player ready quality=\(self.selectedQuality, privacy: .public)")
     } catch {
       let message = (error as? VideoPlayerServiceError)?.errorDescription
         ?? VideoPlayerServiceError.serverError.errorDescription
@@ -108,9 +112,11 @@ final class VideoPlayerViewModel {
     if isPlaying {
       player?.pause()
       playerPhase = .ready(isPlaying: false)
+      Self.logger.info("ℹ️ [VideoPlayerViewModel] paused")
     } else {
       player?.play()
       playerPhase = .ready(isPlaying: true)
+      Self.logger.info("ℹ️ [VideoPlayerViewModel] play requested itemStatus=\(String(describing: self.player?.currentItem?.status.rawValue), privacy: .public)")
     }
   }
 
@@ -153,6 +159,8 @@ final class VideoPlayerViewModel {
     do {
       let stream = try await service.loadStream(videoId: video.id)
       let url = qualityURL(for: label, in: stream) ?? stream.streamURL
+      Self.logger.info("ℹ️ [VideoPlayerViewModel] quality changed to=\(label, privacy: .public) url=\(String(describing: url), privacy: .public)")
+
       setupPlayer(url: url)
       playerPhase = .ready(isPlaying: wasPlaying)
       if wasPlaying { player?.play() }
@@ -161,14 +169,20 @@ final class VideoPlayerViewModel {
         ?? VideoPlayerServiceError.serverError.errorDescription
         ?? "잠시 후 다시 시도해 주세요."
       playerPhase = .error(message: message)
+      Self.logger.error("❌ [VideoPlayerViewModel] quality change failed error=\(String(describing: error), privacy: .public)")
     }
   }
 
   private func setupPlayer(url: URL?) {
     cleanupPlayer()
-    guard let url else { return }
+    guard let url else {
+      Self.logger.error("❌ [VideoPlayerViewModel] setupPlayer called with nil url")
+      return
+    }
 
-    let newPlayer = AVPlayer(url: url)
+    let asset = AVURLAsset(url: url)
+    let playerItem = AVPlayerItem(asset: asset)
+    let newPlayer = AVPlayer(playerItem: playerItem)
     newPlayer.isMuted = isMuted
 
     timeObserver = newPlayer.addPeriodicTimeObserver(
@@ -183,11 +197,31 @@ final class VideoPlayerViewModel {
     statusObservation = newPlayer.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
       guard let self else { return }
       Task { @MainActor in
+        let status = player.timeControlStatus
+        Self.logger.debug("🔍 [VideoPlayerViewModel] timeControlStatus=\(status.rawValue, privacy: .public)")
         if case .ready(let isPlaying) = self.playerPhase {
-          let nowPlaying = player.timeControlStatus == .playing
+          let nowPlaying = status == .playing || status == .waitingToPlayAtSpecifiedRate
           if nowPlaying != isPlaying {
             self.playerPhase = .ready(isPlaying: nowPlaying)
           }
+        }
+      }
+    }
+
+    itemStatusObservation = playerItem.observe(\.status, options: [.new]) { [weak self] item, _ in
+      guard let self else { return }
+      Task { @MainActor in
+        switch item.status {
+        case .readyToPlay:
+          Self.logger.info("ℹ️ [VideoPlayerViewModel] playerItem readyToPlay")
+        case .failed:
+          let err = item.error
+          Self.logger.error("❌ [VideoPlayerViewModel] playerItem failed error=\(String(describing: err), privacy: .public)")
+          self.playerPhase = .error(message: "재생 중 오류가 발생했습니다.")
+        case .unknown:
+          Self.logger.debug("🔍 [VideoPlayerViewModel] playerItem status unknown (loading)")
+        @unknown default:
+          break
         }
       }
     }
@@ -202,6 +236,8 @@ final class VideoPlayerViewModel {
     }
     statusObservation?.invalidate()
     statusObservation = nil
+    itemStatusObservation?.invalidate()
+    itemStatusObservation = nil
     player?.pause()
     player = nil
   }

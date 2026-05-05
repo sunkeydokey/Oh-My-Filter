@@ -15,8 +15,9 @@ enum AuthenticatedRemoteImageSupport {
       return nil
     }
 
-    let trimmedPath = pathOrURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-    return baseURL.appending(path: trimmedPath)
+    let fullString = baseURL.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+      + "/" + pathOrURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    return URL(string: fullString)
   }
 
   static var requestModifier: any AsyncImageDownloadRequestModifier {
