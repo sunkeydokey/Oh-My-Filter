@@ -28,4 +28,14 @@ enum Server {
     ) as? String else { return "API 버전을 찾을 수 없음" }
     return "http://\(host):\(port)/\(version)"
   }
+
+  nonisolated static func webViewBaseUrl() -> String {
+    guard let host = Bundle.main.object(
+      forInfoDictionaryKey: "HTTP_HOST"
+    ) as? String else { return "HTTP 도메인을 찾을 수 없음" }
+    guard let port = Bundle.main.object(
+      forInfoDictionaryKey: "HTTP_PORT"
+    ) as? String else { return "HTTP PORT를 찾을 수 없음" }
+    return "http://\(host):\(port)"
+  }
 }

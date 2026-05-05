@@ -40,6 +40,7 @@ nonisolated struct MainBanner: Equatable, Identifiable, Sendable {
   let title: String
   let subtitle: String
   let imageUrl: URL?
+  let webViewURL: URL?
 }
 
 nonisolated struct MainHotTrendFilter: Equatable, Identifiable, Sendable {
