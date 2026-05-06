@@ -11,7 +11,10 @@
       "Bash(xcodebuild test *)",
       "Bash(xcodebuild -project \"Oh-My-Filter.xcodeproj\" -scheme \"Oh-My-Filter\" -destination \"generic/platform=iOS Simulator\" build)",
       "Bash(python3 *)",
-      "Bash(swift *)"
+      "Bash(swift *)",
+      "Bash(xcodebuild -scheme \"Oh-My-Filter\" -destination \"platform=iOS Simulator,name=iPhone 17\" -quiet build)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   },
   "enabledPlugins": {
