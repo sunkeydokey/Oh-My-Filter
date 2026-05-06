@@ -6,6 +6,7 @@ nonisolated enum FilterApiRouter: ApiRouter {
   case uploadFiles
   case detail(filterID: String)
   case update(filterID: String)
+  case createComment(filterID: String)
 
   var url: String {
     switch self {
@@ -17,6 +18,8 @@ nonisolated enum FilterApiRouter: ApiRouter {
       EndPoint.Filters.detail(filterID: filterID)
     case let .update(filterID):
       EndPoint.Filters.detail(filterID: filterID)
+    case let .createComment(filterID):
+      EndPoint.Filters.comments(filterID: filterID)
     }
   }
 
@@ -24,7 +27,7 @@ nonisolated enum FilterApiRouter: ApiRouter {
     switch self {
     case .list, .detail:
       .get
-    case .create, .uploadFiles:
+    case .create, .uploadFiles, .createComment:
       .post
     case .update:
       .put
@@ -35,7 +38,7 @@ nonisolated enum FilterApiRouter: ApiRouter {
     switch self {
     case .uploadFiles:
       .multipart
-    case .list, .create, .detail, .update:
+    case .list, .create, .detail, .update, .createComment:
       .json
     }
   }

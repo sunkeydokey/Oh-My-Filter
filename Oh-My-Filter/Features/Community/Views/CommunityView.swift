@@ -35,10 +35,28 @@ struct CommunityView: View {
   }
 
   private var header: some View {
-    Text("Community")
-      .font(.custom(TypographyToken.mulgyeolTitle1.fontName, size: 24, relativeTo: .title2))
-      .foregroundStyle(ColorToken.grayScale0.color)
-      .frame(maxWidth: .infinity, alignment: .leading)
+    HStack {
+      Text("Community")
+        .font(.custom(TypographyToken.mulgyeolTitle1.fontName, size: 24, relativeTo: .title2))
+        .foregroundStyle(ColorToken.grayScale0.color)
+
+      Spacer()
+
+      Button {
+        Task {
+          await viewModel.send(.createPostTapped)
+        }
+      } label: {
+        Image(systemName: "square.and.pencil")
+          .font(.system(size: 18, weight: .semibold))
+          .foregroundStyle(ColorToken.grayScale0.color)
+          .frame(width: 38, height: 38)
+          .background(ColorToken.brandBlackSprout.color, in: Circle())
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("게시글 작성")
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   private var searchBar: some View {

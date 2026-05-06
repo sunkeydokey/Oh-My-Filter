@@ -5,6 +5,9 @@ nonisolated struct FilterDetailState: Sendable {
   var alert: FilterDetailAlert?
   var paymentRequest: PortonePaymentRequest?
   var isPaymentProcessing = false
+  var expandedReplyCommentIDs: Set<String> = []
+  var commentText = ""
+  var replyingToCommentID: String?
 
   var detail: FilterDetail? {
     switch phase {

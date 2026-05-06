@@ -3,6 +3,7 @@ import OSLog
 
 actor LiveFilterDetailService: FilterDetailServicing {
   private let networkManager: any AuthenticatedNetworkManaging
+  private let sharedCommentService: any SharedCommentServicing
   private let decoder: JSONDecoder
   private static let logger = Logger(
     subsystem: Bundle.main.bundleIdentifier ?? "Oh-My-Filter",
@@ -11,9 +12,11 @@ actor LiveFilterDetailService: FilterDetailServicing {
 
   init(
     networkManager: any AuthenticatedNetworkManaging,
-    decoder: JSONDecoder = JSONDecoder()
+    decoder: JSONDecoder = JSONDecoder(),
+    sharedCommentService: (any SharedCommentServicing)? = nil
   ) {
     self.networkManager = networkManager
+    self.sharedCommentService = sharedCommentService ?? LiveSharedCommentService(networkManager: networkManager, decoder: decoder)
     let configuredDecoder = decoder
     configuredDecoder.keyDecodingStrategy = .convertFromSnakeCase
     self.decoder = configuredDecoder
@@ -53,10 +56,37 @@ actor LiveFilterDetailService: FilterDetailServicing {
     }
   }
 
+  func createComment(filterID: String, parentCommentID: String?, content: String) async throws -> CommentReply {
+    guard filterID.isEmpty == false else {
+      throw FilterDetailServiceError.invalidResponse
+    }
+
+    do {
+      return try await sharedCommentService.createComment(
+        router: FilterApiRouter.createComment(filterID: filterID),
+        parentCommentID: parentCommentID,
+        content: content
+      )
+    } catch let error as SharedCommentServiceError {
+      throw mappedCommentError(error)
+    }
+  }
+
   private func mappedNetworkError(_ error: NetworkError) -> FilterDetailServiceError {
     switch error {
     case .invalidRequest, .invalidResponse:
       .invalidResponse
+    case .transport:
+      .transport
+    }
+  }
+
+  private func mappedCommentError(_ error: SharedCommentServiceError) -> FilterDetailServiceError {
+    switch error {
+    case .invalidRequest, .invalidResponse:
+      .invalidResponse
+    case .notFound, .permissionDenied, .serverError:
+      .serverError
     case .transport:
       .transport
     }
@@ -133,39 +163,6 @@ private extension FilterValuesDTO {
       shadows: shadows ?? FilterValues.neutral.shadows,
       temperature: temperature ?? FilterValues.neutral.temperature,
       blackPoint: blackPoint ?? FilterValues.neutral.blackPoint
-    )
-  }
-}
-
-private extension FilterCommentDTO {
-  nonisolated func toDomain() -> FilterDetailComment {
-    FilterDetailComment(
-      id: commentId,
-      user: user.toCommentUser(),
-      content: content,
-      createdAt: createdAt,
-      replies: replies.map { $0.toDomain() }
-    )
-  }
-}
-
-private extension FilterReplyDTO {
-  nonisolated func toDomain() -> FilterDetailReply {
-    FilterDetailReply(
-      id: replyId,
-      user: user.toCommentUser(),
-      content: content,
-      createdAt: createdAt
-    )
-  }
-}
-
-private extension Optional where Wrapped == FilterDetailUserDTO {
-  nonisolated func toCommentUser() -> FilterDetailCommentUser {
-    FilterDetailCommentUser(
-      id: self?.userId ?? "",
-      nick: self?.nick ?? "알 수 없음",
-      profileImageURL: AuthenticatedRemoteImageSupport.url(from: self?.profileImage)
     )
   }
 }

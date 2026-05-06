@@ -4,7 +4,15 @@ struct FilterDetailLoadedView: View {
   let detail: FilterDetail
   let previewState: FilterDetailPreviewState
   let isPaymentProcessing: Bool
+  let expandedReplyCommentIDs: Set<String>
+  let replyingToCommentID: String?
+  let commentText: String
   let action: () -> Void
+  let onCommentTextChanged: (String) -> Void
+  let onSubmitComment: () -> Void
+  let onReply: (String) -> Void
+  let onCancelReply: () -> Void
+  let onToggleReplies: (String) -> Void
 
   var body: some View {
     ScrollView {
@@ -45,7 +53,17 @@ struct FilterDetailLoadedView: View {
           .foregroundStyle(ColorToken.grayScale45.color)
           .fixedSize(horizontal: false, vertical: true)
 
-        FilterDetailCommentsView(comments: detail.comments)
+        SharedCommentSectionView(
+          comments: detail.comments,
+          expandedReplyCommentIDs: expandedReplyCommentIDs,
+          replyingToCommentID: replyingToCommentID,
+          commentText: commentText,
+          onTextChanged: onCommentTextChanged,
+          onSubmit: onSubmitComment,
+          onReply: onReply,
+          onCancelReply: onCancelReply,
+          onToggleReplies: onToggleReplies
+        )
       }
       .padding(.horizontal, 20)
       .padding(.bottom, 40)

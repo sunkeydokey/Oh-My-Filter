@@ -59,8 +59,18 @@ struct AuthenticatedRootView: View {
           }
           .navigationDestination(for: CommunityRoute.self) { route in
             switch route {
+            case .postCreate:
+              CommunityPostView(mode: .create) { route in
+                communityPath.append(route)
+              }
             case let .postDetail(postID):
-              PostDetailView(postID: postID)
+              CommunityPostView(mode: .detail(postID: postID)) { route in
+                communityPath.append(route)
+              }
+            case let .postEdit(postID):
+              CommunityPostView(mode: .edit(postID: postID)) { route in
+                communityPath.append(route)
+              }
             case let .videoDetail(video):
               VideoPlayerView(video: video)
             }

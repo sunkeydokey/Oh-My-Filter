@@ -156,6 +156,10 @@ struct CommunityViewModelTests {
     await viewModel.send(.routeHandled)
     await viewModel.send(.videoTapped(.first))
     #expect(viewModel.state.route == .videoDetail(video: .first))
+
+    await viewModel.send(.routeHandled)
+    await viewModel.send(.createPostTapped)
+    #expect(viewModel.state.route == .postCreate)
   }
 }
 
@@ -163,6 +167,14 @@ private actor ControlledCommunityUseCase: CommunityFeedUseCase {
   private var postContinuations: [CheckedContinuation<CommunityPostPage, Error>] = []
   private var videoContinuations: [CheckedContinuation<CommunityVideoPage, Error>] = []
   private(set) var postRequestCount = 0
+
+  func loadCurrentUserID() async throws -> String {
+    "user-1"
+  }
+
+  func createPost(draft: CommunityPostDraft, newImages: [PhotoPickerUploadSelection]) async throws -> CommunityPost {
+    .first
+  }
 
   func loadPosts(nextCursor: String?, limit: Int) async throws -> CommunityPostPage {
     postRequestCount += 1
@@ -187,6 +199,20 @@ private actor ControlledCommunityUseCase: CommunityFeedUseCase {
 
   func loadPostDetail(postID: String) async throws -> CommunityPost {
     .first
+  }
+
+  func updatePost(postID: String, draft: CommunityPostDraft, newImages: [PhotoPickerUploadSelection]) async throws -> CommunityPost {
+    .first
+  }
+
+  func deletePost(postID: String) async throws {}
+
+  func toggleLike(postID: String, status: Bool) async throws -> Bool {
+    status
+  }
+
+  func createComment(postID: String, parentCommentID: String?, content: String) async throws -> CommunityReply {
+    CommunityReply(id: "reply-1", content: content, createdAt: "2024-07-21T14:00:00.000Z", creator: .creator)
   }
 
   func resumeNextPosts(with page: CommunityPostPage) {
@@ -215,6 +241,14 @@ private actor QueueCommunityUseCase: CommunityFeedUseCase {
   private var searchResults: [Result<[CommunityPost], Error>] = []
   private(set) var searchTitles: [String] = []
   private(set) var videoNextCursors: [String?] = []
+
+  func loadCurrentUserID() async throws -> String {
+    "user-1"
+  }
+
+  func createPost(draft: CommunityPostDraft, newImages: [PhotoPickerUploadSelection]) async throws -> CommunityPost {
+    .first
+  }
 
   func enqueuePosts(_ result: Result<CommunityPostPage, Error>) {
     postResults.append(result)
@@ -249,6 +283,20 @@ private actor QueueCommunityUseCase: CommunityFeedUseCase {
   func loadPostDetail(postID: String) async throws -> CommunityPost {
     .first
   }
+
+  func updatePost(postID: String, draft: CommunityPostDraft, newImages: [PhotoPickerUploadSelection]) async throws -> CommunityPost {
+    .first
+  }
+
+  func deletePost(postID: String) async throws {}
+
+  func toggleLike(postID: String, status: Bool) async throws -> Bool {
+    status
+  }
+
+  func createComment(postID: String, parentCommentID: String?, content: String) async throws -> CommunityReply {
+    CommunityReply(id: "reply-1", content: content, createdAt: "2024-07-21T14:00:00.000Z", creator: .creator)
+  }
 }
 
 private extension CommunityCreator {
@@ -270,9 +318,10 @@ private extension CommunityPost {
     content: "First content",
     creator: .creator,
     imageURLs: [],
+    imagePaths: [],
     isLiked: false,
     likeCount: 1,
-    commentCount: 0,
+    comments: [],
     createdAt: "2024-07-21T14:00:00.000Z",
     updatedAt: "2024-07-21T15:30:00.000Z"
   )
@@ -284,9 +333,10 @@ private extension CommunityPost {
     content: "Second content",
     creator: .creator,
     imageURLs: [],
+    imagePaths: [],
     isLiked: true,
     likeCount: 2,
-    commentCount: 0,
+    comments: [],
     createdAt: "2024-07-21T14:00:00.000Z",
     updatedAt: "2024-07-21T15:30:00.000Z"
   )
@@ -298,9 +348,10 @@ private extension CommunityPost {
     content: "Third content",
     creator: .creator,
     imageURLs: [],
+    imagePaths: [],
     isLiked: false,
     likeCount: 3,
-    commentCount: 0,
+    comments: [],
     createdAt: "2024-07-21T14:00:00.000Z",
     updatedAt: "2024-07-21T15:30:00.000Z"
   )
@@ -312,9 +363,10 @@ private extension CommunityPost {
     content: "Fourth content",
     creator: .creator,
     imageURLs: [],
+    imagePaths: [],
     isLiked: false,
     likeCount: 4,
-    commentCount: 0,
+    comments: [],
     createdAt: "2024-07-21T14:00:00.000Z",
     updatedAt: "2024-07-21T15:30:00.000Z"
   )
@@ -326,9 +378,10 @@ private extension CommunityPost {
     content: "Fifth content",
     creator: .creator,
     imageURLs: [],
+    imagePaths: [],
     isLiked: false,
     likeCount: 5,
-    commentCount: 0,
+    comments: [],
     createdAt: "2024-07-21T14:00:00.000Z",
     updatedAt: "2024-07-21T15:30:00.000Z"
   )

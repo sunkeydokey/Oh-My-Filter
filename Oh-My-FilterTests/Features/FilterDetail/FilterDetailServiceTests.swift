@@ -38,6 +38,19 @@ struct FilterDetailServiceTests {
     #expect(dto.comments.isEmpty)
   }
 
+  @Test("filter comment creation uses filter comment endpoint")
+  func filterCommentCreationUsesEndpoint() async throws {
+    let manager = MockFilterDetailNetworkManager()
+    let service = LiveFilterDetailService(networkManager: manager)
+
+    await manager.enqueueResponse(NetworkResponse(data: Self.commentData, statusCode: 200))
+    let comment = try await service.createComment(filterID: "filter-123", parentCommentID: nil, content: "댓글")
+
+    #expect(await manager.capturedURLs == ["http://filter.sesac.kr:42598/v1/filters/filter-123/comments"])
+    #expect(comment.content == "댓글")
+    #expect(comment.creator.nick == "sesac")
+  }
+
   @Test("network failures map to transport")
   func networkFailuresMapToTransport() async {
     let manager = MockFilterDetailNetworkManager()
@@ -205,6 +218,21 @@ private extension FilterDetailServiceTests {
       "title": "청록새록",
       "files": [],
       "metadata": { "camera": "iPhone" }
+    }
+    """.utf8
+  )
+
+  static let commentData = Data(
+    """
+    {
+      "comment_id": "comment-2",
+      "content": "댓글",
+      "createdAt": "2026-02-08T15:55:45.508Z",
+      "creator": {
+        "user_id": "user-2",
+        "nick": "sesac",
+        "hashTags": []
+      }
     }
     """.utf8
   )

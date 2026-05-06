@@ -150,7 +150,7 @@ private extension FilterResponseDTO {
         iso: nil
       ),
       filterValues: filterValues?.toDomainForFilterMake() ?? .neutral,
-      comments: comments.map { $0.toDomainForFilterMake() },
+      comments: comments.map { $0.toDomain() },
       isDownloaded: isDownloaded,
       isLiked: isLiked,
       likeCount: likeCount,
@@ -191,37 +191,6 @@ private extension FilterValuesDTO {
       shadows: shadows ?? FilterValues.neutral.shadows,
       temperature: temperature ?? FilterValues.neutral.temperature,
       blackPoint: blackPoint ?? FilterValues.neutral.blackPoint
-    )
-  }
-}
-
-private extension FilterCommentDTO {
-  nonisolated func toDomainForFilterMake() -> FilterDetailComment {
-    FilterDetailComment(
-      id: commentId,
-      user: FilterDetailCommentUser(
-        id: user?.userId ?? "",
-        nick: user?.nick ?? "알 수 없음",
-        profileImageURL: AuthenticatedRemoteImageSupport.url(from: user?.profileImage)
-      ),
-      content: content,
-      createdAt: createdAt,
-      replies: replies.map { $0.toDomainForFilterMake() }
-    )
-  }
-}
-
-private extension FilterReplyDTO {
-  nonisolated func toDomainForFilterMake() -> FilterDetailReply {
-    FilterDetailReply(
-      id: replyId,
-      user: FilterDetailCommentUser(
-        id: user?.userId ?? "",
-        nick: user?.nick ?? "알 수 없음",
-        profileImageURL: AuthenticatedRemoteImageSupport.url(from: user?.profileImage)
-      ),
-      content: content,
-      createdAt: createdAt
     )
   }
 }

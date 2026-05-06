@@ -2,6 +2,7 @@ import Foundation
 
 nonisolated protocol FilterDetailServicing: Sendable {
   func loadFilterDetail(filterID: String) async throws -> FilterDetail
+  func createComment(filterID: String, parentCommentID: String?, content: String) async throws -> CommentReply
 }
 
 nonisolated enum FilterDetailServiceError: Error, Equatable, LocalizedError, Sendable {

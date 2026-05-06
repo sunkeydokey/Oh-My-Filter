@@ -7,10 +7,10 @@ nonisolated struct FilterResponseDTO: Decodable, Sendable {
   let introduction: String?
   let description: String?
   let files: [String]
-  let creator: FilterDetailUserDTO?
+  let creator: CommentUserDTO?
   let metadata: FilterMetadataDTO?
   let filterValues: FilterValuesDTO?
-  let comments: [FilterCommentDTO]
+  let comments: [CommentDTO]
   let isDownloaded: Bool
   let isLiked: Bool
   let likeCount: Int
@@ -34,10 +34,10 @@ nonisolated struct FilterResponseDTO: Decodable, Sendable {
     introduction = try container.decodeIfPresent(String.self, forKey: .introduction)
     description = try container.decodeIfPresent(String.self, forKey: .description)
     files = (try? container.decode([String].self, forKey: .files)) ?? []
-    creator = try container.decodeIfPresent(FilterDetailUserDTO.self, forKey: .creator)
+    creator = try container.decodeIfPresent(CommentUserDTO.self, forKey: .creator)
     metadata = try container.decodeIfPresent(FilterMetadataDTO.self, forKey: .metadata)
     filterValues = try container.decodeIfPresent(FilterValuesDTO.self, forKey: .filterValues)
-    comments = (try? container.decode([FilterCommentDTO].self, forKey: .comments)) ?? []
+    comments = (try? container.decode([CommentDTO].self, forKey: .comments)) ?? []
     isDownloaded = try container.decodeFlexibleBool(forKey: .isDownloaded) ?? false
     isLiked = try container.decodeFlexibleBool(forKey: .isLiked) ?? false
     likeCount = try container.decodeFlexibleInt(forKey: .likeCount) ?? 0
@@ -71,33 +71,7 @@ nonisolated struct FilterResponseDTO: Decodable, Sendable {
   }
 }
 
-nonisolated struct FilterDetailUserDTO: Decodable, Sendable {
-  let userId: String
-  let nick: String
-  let name: String?
-  let profileImage: String?
-  let introduction: String?
-  let hashTags: [String]?
-
-  nonisolated init(from decoder: Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-    userId = try container.decodeFlexibleString(forKey: .userId) ?? ""
-    nick = try container.decodeIfPresent(String.self, forKey: .nick) ?? ""
-    name = try container.decodeIfPresent(String.self, forKey: .name)
-    profileImage = try container.decodeIfPresent(String.self, forKey: .profileImage)
-    introduction = try container.decodeIfPresent(String.self, forKey: .introduction)
-    hashTags = try container.decodeIfPresent([String].self, forKey: .hashTags)
-  }
-
-  private enum CodingKeys: String, CodingKey {
-    case userId
-    case nick
-    case name
-    case profileImage
-    case introduction
-    case hashTags
-  }
-}
+typealias FilterDetailUserDTO = CommentUserDTO
 
 nonisolated struct FilterMetadataDTO: Decodable, Sendable {
   let camera: String?
@@ -140,52 +114,8 @@ nonisolated struct FilterValuesDTO: Decodable, Sendable {
   }
 }
 
-nonisolated struct FilterCommentDTO: Decodable, Sendable {
-  let commentId: String
-  let user: FilterDetailUserDTO?
-  let content: String
-  let createdAt: String?
-  let replies: [FilterReplyDTO]
-
-  nonisolated init(from decoder: Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-    commentId = try container.decodeFlexibleString(forKey: .commentId) ?? UUID().uuidString
-    user = try container.decodeIfPresent(FilterDetailUserDTO.self, forKey: .user)
-    content = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
-    createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
-    replies = (try? container.decode([FilterReplyDTO].self, forKey: .replies)) ?? []
-  }
-
-  private enum CodingKeys: String, CodingKey {
-    case commentId
-    case user
-    case content
-    case createdAt
-    case replies
-  }
-}
-
-nonisolated struct FilterReplyDTO: Decodable, Sendable {
-  let replyId: String
-  let user: FilterDetailUserDTO?
-  let content: String
-  let createdAt: String?
-
-  nonisolated init(from decoder: Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-    replyId = try container.decodeFlexibleString(forKey: .replyId) ?? UUID().uuidString
-    user = try container.decodeIfPresent(FilterDetailUserDTO.self, forKey: .user)
-    content = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
-    createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
-  }
-
-  private enum CodingKeys: String, CodingKey {
-    case replyId
-    case user
-    case content
-    case createdAt
-  }
-}
+typealias FilterCommentDTO = CommentDTO
+typealias FilterReplyDTO = CommentReplyDTO
 
 private extension KeyedDecodingContainer {
   nonisolated func decodeFlexibleString(forKey key: Key) throws -> String? {
