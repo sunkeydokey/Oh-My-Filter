@@ -66,6 +66,20 @@ final class FilterDetailViewModel {
       await handlePaymentResponse(response)
     case .dismissPaymentSheet:
       state.paymentRequest = nil
+    case let .commentTextChanged(text):
+      state.commentText = text
+    case .submitComment:
+      await submitComment()
+    case let .replyTapped(commentID):
+      state.replyingToCommentID = commentID
+    case .cancelReply:
+      state.replyingToCommentID = nil
+    case let .toggleReplies(commentID):
+      if state.expandedReplyCommentIDs.contains(commentID) {
+        state.expandedReplyCommentIDs.remove(commentID)
+      } else {
+        state.expandedReplyCommentIDs.insert(commentID)
+      }
     case .dismissAlert, .confirmAlert:
       state.alert = nil
     }
@@ -77,6 +91,7 @@ final class FilterDetailViewModel {
 
     do {
       let detail = try await useCase.loadFilterDetail(filterID: filterID)
+      state.expandedReplyCommentIDs = Set(detail.comments.map(\.id))
       state.phase = .loaded(detail, .rendering)
       await renderPreview(for: detail)
     } catch is CancellationError {
@@ -169,6 +184,37 @@ final class FilterDetailViewModel {
     }
   }
 
+  private func submitComment() async {
+    guard case let .loaded(detail, previewState) = state.phase else { return }
+
+    let content = state.commentText.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard content.isEmpty == false else { return }
+
+    do {
+      let created = try await useCase.createComment(
+        filterID: filterID,
+        parentCommentID: state.replyingToCommentID,
+        content: content
+      )
+      state.phase = .loaded(
+        detail.appending(createdComment: created, parentCommentID: state.replyingToCommentID),
+        previewState
+      )
+      if let replyingToCommentID = state.replyingToCommentID {
+        state.expandedReplyCommentIDs.insert(replyingToCommentID)
+      }
+      state.commentText = ""
+      state.replyingToCommentID = nil
+    } catch {
+      state.alert = FilterDetailAlert(
+        title: "댓글",
+        message: Self.fallbackMessage(for: error),
+        cancelTitle: "취소",
+        confirmTitle: "확인"
+      )
+    }
+  }
+
   private func showPaymentAlert(message: String) {
     state.alert = FilterDetailAlert(
       title: "필터 결제",
@@ -199,5 +245,55 @@ final class FilterDetailViewModel {
     }
 
     return "결제를 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."
+  }
+}
+
+private extension FilterDetail {
+  func appending(createdComment: CommentReply, parentCommentID: String?) -> FilterDetail {
+    let updatedComments: [Comment]
+    if let parentCommentID {
+      updatedComments = comments.map { comment in
+        guard comment.id == parentCommentID else { return comment }
+        return Comment(
+          id: comment.id,
+          content: comment.content,
+          createdAt: comment.createdAt,
+          creator: comment.creator,
+          replies: comment.replies + [createdComment]
+        )
+      }
+    } else {
+      updatedComments = comments + [
+        Comment(
+          id: createdComment.id,
+          content: createdComment.content,
+          createdAt: createdComment.createdAt,
+          creator: createdComment.creator,
+          replies: []
+        ),
+      ]
+    }
+
+    return FilterDetail(
+      id: id,
+      title: title,
+      category: category,
+      introduction: introduction,
+      description: description,
+      originalImageURL: originalImageURL,
+      fallbackFilteredImageURL: fallbackFilteredImageURL,
+      creator: creator,
+      metadata: metadata,
+      filterValues: filterValues,
+      comments: updatedComments,
+      isDownloaded: isDownloaded,
+      isLiked: isLiked,
+      likeCount: likeCount,
+      buyerCount: buyerCount,
+      price: price,
+      hashTags: hashTags,
+      createdAt: createdAt,
+      updatedAt: updatedAt
+    )
   }
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 
-struct CommunityCommentSectionView: View {
-  let comments: [CommunityComment]
+struct SharedCommentSectionView: View {
+  let comments: [Comment]
   let expandedReplyCommentIDs: Set<String>
   let replyingToCommentID: String?
   let commentText: String
@@ -14,7 +14,7 @@ struct CommunityCommentSectionView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       if comments.isEmpty {
-        CommunityEmptyCommentStateView()
+        SharedEmptyCommentStateView()
       } else {
         Text("댓글")
           .font(TypographyToken.pretendardBody1.font.weight(.bold))
@@ -22,7 +22,7 @@ struct CommunityCommentSectionView: View {
 
         LazyVStack(alignment: .leading, spacing: 0) {
           ForEach(comments) { comment in
-            CommunityCommentRowView(
+            SharedCommentRowView(
               comment: comment,
               isExpanded: expandedReplyCommentIDs.contains(comment.id),
               onReply: { onReply(comment.id) },
@@ -32,7 +32,7 @@ struct CommunityCommentSectionView: View {
         }
       }
 
-      CommunityCommentComposerView(
+      SharedCommentComposerView(
         text: commentText,
         replyingToCommentID: replyingToCommentID,
         onTextChanged: onTextChanged,
@@ -43,8 +43,8 @@ struct CommunityCommentSectionView: View {
   }
 }
 
-struct CommunityCommentRowView: View {
-  let comment: CommunityComment
+private struct SharedCommentRowView: View {
+  let comment: Comment
   let isExpanded: Bool
   let onReply: () -> Void
   let onToggleReplies: () -> Void
@@ -52,7 +52,7 @@ struct CommunityCommentRowView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       HStack(alignment: .top, spacing: 10) {
-        CommunityCommentAvatarView(size: 32)
+        SharedCommentAvatarView(size: 32)
 
         VStack(alignment: .leading, spacing: 5) {
           Text(comment.creator.nick)
@@ -65,8 +65,8 @@ struct CommunityCommentRowView: View {
             .lineSpacing(3)
             .fixedSize(horizontal: false, vertical: true)
 
-          CommunityCommentActionRowView(
-            timestamp: comment.createdAt.communityDisplayDate,
+          SharedCommentActionRowView(
+            timestamp: comment.createdAt.commentDisplayDate,
             replyTitle: "답글 달기",
             onReply: onReply
           )
@@ -75,7 +75,7 @@ struct CommunityCommentRowView: View {
       .padding(.vertical, 12)
 
       if comment.replies.isEmpty == false {
-        CommunityReplyGroupView(
+        SharedReplyGroupView(
           replies: comment.replies,
           isExpanded: isExpanded,
           onToggle: onToggleReplies
@@ -88,8 +88,8 @@ struct CommunityCommentRowView: View {
   }
 }
 
-struct CommunityReplyGroupView: View {
-  let replies: [CommunityReply]
+private struct SharedReplyGroupView: View {
+  let replies: [CommentReply]
   let isExpanded: Bool
   let onToggle: () -> Void
 
@@ -102,7 +102,7 @@ struct CommunityReplyGroupView: View {
 
       if isExpanded {
         ForEach(replies) { reply in
-          CommunityReplyRowView(reply: reply)
+          SharedReplyRowView(reply: reply)
         }
       }
     }
@@ -111,12 +111,12 @@ struct CommunityReplyGroupView: View {
   }
 }
 
-struct CommunityReplyRowView: View {
-  let reply: CommunityReply
+private struct SharedReplyRowView: View {
+  let reply: CommentReply
 
   var body: some View {
     HStack(alignment: .top, spacing: 8) {
-      CommunityCommentAvatarView(size: 24)
+      SharedCommentAvatarView(size: 24)
 
       VStack(alignment: .leading, spacing: 5) {
         Text(reply.creator.nick)
@@ -132,7 +132,7 @@ struct CommunityReplyRowView: View {
   }
 }
 
-struct CommunityCommentActionRowView: View {
+private struct SharedCommentActionRowView: View {
   let timestamp: String
   let replyTitle: String
   let onReply: () -> Void
@@ -151,7 +151,7 @@ struct CommunityCommentActionRowView: View {
   }
 }
 
-struct CommunityCommentComposerView: View {
+private struct SharedCommentComposerView: View {
   let text: String
   let replyingToCommentID: String?
   let onTextChanged: (String) -> Void
@@ -201,7 +201,7 @@ struct CommunityCommentComposerView: View {
   }
 }
 
-struct CommunityEmptyCommentStateView: View {
+private struct SharedEmptyCommentStateView: View {
   var body: some View {
     VStack(spacing: 8) {
       Image(systemName: "message.circle")
@@ -217,7 +217,7 @@ struct CommunityEmptyCommentStateView: View {
   }
 }
 
-private struct CommunityCommentAvatarView: View {
+private struct SharedCommentAvatarView: View {
   let size: CGFloat
 
   var body: some View {
@@ -233,10 +233,11 @@ private struct CommunityCommentAvatarView: View {
 }
 
 private extension String {
-  var communityDisplayDate: String {
+  var commentDisplayDate: String {
     if let date = try? Date(self, strategy: .iso8601) {
       return date.formatted(date: .numeric, time: .omitted)
     }
     return self
   }
 }
+

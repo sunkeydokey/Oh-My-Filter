@@ -66,7 +66,15 @@ struct FilterDetailView: View {
           filteredImageURL: previous.fallbackFilteredImageURL
         ),
         isPaymentProcessing: viewModel.state.isPaymentProcessing,
-        action: downloadAction
+        expandedReplyCommentIDs: viewModel.state.expandedReplyCommentIDs,
+        replyingToCommentID: viewModel.state.replyingToCommentID,
+        commentText: viewModel.state.commentText,
+        action: downloadAction,
+        onCommentTextChanged: commentTextChanged,
+        onSubmitComment: submitComment,
+        onReply: reply,
+        onCancelReply: cancelReply,
+        onToggleReplies: toggleReplies
       )
       .overlay {
         ProgressView()
@@ -77,7 +85,15 @@ struct FilterDetailView: View {
         detail: detail,
         previewState: previewState,
         isPaymentProcessing: viewModel.state.isPaymentProcessing,
-        action: downloadAction
+        expandedReplyCommentIDs: viewModel.state.expandedReplyCommentIDs,
+        replyingToCommentID: viewModel.state.replyingToCommentID,
+        commentText: viewModel.state.commentText,
+        action: downloadAction,
+        onCommentTextChanged: commentTextChanged,
+        onSubmitComment: submitComment,
+        onReply: reply,
+        onCancelReply: cancelReply,
+        onToggleReplies: toggleReplies
       )
     case let .failed(message, previous: nil):
       FilterDetailErrorView(message: message, retryAction: retry)
@@ -89,7 +105,15 @@ struct FilterDetailView: View {
           filteredImageURL: previous.fallbackFilteredImageURL
         ),
         isPaymentProcessing: viewModel.state.isPaymentProcessing,
-        action: downloadAction
+        expandedReplyCommentIDs: viewModel.state.expandedReplyCommentIDs,
+        replyingToCommentID: viewModel.state.replyingToCommentID,
+        commentText: viewModel.state.commentText,
+        action: downloadAction,
+        onCommentTextChanged: commentTextChanged,
+        onSubmitComment: submitComment,
+        onReply: reply,
+        onCancelReply: cancelReply,
+        onToggleReplies: toggleReplies
       )
       .overlay(alignment: .top) {
         Text(message)
@@ -112,6 +136,36 @@ struct FilterDetailView: View {
   private func downloadAction() {
     Task {
       await viewModel.send(.tapDownload)
+    }
+  }
+
+  private func commentTextChanged(_ text: String) {
+    Task {
+      await viewModel.send(.commentTextChanged(text))
+    }
+  }
+
+  private func submitComment() {
+    Task {
+      await viewModel.send(.submitComment)
+    }
+  }
+
+  private func reply(commentID: String) {
+    Task {
+      await viewModel.send(.replyTapped(commentID: commentID))
+    }
+  }
+
+  private func cancelReply() {
+    Task {
+      await viewModel.send(.cancelReply)
+    }
+  }
+
+  private func toggleReplies(commentID: String) {
+    Task {
+      await viewModel.send(.toggleReplies(commentID: commentID))
     }
   }
 

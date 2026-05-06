@@ -20,14 +20,7 @@ nonisolated enum CommunityTab: String, CaseIterable, Sendable {
   }
 }
 
-nonisolated struct CommunityCreator: Equatable, Sendable {
-  let id: String
-  let nick: String
-  let name: String?
-  let profileImageURL: URL?
-  let introduction: String?
-  let hashTags: [String]
-}
+typealias CommunityCreator = CommentUser
 
 nonisolated struct CommunityPost: Equatable, Identifiable, Sendable {
   let id: String
@@ -52,20 +45,8 @@ nonisolated struct CommunityPost: Equatable, Identifiable, Sendable {
   }
 }
 
-nonisolated struct CommunityComment: Equatable, Identifiable, Sendable {
-  let id: String
-  let content: String
-  let createdAt: String
-  let creator: CommunityCreator
-  let replies: [CommunityReply]
-}
-
-nonisolated struct CommunityReply: Equatable, Identifiable, Sendable {
-  let id: String
-  let content: String
-  let createdAt: String
-  let creator: CommunityCreator
-}
+typealias CommunityComment = Comment
+typealias CommunityReply = CommentReply
 
 nonisolated struct CommunityPostDraft: Equatable, Sendable {
   var category: String

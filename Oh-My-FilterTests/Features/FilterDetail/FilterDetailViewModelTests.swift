@@ -163,6 +163,22 @@ struct FilterDetailViewModelTests {
     #expect(viewModel.state.alert?.message == "결제 검증에 실패했습니다. 잠시 후 다시 시도해 주세요.")
   }
 
+  @Test("reply submit appends filter reply and expands group")
+  func replySubmitAppendsFilterReply() async {
+    let useCase = MockFilterDetailUseCase(result: .success(.sampleWithComment))
+    let renderer = MockImageFilterRenderer(result: .success(.sample))
+    let viewModel = FilterDetailViewModel(filterID: "filter-123", useCase: useCase, renderer: renderer)
+
+    await viewModel.send(.task)
+    await viewModel.send(.replyTapped(commentID: "comment-1"))
+    await viewModel.send(.commentTextChanged("답글입니다"))
+    await viewModel.send(.submitComment)
+
+    #expect(viewModel.state.detail?.comments.first?.replies.map(\.content) == ["답글입니다"])
+    #expect(viewModel.state.expandedReplyCommentIDs.contains("comment-1"))
+    #expect(viewModel.state.commentText.isEmpty)
+  }
+
   private func paymentReadyViewModel(
     paymentResult: Result<Void, Error> = .success(())
   ) async -> FilterDetailViewModel {
@@ -185,9 +201,24 @@ struct FilterDetailViewModelTests {
 
 private struct MockFilterDetailUseCase: FilterDetailUseCase {
   let result: Result<FilterDetail, Error>
+  var createdComment = CommentReply(
+    id: "reply-1",
+    content: "답글입니다",
+    createdAt: "2026-02-08T15:55:45.508Z",
+    creator: .commentUser
+  )
 
   func loadFilterDetail(filterID: String) async throws -> FilterDetail {
     try result.get()
+  }
+
+  func createComment(filterID: String, parentCommentID: String?, content: String) async throws -> CommentReply {
+    CommentReply(
+      id: createdComment.id,
+      content: content,
+      createdAt: createdComment.createdAt,
+      creator: createdComment.creator
+    )
   }
 }
 
@@ -245,6 +276,26 @@ private actor SequencedFilterDetailUseCase: FilterDetailUseCase {
 
     return try results.removeFirst().get()
   }
+
+  func createComment(filterID: String, parentCommentID: String?, content: String) async throws -> CommentReply {
+    CommentReply(
+      id: "reply-1",
+      content: content,
+      createdAt: "2026-02-08T15:55:45.508Z",
+      creator: .commentUser
+    )
+  }
+}
+
+private extension CommentUser {
+  static let commentUser = CommentUser(
+    id: "user-2",
+    nick: "andev",
+    name: nil,
+    profileImageURL: nil,
+    introduction: nil,
+    hashTags: []
+  )
 }
 
 private extension FilterDetail {
@@ -315,6 +366,50 @@ private extension FilterDetail {
     likeCount: 0,
     buyerCount: 0,
     price: 2000,
+    hashTags: [],
+    createdAt: nil,
+    updatedAt: nil
+  )
+
+  static let sampleWithComment = FilterDetail(
+    id: "filter-123",
+    title: "청록새록",
+    category: "풍경",
+    introduction: "맑은 청록빛",
+    description: "설명",
+    originalImageURL: URL(string: "https://example.com/original.jpg"),
+    fallbackFilteredImageURL: URL(string: "https://example.com/filtered.jpg"),
+    creator: FilterDetailCreator(
+      id: "user-1",
+      nick: "SESAC YOON",
+      name: "윤새싹",
+      profileImageURL: nil,
+      introduction: nil,
+      hashTags: []
+    ),
+    metadata: FilterDetailMetadata(
+      camera: "iPhone",
+      lens: nil,
+      focalLength: nil,
+      aperture: nil,
+      shutterSpeed: nil,
+      iso: nil
+    ),
+    filterValues: .neutral,
+    comments: [
+      Comment(
+        id: "comment-1",
+        content: "댓글입니다",
+        createdAt: "2026-02-08T14:55:45.508Z",
+        creator: .commentUser,
+        replies: []
+      ),
+    ],
+    isDownloaded: true,
+    isLiked: false,
+    likeCount: 0,
+    buyerCount: 0,
+    price: 0,
     hashTags: [],
     createdAt: nil,
     updatedAt: nil

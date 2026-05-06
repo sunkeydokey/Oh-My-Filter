@@ -12,7 +12,7 @@ nonisolated struct FilterDetail: Equatable, Identifiable, Sendable {
   let creator: FilterDetailCreator
   let metadata: FilterDetailMetadata
   let filterValues: FilterValues
-  let comments: [FilterDetailComment]
+  let comments: [Comment]
   let isDownloaded: Bool
   let isLiked: Bool
   let likeCount: Int
@@ -135,27 +135,6 @@ nonisolated struct FilterValueDisplayItem: Equatable, Identifiable, Sendable {
   var valueText: String {
     value.formatted(.number.precision(.fractionLength(0 ... 2)))
   }
-}
-
-nonisolated struct FilterDetailComment: Equatable, Identifiable, Sendable {
-  let id: String
-  let user: FilterDetailCommentUser
-  let content: String
-  let createdAt: String?
-  let replies: [FilterDetailReply]
-}
-
-nonisolated struct FilterDetailReply: Equatable, Identifiable, Sendable {
-  let id: String
-  let user: FilterDetailCommentUser
-  let content: String
-  let createdAt: String?
-}
-
-nonisolated struct FilterDetailCommentUser: Equatable, Sendable {
-  let id: String
-  let nick: String
-  let profileImageURL: URL?
 }
 
 nonisolated struct RenderedFilterImages: Sendable {

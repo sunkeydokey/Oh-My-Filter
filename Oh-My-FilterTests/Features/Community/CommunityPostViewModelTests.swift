@@ -28,6 +28,23 @@ struct CommunityPostViewModelTests {
     #expect(state.visibleError(for: .category) == "사용할 수 없는 문자가 포함되어 있습니다")
   }
 
+  @Test("text input updates synchronously")
+  func textInputUpdatesSynchronously() {
+    let viewModel = CommunityPostViewModel(mode: .create, useCase: StubCommunityPostUseCase(post: .postWithComment))
+
+    viewModel.updateCategory("보정")
+    viewModel.updateTitle("제목")
+    viewModel.updateContent("안녕하세요")
+    viewModel.updateCommentText("댓글입니다")
+    viewModel.markFieldFocused(.content)
+
+    #expect(viewModel.state.draft.category == "보정")
+    #expect(viewModel.state.draft.title == "제목")
+    #expect(viewModel.state.draft.content == "안녕하세요")
+    #expect(viewModel.state.commentText == "댓글입니다")
+    #expect(viewModel.state.touchedFields.contains(.content))
+  }
+
   @Test("edit load pre-fills draft and detects dirty state")
   func editLoadPrefillsDraft() async {
     let useCase = StubCommunityPostUseCase(post: .postWithComment)

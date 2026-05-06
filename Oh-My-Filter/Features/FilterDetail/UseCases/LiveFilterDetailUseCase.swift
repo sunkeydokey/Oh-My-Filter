@@ -15,4 +15,8 @@ nonisolated struct LiveFilterDetailUseCase: FilterDetailUseCase {
   func loadFilterDetail(filterID: String) async throws -> FilterDetail {
     try await service.loadFilterDetail(filterID: filterID)
   }
+
+  func createComment(filterID: String, parentCommentID: String?, content: String) async throws -> CommentReply {
+    try await service.createComment(filterID: filterID, parentCommentID: parentCommentID, content: content)
+  }
 }

@@ -6,6 +6,7 @@ import UIKit
 struct CommunityPostView: View {
   @Environment(\.dismiss) private var dismiss
   @State private var viewModel: CommunityPostViewModel
+  @FocusState private var focusedField: CommunityPostField?
   let navigate: (CommunityRoute) -> Void
 
   init(
@@ -124,6 +125,10 @@ struct CommunityPostView: View {
       .padding(.bottom, viewModel.state.isDetail ? 24 : 96)
     }
     .scrollIndicators(.hidden)
+    .scrollDismissesKeyboard(.interactively)
+    .onTapGesture {
+      focusedField = nil
+    }
     .safeAreaInset(edge: .bottom) {
       if viewModel.state.isDetail == false {
         stickyPrimaryAction
@@ -209,16 +214,14 @@ struct CommunityPostView: View {
         TextField("카테고리", text: Binding(
           get: { viewModel.state.draft.category },
           set: { value in
-            Task {
-              await viewModel.send(.categoryChanged(value))
-            }
+            viewModel.updateCategory(value)
           }
         ))
         .submitLabel(.next)
+        .focused($focusedField, equals: .category)
         .onTapGesture {
-          Task {
-            await viewModel.send(.fieldFocused(.category))
-          }
+          focusedField = .category
+          viewModel.markFieldFocused(.category)
         }
       }
     }
@@ -237,16 +240,14 @@ struct CommunityPostView: View {
         TextField("제목", text: Binding(
           get: { viewModel.state.draft.title },
           set: { value in
-            Task {
-              await viewModel.send(.titleChanged(value))
-            }
+            viewModel.updateTitle(value)
           }
         ))
         .submitLabel(.next)
+        .focused($focusedField, equals: .title)
         .onTapGesture {
-          Task {
-            await viewModel.send(.fieldFocused(.title))
-          }
+          focusedField = .title
+          viewModel.markFieldFocused(.title)
         }
       }
     }
@@ -295,21 +296,19 @@ struct CommunityPostView: View {
           TextEditor(text: Binding(
             get: { viewModel.state.draft.content },
             set: { value in
-              Task {
-                await viewModel.send(.contentChanged(value))
-              }
+              viewModel.updateContent(value)
             }
           ))
           .font(TypographyToken.pretendardBody2.font)
           .foregroundStyle(ColorToken.grayScale0.color)
           .scrollContentBackground(.hidden)
+          .focused($focusedField, equals: .content)
           .padding(10)
           .frame(minHeight: 142)
           .background(ColorToken.brandBlackSprout.color, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
           .onTapGesture {
-            Task {
-              await viewModel.send(.fieldFocused(.content))
-            }
+            focusedField = .content
+            viewModel.markFieldFocused(.content)
           }
 
           if viewModel.state.draft.content.isEmpty {
@@ -433,15 +432,13 @@ struct CommunityPostView: View {
   }
 
   private var commentSection: some View {
-    CommunityCommentSectionView(
+    SharedCommentSectionView(
       comments: viewModel.state.post?.comments ?? [],
       expandedReplyCommentIDs: viewModel.state.expandedReplyCommentIDs,
       replyingToCommentID: viewModel.state.replyingToCommentID,
       commentText: viewModel.state.commentText,
       onTextChanged: { text in
-        Task {
-          await viewModel.send(.commentTextChanged(text))
-        }
+        viewModel.updateCommentText(text)
       },
       onSubmit: {
         Task {

@@ -3,6 +3,7 @@ import OSLog
 
 actor LiveCommunityService: CommunityServicing {
   private let networkManager: any AuthenticatedNetworkManaging
+  private let sharedCommentService: any SharedCommentServicing
   private let decoder: JSONDecoder
   private let imageUploadUseCase: any ImageUploadUseCase
   private static let defaultLatitude = 37.654215
@@ -15,9 +16,11 @@ actor LiveCommunityService: CommunityServicing {
   init(
     networkManager: any AuthenticatedNetworkManaging,
     decoder: JSONDecoder = JSONDecoder(),
-    imageUploadUseCase: any ImageUploadUseCase = LiveImageUploadUseCase()
+    imageUploadUseCase: any ImageUploadUseCase = LiveImageUploadUseCase(),
+    sharedCommentService: (any SharedCommentServicing)? = nil
   ) {
     self.networkManager = networkManager
+    self.sharedCommentService = sharedCommentService ?? LiveSharedCommentService(networkManager: networkManager, decoder: decoder)
     let configuredDecoder = decoder
     configuredDecoder.keyDecodingStrategy = .convertFromSnakeCase
     self.decoder = configuredDecoder
@@ -127,9 +130,15 @@ actor LiveCommunityService: CommunityServicing {
       throw CommunityServiceError.invalidRequest
     }
 
-    let body = CommunityPostCommentRequestDTO(parent_comment_id: parentCommentID, content: content)
-    let response = try await requestWithBody(CommunityApiRouter.createComment(postID: postID), body: body, parameters: .empty)
-    return try decode(CommunityPostReplyDTO.self, from: response).toDomain()
+    do {
+      return try await sharedCommentService.createComment(
+        router: CommunityApiRouter.createComment(postID: postID),
+        parentCommentID: parentCommentID,
+        content: content
+      )
+    } catch let error as SharedCommentServiceError {
+      throw mappedCommentError(error)
+    }
   }
 
   func loadVideos(nextCursor: String?, limit: Int) async throws -> CommunityVideoPage {
@@ -234,6 +243,23 @@ actor LiveCommunityService: CommunityServicing {
       .invalidRequest
     case .invalidResponse:
       .invalidResponse
+    case .transport:
+      .transport
+    }
+  }
+
+  private func mappedCommentError(_ error: SharedCommentServiceError) -> CommunityServiceError {
+    switch error {
+    case .invalidRequest:
+      .invalidRequest
+    case .invalidResponse:
+      .invalidResponse
+    case .notFound:
+      .notFound
+    case .permissionDenied:
+      .permissionDenied
+    case .serverError:
+      .serverError
     case .transport:
       .transport
     }

@@ -1,24 +1,24 @@
 import Foundation
 
-nonisolated struct CommunityPostPageDTO: Codable, Sendable {
+nonisolated struct CommunityPostPageDTO: Decodable, Sendable {
   let data: [CommunityPostDTO]
   let nextCursor: String
 }
 
-nonisolated struct CommunityPostListDTO: Codable, Sendable {
+nonisolated struct CommunityPostListDTO: Decodable, Sendable {
   let data: [CommunityPostDTO]
 }
 
-nonisolated struct CommunityPostDTO: Codable, Sendable {
+nonisolated struct CommunityPostDTO: Decodable, Sendable {
   let postId: String
   let category: String
   let title: String
   let content: String
-  let creator: CommunityCreatorDTO
+  let creator: CommentUserDTO
   let files: [String]
   let isLike: Bool
   let likeCount: Int
-  let comments: [CommunityPostCommentDTO]?
+  let comments: [CommentDTO]?
   let createdAt: String
   let updatedAt: String
 
@@ -28,38 +28,28 @@ nonisolated struct CommunityPostDTO: Codable, Sendable {
     self.category = try container.decode(String.self, forKey: .category)
     self.title = try container.decode(String.self, forKey: .title)
     self.content = try container.decode(String.self, forKey: .content)
-    self.creator = try container.decode(CommunityCreatorDTO.self, forKey: .creator)
+    self.creator = try container.decode(CommentUserDTO.self, forKey: .creator)
     self.files = try container.decodeIfPresent([String].self, forKey: .files) ?? []
     self.isLike = try container.decodeIfPresent(Bool.self, forKey: .isLike) ?? false
     self.likeCount = try container.decodeIfPresent(Int.self, forKey: .likeCount) ?? 0
-    self.comments = try container.decodeIfPresent([CommunityPostCommentDTO].self, forKey: .comments)
+    self.comments = try container.decodeIfPresent([CommentDTO].self, forKey: .comments)
     self.createdAt = try container.decode(String.self, forKey: .createdAt)
     self.updatedAt = try container.decode(String.self, forKey: .updatedAt)
   }
-}
 
-nonisolated struct CommunityCreatorDTO: Codable, Sendable {
-  let userId: String
-  let nick: String
-  let name: String?
-  let introduction: String?
-  let profileImage: String?
-  let hashTags: [String]?
-}
-
-nonisolated struct CommunityPostCommentDTO: Codable, Sendable {
-  let commentId: String
-  let content: String
-  let createdAt: String
-  let creator: CommunityCreatorDTO
-  let replies: [CommunityPostReplyDTO]?
-}
-
-nonisolated struct CommunityPostReplyDTO: Codable, Sendable {
-  let commentId: String
-  let content: String
-  let createdAt: String
-  let creator: CommunityCreatorDTO
+  private enum CodingKeys: String, CodingKey {
+    case postId
+    case category
+    case title
+    case content
+    case creator
+    case files
+    case isLike
+    case likeCount
+    case comments
+    case createdAt
+    case updatedAt
+  }
 }
 
 nonisolated struct CommunityPostRequestDTO: Encodable, Sendable {
@@ -77,11 +67,6 @@ nonisolated struct CommunityPostLikeRequestDTO: Encodable, Sendable {
 
 nonisolated struct CommunityPostLikeResponseDTO: Decodable, Sendable {
   let likeStatus: Bool
-}
-
-nonisolated struct CommunityPostCommentRequestDTO: Encodable, Sendable {
-  let parent_comment_id: String?
-  let content: String
 }
 
 nonisolated struct CommunityVideoPageDTO: Codable, Sendable {
@@ -133,42 +118,6 @@ extension CommunityPostDTO {
       comments: comments?.map { $0.toDomain() } ?? [],
       createdAt: createdAt,
       updatedAt: updatedAt
-    )
-  }
-}
-
-extension CommunityCreatorDTO {
-  nonisolated func toDomain() -> CommunityCreator {
-    CommunityCreator(
-      id: userId,
-      nick: nick,
-      name: name,
-      profileImageURL: AuthenticatedRemoteImageSupport.url(from: profileImage),
-      introduction: introduction,
-      hashTags: hashTags ?? []
-    )
-  }
-}
-
-extension CommunityPostCommentDTO {
-  nonisolated func toDomain() -> CommunityComment {
-    CommunityComment(
-      id: commentId,
-      content: content,
-      createdAt: createdAt,
-      creator: creator.toDomain(),
-      replies: replies?.map { $0.toDomain() } ?? []
-    )
-  }
-}
-
-extension CommunityPostReplyDTO {
-  nonisolated func toDomain() -> CommunityReply {
-    CommunityReply(
-      id: commentId,
-      content: content,
-      createdAt: createdAt,
-      creator: creator.toDomain()
     )
   }
 }

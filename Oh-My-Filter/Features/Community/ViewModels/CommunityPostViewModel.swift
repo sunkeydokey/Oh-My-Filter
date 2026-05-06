@@ -19,6 +19,26 @@ final class CommunityPostViewModel {
     self.init(mode: mode, useCase: LiveCommunityFeedUseCase())
   }
 
+  func updateCategory(_ category: String) {
+    state.draft.category = category
+  }
+
+  func updateTitle(_ title: String) {
+    state.draft.title = title
+  }
+
+  func updateContent(_ content: String) {
+    state.draft.content = content
+  }
+
+  func updateCommentText(_ text: String) {
+    state.commentText = text
+  }
+
+  func markFieldFocused(_ field: CommunityPostField) {
+    state.touchedFields.insert(field)
+  }
+
   func send(_ action: CommunityPostAction) async {
     switch action {
     case .task:
@@ -27,17 +47,17 @@ final class CommunityPostViewModel {
       state.phase = .initial
       await loadIfNeeded()
     case let .categoryChanged(category):
-      state.draft.category = category
+      updateCategory(category)
     case let .titleChanged(title):
-      state.draft.title = title
+      updateTitle(title)
     case let .contentChanged(content):
-      state.draft.content = content
+      updateContent(content)
     case let .imageSelectionChanged(images):
       state.selectedImages = images
     case let .removeExistingImage(path):
       state.draft.existingFilePaths.removeAll { $0 == path }
     case let .fieldFocused(field):
-      state.touchedFields.insert(field)
+      markFieldFocused(field)
     case .submit:
       await submit()
     case .cancelTapped:
@@ -56,7 +76,7 @@ final class CommunityPostViewModel {
     case .deleteConfirmed:
       await deletePost()
     case let .commentTextChanged(text):
-      state.commentText = text
+      updateCommentText(text)
     case .submitComment:
       await submitComment()
     case let .replyTapped(commentID):

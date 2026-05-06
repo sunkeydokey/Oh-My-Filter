@@ -46,6 +46,10 @@ nonisolated enum EndPoint {
     static func detail(filterID: String) -> String {
       "\(EndPoint.baseUrl)/filters/\(filterID)"
     }
+
+    static func comments(filterID: String) -> String {
+      "\(EndPoint.baseUrl)/filters/\(filterID)/comments"
+    }
   }
 
   nonisolated enum Posts {
