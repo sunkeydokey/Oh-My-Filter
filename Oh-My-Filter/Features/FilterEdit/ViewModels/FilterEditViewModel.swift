@@ -6,14 +6,20 @@ import Observation
 final class FilterEditViewModel {
   private(set) var state: FilterEditState
   private let renderer: any ImageFilterRendering
+  private let previewMaxPixelSize: Int
   private var renderTask: Task<Void, Never>?
+  private var lastScheduledFilterValues: FilterValues?
+  private var editingStartValues: [FilterEditParameter: Double]?
+  private var hasRecordedEditingHistory = false
 
   init(
     draft: FilterMakeDraft,
     filterParameterValues: [FilterEditParameter: Double]? = nil,
-    renderer: any ImageFilterRendering = CoreImageFilterRenderer()
+    renderer: any ImageFilterRendering = CoreImageFilterRenderer(),
+    previewMaxPixelSize: Int = 1_600
   ) {
     self.renderer = renderer
+    self.previewMaxPixelSize = previewMaxPixelSize
     state = FilterEditState(draft: draft)
     renderPreview(with: filterParameterValues ?? draft.filterParameterValues)
   }
@@ -26,19 +32,33 @@ final class FilterEditViewModel {
     case let .parameterSelected(parameter):
       state.selectedParameter = parameter
       return values
+    case .valueEditingStarted:
+      editingStartValues = values
+      hasRecordedEditingHistory = false
+      return values
     case let .valueChanged(value):
       let updatedValues = updateSelectedValue(value, in: values)
       renderPreview(with: updatedValues)
       return updatedValues
+    case .valueEditingEnded:
+      editingStartValues = nil
+      hasRecordedEditingHistory = false
+      return values
     case .undo:
+      editingStartValues = nil
+      hasRecordedEditingHistory = false
       let updatedValues = undo(currentValues: values)
       renderPreview(with: updatedValues)
       return updatedValues
     case .redo:
+      editingStartValues = nil
+      hasRecordedEditingHistory = false
       let updatedValues = redo(currentValues: values)
       renderPreview(with: updatedValues)
       return updatedValues
     case .reset:
+      editingStartValues = nil
+      hasRecordedEditingHistory = false
       state.history.append(values)
       state.redoStack = []
       let updatedValues = FilterEditParameter.defaultValues
@@ -58,7 +78,14 @@ final class FilterEditViewModel {
     let clampedValue = state.selectedParameter.clamped(value)
     guard values[state.selectedParameter] != clampedValue else { return values }
     var updatedValues = values
-    state.history.append(values)
+    if let editingStartValues {
+      if hasRecordedEditingHistory == false {
+        state.history.append(editingStartValues)
+        hasRecordedEditingHistory = true
+      }
+    } else {
+      state.history.append(values)
+    }
     updatedValues[state.selectedParameter] = clampedValue
     state.redoStack = []
     return updatedValues
@@ -83,12 +110,23 @@ final class FilterEditViewModel {
     }
 
     let filterValues = FilterEditParameter.filterValues(from: values)
+    guard filterValues != lastScheduledFilterValues else { return }
+    lastScheduledFilterValues = filterValues
+
     renderTask?.cancel()
-    renderTask = Task { [renderer, imageData, filterValues] in
+    renderTask = Task { [renderer, imageData, filterValues, previewMaxPixelSize] in
       do {
-        let images = try await renderer.render(originalImageData: imageData, filterValues: filterValues)
+        try await Task.sleep(for: .milliseconds(80))
         try Task.checkCancellation()
-        self.state.previewImage = images.filtered
+        let previewImage = try await Task.detached(priority: .userInitiated) {
+          try await renderer.renderPreview(
+            originalImageData: imageData,
+            maxPixelSize: previewMaxPixelSize,
+            filterValues: filterValues
+          )
+        }.value
+        try Task.checkCancellation()
+        self.state.previewImage = previewImage
       } catch is CancellationError {
       } catch {
         self.state.previewImage = nil

@@ -122,7 +122,10 @@ struct FilterEditView: View {
             set: { sendAndSync(.valueChanged($0)) }
           ),
           in: selectedParameter.range,
-          step: selectedParameter.step
+          step: selectedParameter.step,
+          onEditingChanged: { isEditing in
+            _ = viewModel.send(isEditing ? .valueEditingStarted : .valueEditingEnded, values: filterParameterValues)
+          }
         )
         .tint(ColorToken.sesacFilterBrightTurquoise.color)
 
