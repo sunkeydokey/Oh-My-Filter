@@ -111,7 +111,7 @@ extension CommunityPostDTO {
       title: title,
       content: content,
       creator: creator.toDomain(),
-      imageURLs: files.compactMap { AuthenticatedRemoteImageSupport.url(from: $0) },
+      attachments: files.compactMap { attachment(from: $0) },
       imagePaths: files,
       isLiked: isLike,
       likeCount: likeCount,
@@ -119,6 +119,13 @@ extension CommunityPostDTO {
       createdAt: createdAt,
       updatedAt: updatedAt
     )
+  }
+
+  private nonisolated func attachment(from path: String) -> CommunityAttachment? {
+    guard let url = AuthenticatedRemoteImageSupport.url(from: path) else { return nil }
+    let ext = (path as NSString).pathExtension.lowercased()
+    let videoExtensions: Set<String> = ["mp4", "mov", "m4v", "avi", "mkv"]
+    return videoExtensions.contains(ext) ? .video(url) : .image(url)
   }
 }
 

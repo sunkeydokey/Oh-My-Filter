@@ -143,9 +143,28 @@ struct VideoPlayerView: View {
         endPoint: .bottom
       )
 
-      // Controls
-      playerControls(isPlaying: isPlaying)
+      // Tap area (재생 중일 때만 컨트롤 토글)
+      Color.clear
+        .contentShape(Rectangle())
+        .onTapGesture {
+          Task { await viewModel.send(.tapPlayerArea) }
+        }
+
+      // Controls (재생 중엔 isControlsVisible에 따라 숨김)
+      if viewModel.isControlsVisible {
+        playerControls(isPlaying: isPlaying)
+          .transition(.opacity)
+      }
+
+      // Seek 버퍼링 인디케이터
+      if viewModel.isSeeking {
+        ProgressView()
+          .tint(ColorToken.grayScale30.color)
+          .scaleEffect(1.3)
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+      }
     }
+    .animation(.easeInOut(duration: 0.2), value: viewModel.isControlsVisible)
   }
 
   private func playerControls(isPlaying: Bool) -> some View {
@@ -189,27 +208,9 @@ struct VideoPlayerView: View {
           .foregroundStyle(ColorToken.grayScale30.color)
           .padding(.leading, 16)
 
-        // Quality chip + duration
+        // Duration
         HStack {
-          Button {
-            Task { await viewModel.send(.toggleQualityMenu) }
-          } label: {
-            HStack(spacing: 4) {
-              Text(viewModel.selectedQuality)
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(ColorToken.grayScale30.color)
-              Image(systemName: "chevron.down")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(ColorToken.grayScale30.color)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color.black.opacity(0.8))
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-          }
-
           Spacer()
-
           Text(formatTime(viewModel.duration))
             .font(.system(size: 12, weight: .bold))
             .foregroundStyle(ColorToken.grayScale30.color)
@@ -221,18 +222,16 @@ struct VideoPlayerView: View {
         .padding(.horizontal, 16)
 
         // Progress bar (bottom-most)
-        GeometryReader { proxy in
-          ZStack(alignment: .leading) {
-            Capsule()
-              .fill(ColorToken.grayScale75.color.opacity(0.5))
-              .frame(height: 3)
-            let progress = viewModel.duration > 0 ? viewModel.currentTime / viewModel.duration : 0
-            Capsule()
-              .fill(ColorToken.grayScale30.color)
-              .frame(width: proxy.size.width * progress, height: 3)
+        Slider(
+          value: $viewModel.currentTime,
+          in: 0...max(viewModel.duration, 1),
+          onEditingChanged: { editing in
+            if !editing {
+              Task { await viewModel.send(.seek(to: viewModel.currentTime)) }
+            }
           }
-        }
-        .frame(height: 3)
+        )
+        .tint(ColorToken.grayScale30.color)
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
       }

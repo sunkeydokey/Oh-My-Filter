@@ -240,8 +240,8 @@ private struct CommunityPostCell: View {
         .foregroundStyle(ColorToken.grayScale45.color)
         .lineLimit(2)
 
-      if post.imageURLs.isEmpty == false {
-        CommunityPostImageCarousel(urls: post.imageURLs)
+      if post.attachments.isEmpty == false {
+        CommunityPostMediaSection(attachments: post.attachments)
           .padding(.top, 4)
       }
 
@@ -253,18 +253,30 @@ private struct CommunityPostCell: View {
   }
 }
 
-private struct CommunityPostImageCarousel: View {
-  let urls: [URL]
+private struct CommunityPostMediaSection: View {
+  let attachments: [CommunityAttachment]
   @State private var currentIndex = 0
 
   var body: some View {
+    if attachments.isEmpty { return AnyView(EmptyView()) }
+    return AnyView(carousel)
+  }
+
+  private var carousel: some View {
     TabView(selection: $currentIndex) {
-      ForEach(Array(urls.enumerated()), id: \.offset) { index, url in
-        CommunityPostRemoteImage(url: url)
-          .tag(index)
+      ForEach(Array(attachments.enumerated()), id: \.offset) { index, attachment in
+        Group {
+          switch attachment {
+          case .image(let url):
+            CommunityPostRemoteImage(url: url)
+          case .video(let url):
+            PostVideoPreviewView(url: url)
+          }
+        }
+        .tag(index)
       }
     }
-    .tabViewStyle(.page(indexDisplayMode: urls.count > 1 ? .automatic : .never))
+    .tabViewStyle(.page(indexDisplayMode: attachments.count > 1 ? .automatic : .never))
     .aspectRatio(1, contentMode: .fit)
     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     .overlay {
@@ -272,8 +284,8 @@ private struct CommunityPostImageCarousel: View {
         .stroke(ColorToken.grayScale90.color.opacity(0.45), lineWidth: 1)
     }
     .overlay(alignment: .bottomTrailing) {
-      if urls.count > 1 {
-        Text("\(currentIndex + 1) / \(urls.count)")
+      if attachments.count > 1 {
+        Text("\(currentIndex + 1) / \(attachments.count)")
           .font(TypographyToken.pretendardCaption2.font.weight(.semibold))
           .foregroundStyle(ColorToken.grayScale0.color)
           .padding(.horizontal, 8)

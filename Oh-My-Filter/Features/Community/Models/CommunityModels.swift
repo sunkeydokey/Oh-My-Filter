@@ -1,5 +1,10 @@
 import Foundation
 
+nonisolated enum CommunityAttachment: Equatable, Sendable {
+  case image(URL)
+  case video(URL)
+}
+
 nonisolated enum CommunityTab: String, CaseIterable, Sendable {
   case all
   case posts
@@ -28,13 +33,21 @@ nonisolated struct CommunityPost: Equatable, Identifiable, Sendable {
   let title: String
   let content: String
   let creator: CommunityCreator
-  let imageURLs: [URL]
+  let attachments: [CommunityAttachment]
   let imagePaths: [String]
   let isLiked: Bool
   let likeCount: Int
   let comments: [CommunityComment]
   let createdAt: String
   let updatedAt: String
+
+  var imageURLs: [URL] {
+    attachments.compactMap { if case .image(let url) = $0 { url } else { nil } }
+  }
+
+  var videoURLs: [URL] {
+    attachments.compactMap { if case .video(let url) = $0 { url } else { nil } }
+  }
 
   var summary: String {
     content

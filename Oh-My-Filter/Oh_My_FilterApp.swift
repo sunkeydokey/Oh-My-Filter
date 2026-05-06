@@ -8,7 +8,6 @@
 import KakaoSDKAuth
 import SwiftData
 import SwiftUI
-import UIKit
 import iamport_ios
 
 @main

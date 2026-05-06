@@ -12,6 +12,8 @@ enum VideoPlayerAction {
   case toggleQualityMenu
   case selectQuality(String)
   case toggleMute
+  case seek(to: Double)
+  case tapPlayerArea
 }
 
 enum VideoPlayerPhase: Equatable {
@@ -38,6 +40,8 @@ final class VideoPlayerViewModel {
   var isMuted: Bool = false
   var isDescriptionExpanded: Bool = false
   var isQualityMenuVisible: Bool = false
+  var isSeeking: Bool = false
+  var isControlsVisible: Bool = true
   private(set) var player: AVPlayer?
 
   let video: CommunityVideo
@@ -45,6 +49,7 @@ final class VideoPlayerViewModel {
   private var timeObserver: Any?
   private var statusObservation: NSKeyValueObservation?
   private var itemStatusObservation: NSKeyValueObservation?
+  private var controlsHideTask: Task<Void, Never>?
 
   init(video: CommunityVideo, service: any VideoPlayerServicing) {
     self.video = video
@@ -78,6 +83,10 @@ final class VideoPlayerViewModel {
     case .toggleMute:
       isMuted.toggle()
       player?.isMuted = isMuted
+    case let .seek(time):
+      await handleSeek(to: time)
+    case .tapPlayerArea:
+      handleTapPlayerArea()
     }
   }
 
@@ -97,6 +106,7 @@ final class VideoPlayerViewModel {
 
       setupPlayer(url: url)
       playerPhase = .ready(isPlaying: false)
+      isControlsVisible = true
       Self.logger.info("ℹ️ [VideoPlayerViewModel] player ready quality=\(self.selectedQuality, privacy: .public)")
     } catch {
       let message = (error as? VideoPlayerServiceError)?.errorDescription
@@ -112,12 +122,40 @@ final class VideoPlayerViewModel {
     if isPlaying {
       player?.pause()
       playerPhase = .ready(isPlaying: false)
+      cancelControlsHideTimer()
+      isControlsVisible = true
       Self.logger.info("ℹ️ [VideoPlayerViewModel] paused")
     } else {
       player?.play()
       playerPhase = .ready(isPlaying: true)
+      scheduleControlsHide()
       Self.logger.info("ℹ️ [VideoPlayerViewModel] play requested itemStatus=\(String(describing: self.player?.currentItem?.status.rawValue), privacy: .public)")
     }
+  }
+
+  private func handleTapPlayerArea() {
+    guard case .ready(let isPlaying) = playerPhase, isPlaying else { return }
+    if isControlsVisible {
+      cancelControlsHideTimer()
+      isControlsVisible = false
+    } else {
+      isControlsVisible = true
+      scheduleControlsHide()
+    }
+  }
+
+  private func scheduleControlsHide() {
+    cancelControlsHideTimer()
+    controlsHideTask = Task { [weak self] in
+      try? await Task.sleep(for: .seconds(2))
+      guard !Task.isCancelled else { return }
+      await MainActor.run { self?.isControlsVisible = false }
+    }
+  }
+
+  private func cancelControlsHideTimer() {
+    controlsHideTask?.cancel()
+    controlsHideTask = nil
   }
 
   private func handleToggleLike() async {
@@ -151,19 +189,20 @@ final class VideoPlayerViewModel {
       wasPlaying = false
     }
 
+    let resumeTime = player?.currentTime().seconds ?? 0
+
     selectedQuality = label
     isQualityMenuVisible = false
 
-    playerPhase = .loading
-
     do {
       let stream = try await service.loadStream(videoId: video.id)
-      let url = qualityURL(for: label, in: stream) ?? stream.streamURL
-      Self.logger.info("ℹ️ [VideoPlayerViewModel] quality changed to=\(label, privacy: .public) url=\(String(describing: url), privacy: .public)")
+      guard let url = qualityURL(for: label, in: stream) ?? stream.streamURL else {
+        playerPhase = .error(message: VideoPlayerServiceError.invalidResponse.errorDescription ?? "잠시 후 다시 시도해 주세요.")
+        return
+      }
+      Self.logger.info("ℹ️ [VideoPlayerViewModel] quality changed to=\(label, privacy: .public) url=\(url, privacy: .public)")
 
-      setupPlayer(url: url)
-      playerPhase = .ready(isPlaying: wasPlaying)
-      if wasPlaying { player?.play() }
+      swapPlayerItem(url: url, resumeTime: resumeTime, play: wasPlaying)
     } catch {
       let message = (error as? VideoPlayerServiceError)?.errorDescription
         ?? VideoPlayerServiceError.serverError.errorDescription
@@ -173,7 +212,65 @@ final class VideoPlayerViewModel {
     }
   }
 
-  private func setupPlayer(url: URL?) {
+  // 새 아이템을 미리 로드한 뒤 교체 — 교체 직전까지 기존 버퍼 화면 유지, 교체 시점에 바로 재생
+  private func swapPlayerItem(url: URL, resumeTime: Double, play: Bool) {
+    guard let currentPlayer = player else {
+      setupPlayer(url: url, resumeTime: resumeTime)
+      playerPhase = .ready(isPlaying: play)
+      if play { player?.play() }
+      return
+    }
+
+    Task {
+      let asset = AVURLAsset(url: url)
+      do {
+        // 네트워크에서 메타데이터를 받아 재생 가능 상태가 될 때까지 대기
+        _ = try await asset.load(.isPlayable)
+      } catch {
+        await MainActor.run {
+          Self.logger.error("❌ [VideoPlayerViewModel] asset preload failed error=\(String(describing: error), privacy: .public)")
+          self.playerPhase = .error(message: "재생 중 오류가 발생했습니다.")
+        }
+        return
+      }
+
+      await MainActor.run {
+        let newItem = AVPlayerItem(asset: asset)
+
+        self.itemStatusObservation?.invalidate()
+        self.itemStatusObservation = newItem.observe(\.status, options: [.new]) { [weak self] item, _ in
+          guard let self else { return }
+          Task { @MainActor in
+            if case .failed = item.status {
+              Self.logger.error("❌ [VideoPlayerViewModel] playerItem failed error=\(String(describing: item.error), privacy: .public)")
+              self.playerPhase = .error(message: "재생 중 오류가 발생했습니다.")
+            }
+          }
+        }
+
+        currentPlayer.replaceCurrentItem(with: newItem)
+
+        if resumeTime > 0 {
+          let target = CMTime(seconds: resumeTime, preferredTimescale: 600)
+          currentPlayer.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
+        }
+        if play { currentPlayer.play() }
+
+        Self.logger.info("ℹ️ [VideoPlayerViewModel] playerItem swapped resumeTime=\(resumeTime, privacy: .public)")
+      }
+    }
+  }
+
+  private func handleSeek(to time: Double) async {
+    guard let player else { return }
+    currentTime = time
+    isSeeking = true
+    let target = CMTime(seconds: time, preferredTimescale: 600)
+    await player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
+    isSeeking = false
+  }
+
+  private func setupPlayer(url: URL?, resumeTime: Double = 0) {
     cleanupPlayer()
     guard let url else {
       Self.logger.error("❌ [VideoPlayerViewModel] setupPlayer called with nil url")
@@ -190,7 +287,8 @@ final class VideoPlayerViewModel {
       queue: .main
     ) { [weak self] time in
       Task { @MainActor [weak self] in
-        self?.currentTime = time.seconds
+        guard let self, !self.isSeeking else { return }
+        self.currentTime = time.seconds
       }
     }
 
@@ -227,6 +325,11 @@ final class VideoPlayerViewModel {
     }
 
     player = newPlayer
+
+    if resumeTime > 0 {
+      let target = CMTime(seconds: resumeTime, preferredTimescale: 600)
+      newPlayer.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
+    }
   }
 
   private func cleanupPlayer() {
@@ -248,6 +351,7 @@ final class VideoPlayerViewModel {
 
   deinit {
     MainActor.assumeIsolated {
+      controlsHideTask?.cancel()
       cleanupPlayer()
     }
   }
