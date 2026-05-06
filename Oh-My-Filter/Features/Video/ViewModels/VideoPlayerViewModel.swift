@@ -14,6 +14,8 @@ enum VideoPlayerAction {
   case toggleMute
   case seek(to: Double)
   case tapPlayerArea
+  case enterFullScreen
+  case exitFullScreen
 }
 
 enum VideoPlayerPhase: Equatable {
@@ -42,6 +44,7 @@ final class VideoPlayerViewModel {
   var isQualityMenuVisible: Bool = false
   var isSeeking: Bool = false
   var isControlsVisible: Bool = true
+  var isFullScreenPresented: Bool = false
   private(set) var player: AVPlayer?
 
   let video: CommunityVideo
@@ -87,6 +90,18 @@ final class VideoPlayerViewModel {
       await handleSeek(to: time)
     case .tapPlayerArea:
       handleTapPlayerArea()
+    case .enterFullScreen:
+      isFullScreenPresented = true
+      isControlsVisible = true
+      if case .ready(true) = playerPhase {
+        scheduleControlsHide()
+      }
+    case .exitFullScreen:
+      isFullScreenPresented = false
+      isControlsVisible = true
+      if case .ready(true) = playerPhase {
+        scheduleControlsHide()
+      }
     }
   }
 
