@@ -340,8 +340,9 @@ struct CommunityPostView: View {
   @ViewBuilder
   private var imageSection: some View {
     if viewModel.state.isDetail {
-      if let urls = viewModel.state.post?.imageURLs, urls.isEmpty == false {
-        CommunityReadOnlyImageGalleryView(urls: urls)
+      let attachments = viewModel.state.post?.attachments ?? []
+      if attachments.isEmpty == false {
+        CommunityReadOnlyAttachmentCarousel(attachments: attachments)
       }
     } else {
       CommunityEditableImageSectionView(
@@ -623,36 +624,41 @@ private struct CommunityLocalImageTileView: View {
   }
 }
 
-private struct CommunityReadOnlyImageGalleryView: View {
-  let urls: [URL]
+private struct CommunityReadOnlyAttachmentCarousel: View {
+  let attachments: [CommunityAttachment]
   @State private var currentIndex = 0
 
   var body: some View {
-    if urls.count == 1, let url = urls.first {
-      CommunityRemotePostImageView(url: url)
-        .frame(maxWidth: .infinity)
-        .frame(height: 210)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    } else {
-      ScrollView(.horizontal) {
-        LazyHStack(spacing: 10) {
-          ForEach(Array(urls.enumerated()), id: \.offset) { index, url in
+    TabView(selection: $currentIndex) {
+      ForEach(Array(attachments.enumerated()), id: \.offset) { index, attachment in
+        Group {
+          switch attachment {
+          case .image(let url):
             CommunityRemotePostImageView(url: url)
-              .frame(width: 164, height: 124)
-              .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-              .overlay(alignment: .bottomTrailing) {
-                Text("\(index + 1)")
-                  .font(TypographyToken.pretendardCaption2.font.weight(.bold))
-                  .foregroundStyle(ColorToken.grayScale0.color)
-                  .padding(.horizontal, 7)
-                  .frame(height: 22)
-                  .background(ColorToken.brandBlackSprout.color.opacity(0.75), in: Capsule())
-                  .padding(7)
-              }
+          case .video(let url):
+            PostVideoPlayerView(url: url)
           }
         }
+        .tag(index)
       }
-      .scrollIndicators(.hidden)
+    }
+    .tabViewStyle(.page(indexDisplayMode: attachments.count > 1 ? .automatic : .never))
+    .frame(height: 210)
+    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    .overlay {
+      RoundedRectangle(cornerRadius: 8, style: .continuous)
+        .stroke(ColorToken.grayScale90.color.opacity(0.45), lineWidth: 1)
+    }
+    .overlay(alignment: .bottomTrailing) {
+      if attachments.count > 1 {
+        Text("\(currentIndex + 1) / \(attachments.count)")
+          .font(TypographyToken.pretendardCaption2.font.weight(.semibold))
+          .foregroundStyle(ColorToken.grayScale0.color)
+          .padding(.horizontal, 8)
+          .frame(height: 26)
+          .background(ColorToken.brandBlackSprout.color.opacity(0.72), in: Capsule())
+          .padding(10)
+      }
     }
   }
 }
