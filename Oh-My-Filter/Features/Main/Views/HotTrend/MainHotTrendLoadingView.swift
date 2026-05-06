@@ -10,7 +10,7 @@ struct MainHotTrendLoadingView: View {
             .frame(width: 200, height: 240)
             .overlay {
               ProgressView()
-                .tint(ColorToken.sesacFilterBrightTurquoise.color)
+                .tint(ColorToken.mainAccent.color)
             }
         }
       }

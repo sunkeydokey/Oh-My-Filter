@@ -44,7 +44,7 @@ struct OhMyFilterApp: App {
 
 private enum TabBarAppearance {
   static func configure() {
-    let selectedColor = UIColor(ColorToken.sesacFilterBrightTurquoise.color)
+    let selectedColor = UIColor(ColorToken.mainAccent.color)
     let normalColor = UIColor(ColorToken.grayScale60.color)
     let backgroundColor = UIColor(ColorToken.brandBlackSprout.color)
 

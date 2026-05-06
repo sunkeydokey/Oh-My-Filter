@@ -108,7 +108,7 @@ struct AuthenticatedRootView: View {
         }
       }
     }
-    .tint(ColorToken.sesacFilterBrightTurquoise.color)
+    .tint(ColorToken.mainAccent.color)
     .toolbarBackground(ColorToken.brandBlackSprout.color, for: .tabBar)
     .toolbarBackground(.visible, for: .tabBar)
     .toolbarColorScheme(.dark, for: .tabBar)

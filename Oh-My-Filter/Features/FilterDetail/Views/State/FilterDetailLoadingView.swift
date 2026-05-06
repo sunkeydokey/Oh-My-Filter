@@ -4,7 +4,7 @@ struct FilterDetailLoadingView: View {
   var body: some View {
     VStack(spacing: 16) {
       ProgressView()
-        .tint(ColorToken.sesacFilterBrightTurquoise.color)
+        .tint(ColorToken.mainAccent.color)
 
       Text("필터를 불러오는 중입니다.")
         .font(TypographyToken.pretendardBody2.font)

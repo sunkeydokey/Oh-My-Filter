@@ -11,7 +11,7 @@ struct ChatListView: View {
         ChatListContentView(viewModel: viewModel)
       } else {
         ProgressView()
-          .tint(ColorToken.sesacFilterBrightTurquoise.color)
+          .tint(ColorToken.mainAccent.color)
           .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
     }
@@ -168,7 +168,7 @@ private struct ChatListContentView: View {
 
         if viewModel.state.isSearchingUsers {
           ProgressView()
-            .tint(ColorToken.sesacFilterBrightTurquoise.color)
+            .tint(ColorToken.mainAccent.color)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 20)
         } else if let message = viewModel.state.searchErrorMessage {
@@ -260,13 +260,13 @@ private struct ChatRoomRowView: View {
 
         if room.isUnread {
           Circle()
-            .fill(ColorToken.sesacFilterBrightTurquoise.color)
+            .fill(ColorToken.mainAccent.color)
             .frame(width: 8, height: 8)
             .frame(width: 24, height: 24)
             .background(ColorToken.grayScale100.color, in: .rect(cornerRadius: 12))
             .overlay {
               RoundedRectangle(cornerRadius: 12)
-                .stroke(ColorToken.sesacFilterBrightTurquoise.color, lineWidth: 1)
+                .stroke(ColorToken.mainAccent.color, lineWidth: 1)
             }
         }
       }
@@ -313,7 +313,7 @@ private struct ChatUserSearchRowView: View {
 
       if isLoading {
         ProgressView()
-          .tint(ColorToken.sesacFilterBrightTurquoise.color)
+          .tint(ColorToken.mainAccent.color)
       }
     }
     .padding(.horizontal, 16)

@@ -7,6 +7,6 @@ struct AuthStatusMessageView: View {
   var body: some View {
     Text(message)
       .font(TypographyToken.pretendardCaption1.font)
-      .foregroundStyle(isSuccess ? ColorToken.sesacFilterBrightTurquoise.color : .red)
+      .foregroundStyle(isSuccess ? ColorToken.mainAccent.color : .red)
   }
 }

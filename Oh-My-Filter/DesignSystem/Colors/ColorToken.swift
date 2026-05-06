@@ -4,6 +4,7 @@ import SwiftUI
 enum ColorToken: String, CaseIterable, Sendable {
   case brandBlackSprout = "BrandBlackSprout"
   case brandDeepSprout = "BrandDeepSprout"
+  case mainAccent = "MainAccent"
   case sesacFilterDeepTurquoise = "SESACFilterDeepTurquoise"
   case sesacFilterBrightTurquoise = "SESACFilterBrightTurquoise"
   case grayScale0 = "GrayScale0"
@@ -21,6 +22,8 @@ enum ColorToken: String, CaseIterable, Sendable {
       "Brand/BlackSprout"
     case .brandDeepSprout:
       "Brand/DeepSprout"
+    case .mainAccent:
+      "Main/Accent"
     case .sesacFilterDeepTurquoise:
       "SESAC_Filter/DeepTurquoise"
     case .sesacFilterBrightTurquoise:
@@ -50,6 +53,8 @@ enum ColorToken: String, CaseIterable, Sendable {
       "#1F2527"
     case .brandDeepSprout, .sesacFilterDeepTurquoise:
       "#293235"
+    case .mainAccent:
+      "#BBD68C"
     case .sesacFilterBrightTurquoise:
       "#315C6B"
     case .grayScale0:

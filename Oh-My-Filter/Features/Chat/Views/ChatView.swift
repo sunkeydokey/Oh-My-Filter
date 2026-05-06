@@ -148,7 +148,7 @@ struct ChatView: View {
       if let imageSelectionMessage = viewModel.state.imageSelectionMessage {
         Text(imageSelectionMessage)
           .font(TypographyToken.pretendardCaption2.font)
-          .foregroundStyle(ColorToken.sesacFilterBrightTurquoise.color)
+          .foregroundStyle(ColorToken.mainAccent.color)
       }
 
       HStack(alignment: .bottom, spacing: 12) {
@@ -171,7 +171,7 @@ struct ChatView: View {
             .foregroundStyle(ColorToken.brandBlackSprout.color)
             .frame(width: 40, height: 40)
             .background(
-              viewModel.state.canSend ? ColorToken.sesacFilterBrightTurquoise.color : ColorToken.grayScale75.color,
+              viewModel.state.canSend ? ColorToken.mainAccent.color : ColorToken.grayScale75.color,
               in: .rect(cornerRadius: 20)
             )
         }
@@ -237,7 +237,7 @@ private struct ChatMessageBubbleView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
             .frame(maxWidth: 260, alignment: .leading)
-            .background(isMine ? ColorToken.sesacFilterBrightTurquoise.color : ColorToken.grayScale100.color, in: .rect(cornerRadius: 12))
+            .background(isMine ? ColorToken.mainAccent.color : ColorToken.grayScale100.color, in: .rect(cornerRadius: 12))
             .overlay {
               if isMine == false {
                 RoundedRectangle(cornerRadius: 12)

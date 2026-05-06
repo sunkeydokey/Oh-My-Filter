@@ -193,7 +193,7 @@ struct CommunityView: View {
 
       if viewModel.state.isLoadingMorePosts || viewModel.state.isLoadingMoreVideos || viewModel.state.isLoadingMoreLikedPosts {
         ProgressView()
-          .tint(ColorToken.sesacFilterBrightTurquoise.color)
+          .tint(ColorToken.mainAccent.color)
           .frame(maxWidth: .infinity)
           .padding(.vertical, 20)
       }
@@ -210,7 +210,7 @@ struct CommunityView: View {
 
   private func tabFill(for tab: CommunityTab) -> Color {
     viewModel.state.selectedTab == tab
-      ? ColorToken.sesacFilterBrightTurquoise.color
+      ? ColorToken.mainAccent.color
       : ColorToken.brandBlackSprout.color
   }
 }
@@ -455,7 +455,7 @@ private struct CommunityErrorView: View {
         .foregroundStyle(ColorToken.grayScale0.color)
         .padding(.horizontal, 16)
         .frame(height: 40)
-        .background(ColorToken.sesacFilterBrightTurquoise.color, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(ColorToken.mainAccent.color, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     .frame(maxWidth: .infinity)
     .padding(.vertical, 60)

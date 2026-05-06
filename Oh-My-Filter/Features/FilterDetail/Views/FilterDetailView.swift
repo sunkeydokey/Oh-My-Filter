@@ -40,7 +40,7 @@ struct FilterDetailView: View {
             edit()
           }
           .font(TypographyToken.pretendardBody3.font)
-          .foregroundStyle(ColorToken.sesacFilterBrightTurquoise.color)
+          .foregroundStyle(ColorToken.mainAccent.color)
         }
       }
     }
@@ -101,7 +101,7 @@ struct FilterDetailView: View {
       )
       .overlay {
         ProgressView()
-          .tint(ColorToken.sesacFilterBrightTurquoise.color)
+          .tint(ColorToken.mainAccent.color)
       }
     case let .loaded(detail, previewState):
       FilterDetailLoadedView(

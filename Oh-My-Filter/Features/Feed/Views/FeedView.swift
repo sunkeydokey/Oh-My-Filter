@@ -169,7 +169,7 @@ struct FeedView: View {
 
       if viewModel.state.isLoadingMore {
         ProgressView()
-          .tint(ColorToken.sesacFilterBrightTurquoise.color)
+          .tint(ColorToken.mainAccent.color)
           .frame(maxWidth: .infinity)
           .padding(.vertical, 20)
       }
@@ -220,7 +220,7 @@ private struct FeedRankingCard: View {
           .foregroundStyle(ColorToken.brandBlackSprout.color)
           .padding(.horizontal, 10)
           .padding(.vertical, 6)
-          .background(ColorToken.sesacFilterBrightTurquoise.color, in: Capsule())
+          .background(ColorToken.mainAccent.color, in: Capsule())
 
         VStack(alignment: .leading, spacing: 4) {
           Text(filter.title)
@@ -394,7 +394,7 @@ private struct FeedErrorView: View {
         .foregroundStyle(ColorToken.brandBlackSprout.color)
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(ColorToken.sesacFilterBrightTurquoise.color, in: Capsule())
+        .background(ColorToken.mainAccent.color, in: Capsule())
     }
     .frame(maxWidth: .infinity)
     .padding(.vertical, 36)

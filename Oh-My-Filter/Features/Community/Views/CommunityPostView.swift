@@ -192,7 +192,7 @@ struct CommunityPostView: View {
           }
         }
         .font(TypographyToken.pretendardBody2.font.weight(.bold))
-        .foregroundStyle(viewModel.state.canSubmit ? ColorToken.sesacFilterBrightTurquoise.color : ColorToken.grayScale60.color)
+        .foregroundStyle(viewModel.state.canSubmit ? ColorToken.mainAccent.color : ColorToken.grayScale60.color)
         .buttonStyle(.plain)
         .disabled(viewModel.state.canSubmit == false)
       }
@@ -208,7 +208,7 @@ struct CommunityPostView: View {
         .foregroundStyle(ColorToken.grayScale15.color)
         .padding(.horizontal, 17)
         .frame(height: 28)
-        .background(ColorToken.sesacFilterBrightTurquoise.color, in: Capsule())
+        .background(ColorToken.mainAccent.color, in: Capsule())
     } else {
       CommunityPostInputSection(title: "카테고리", error: viewModel.state.visibleError(for: .category)) {
         TextField("카테고리", text: Binding(
@@ -324,7 +324,7 @@ struct CommunityPostView: View {
         HStack {
           if let error = viewModel.state.visibleError(for: .content) {
             Text(error)
-              .foregroundStyle(ColorToken.sesacFilterBrightTurquoise.color)
+              .foregroundStyle(ColorToken.mainAccent.color)
           }
 
           Spacer()
@@ -381,7 +381,7 @@ struct CommunityPostView: View {
         if let errorMessage = viewModel.state.errorMessage {
           Text(errorMessage)
             .font(TypographyToken.pretendardCaption2.font)
-            .foregroundStyle(ColorToken.sesacFilterBrightTurquoise.color)
+            .foregroundStyle(ColorToken.mainAccent.color)
         }
       }
     }
@@ -476,7 +476,7 @@ struct CommunityPostView: View {
         .frame(maxWidth: .infinity)
         .frame(height: 52)
         .background(
-          viewModel.state.canSubmit ? ColorToken.sesacFilterBrightTurquoise.color : ColorToken.grayScale90.color,
+          viewModel.state.canSubmit ? ColorToken.mainAccent.color : ColorToken.grayScale90.color,
           in: RoundedRectangle(cornerRadius: 18, style: .continuous)
         )
     }
@@ -509,7 +509,7 @@ private struct CommunityPostInputSection<Content: View>: View {
       if let error {
         Text(error)
           .font(TypographyToken.pretendardCaption2.font)
-          .foregroundStyle(ColorToken.sesacFilterBrightTurquoise.color)
+          .foregroundStyle(ColorToken.mainAccent.color)
       }
     }
   }
@@ -731,7 +731,7 @@ private struct CommunityPostActionButton: View {
       .foregroundStyle(isPrimary ? ColorToken.grayScale15.color : ColorToken.grayScale45.color)
       .padding(.horizontal, 14)
       .frame(height: 42)
-      .background(isPrimary ? ColorToken.sesacFilterBrightTurquoise.color : ColorToken.brandBlackSprout.color, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+      .background(isPrimary ? ColorToken.mainAccent.color : ColorToken.brandBlackSprout.color, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
     .buttonStyle(.plain)
   }
@@ -781,7 +781,7 @@ private struct CommunityPostErrorView: View {
         .foregroundStyle(ColorToken.grayScale15.color)
         .padding(.horizontal, 16)
         .frame(height: 42)
-        .background(ColorToken.sesacFilterBrightTurquoise.color, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(ColorToken.mainAccent.color, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
       Spacer()
     }

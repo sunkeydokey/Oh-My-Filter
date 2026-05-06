@@ -39,7 +39,7 @@ struct AuthSubmitSection: View {
           .padding(.vertical, 15)
       }
       .buttonStyle(.plain)
-      .background(isEnabled ? ColorToken.sesacFilterBrightTurquoise.color : ColorToken.grayScale75.color)
+      .background(isEnabled ? ColorToken.mainAccent.color : ColorToken.grayScale75.color)
       .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
       .disabled(isEnabled == false)
 

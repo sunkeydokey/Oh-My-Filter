@@ -36,8 +36,8 @@ struct FilterDetailLoadedView: View {
           .foregroundStyle(detail.isDownloaded || isPaymentProcessing ? ColorToken.grayScale0.color : ColorToken.grayScale60.color)
           .frame(maxWidth: .infinity)
           .padding(.vertical, 12)
-          .background(
-            detail.isDownloaded || isPaymentProcessing ? ColorToken.grayScale75.color : ColorToken.sesacFilterBrightTurquoise.color,
+        .background(
+            detail.isDownloaded || isPaymentProcessing ? ColorToken.grayScale75.color : ColorToken.mainAccent.color,
             in: RoundedRectangle(cornerRadius: 8, style: .continuous)
           )
 
