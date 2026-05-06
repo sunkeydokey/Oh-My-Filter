@@ -41,6 +41,7 @@ struct AuthenticatedRootView: View {
             }
           }
         }
+        .toolbar(.hidden, for: .navigationBar)
       }
 
       Tab("피드", systemImage: IconToken.board.symbolName, value: .feed) {
