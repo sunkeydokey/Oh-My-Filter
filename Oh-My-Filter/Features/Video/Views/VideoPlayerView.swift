@@ -1,6 +1,7 @@
 import AVFoundation
 import Kingfisher
 import SwiftUI
+import UIKit
 
 struct VideoPlayerView: View {
   @State private var viewModel: VideoPlayerViewModel
@@ -28,7 +29,22 @@ struct VideoPlayerView: View {
     }
     .background(ColorToken.grayScale100.color.ignoresSafeArea())
     .toolbar(.hidden, for: .navigationBar)
+    .fullScreenCover(isPresented: fullScreenBinding) {
+      fullScreenPlayer
+    }
+    .onChange(of: viewModel.isFullScreenPresented) { _, isFullScreen in
+      requestOrientation(isFullScreen ? .landscape : .portrait)
+    }
     .task { await viewModel.send(.task) }
+  }
+
+  private var fullScreenBinding: Binding<Bool> {
+    Binding {
+      viewModel.isFullScreenPresented
+    } set: { isPresented in
+      guard isPresented == false else { return }
+      Task { await viewModel.send(.exitFullScreen) }
+    }
   }
 
   // MARK: - Navigation Bar
@@ -113,6 +129,10 @@ struct VideoPlayerView: View {
   }
 
   private var readyPlayer: some View {
+    readyPlayer(detachesVideoLayer: viewModel.isFullScreenPresented)
+  }
+
+  private func readyPlayer(detachesVideoLayer: Bool) -> some View {
     let isPlaying: Bool
     if case .ready(let playing) = viewModel.playerPhase {
       isPlaying = playing
@@ -122,7 +142,7 @@ struct VideoPlayerView: View {
 
     return ZStack(alignment: .topLeading) {
       // Video layer
-      VideoPlayerLayerView(player: viewModel.player)
+      VideoPlayerLayerView(player: detachesVideoLayer ? nil : viewModel.player)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
       // Thumbnail overlay (visible when not playing)
@@ -168,6 +188,10 @@ struct VideoPlayerView: View {
   }
 
   private func playerControls(isPlaying: Bool) -> some View {
+    playerControls(isPlaying: isPlaying, isFullScreen: false)
+  }
+
+  private func playerControls(isPlaying: Bool, isFullScreen: Bool) -> some View {
     ZStack(alignment: .topLeading) {
       // Top-right: mute + fullscreen
       HStack(spacing: 10) {
@@ -177,10 +201,21 @@ struct VideoPlayerView: View {
           Image(systemName: viewModel.isMuted ? "speaker.slash" : "speaker.wave.2")
             .font(.system(size: 14))
             .foregroundStyle(ColorToken.grayScale30.color)
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
         }
-        Image(systemName: "arrow.up.left.and.arrow.down.right")
-          .font(.system(size: 14))
-          .foregroundStyle(ColorToken.grayScale30.color)
+
+        Button {
+          Task {
+            await viewModel.send(isFullScreen ? .exitFullScreen : .enterFullScreen)
+          }
+        } label: {
+          Image(systemName: isFullScreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+            .font(.system(size: 14))
+            .foregroundStyle(ColorToken.grayScale30.color)
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+        }
       }
       .padding([.top, .trailing], 14)
       .frame(maxWidth: .infinity, alignment: .trailing)
@@ -236,6 +271,71 @@ struct VideoPlayerView: View {
         .padding(.bottom, 8)
       }
     }
+  }
+
+  private var fullScreenPlayer: some View {
+    ZStack {
+      Color.black.ignoresSafeArea()
+
+      switch viewModel.playerPhase {
+      case .loading:
+        loadingPlayer
+      case .error:
+        errorPlayer
+      case .ready:
+        fullScreenReadyPlayer
+      }
+    }
+    .statusBarHidden()
+    .persistentSystemOverlays(.hidden)
+    .gesture(
+      DragGesture(minimumDistance: 40)
+        .onEnded { value in
+          if value.translation.height > 0 {
+            Task { await viewModel.send(.exitFullScreen) }
+          }
+        }
+    )
+  }
+
+  private var fullScreenReadyPlayer: some View {
+    let isPlaying: Bool
+    if case .ready(let playing) = viewModel.playerPhase {
+      isPlaying = playing
+    } else {
+      isPlaying = false
+    }
+
+    return ZStack(alignment: .topLeading) {
+      VideoPlayerLayerView(player: viewModel.player, videoGravity: .resizeAspect)
+        .ignoresSafeArea()
+
+      LinearGradient(
+        colors: [Color.black.opacity(0.7), .clear, Color.black.opacity(0.75)],
+        startPoint: .top,
+        endPoint: .bottom
+      )
+      .ignoresSafeArea()
+
+      Color.clear
+        .contentShape(Rectangle())
+        .onTapGesture {
+          Task { await viewModel.send(.tapPlayerArea) }
+        }
+
+      if viewModel.isControlsVisible {
+        playerControls(isPlaying: isPlaying, isFullScreen: true)
+          .transition(.opacity)
+      }
+
+      if viewModel.isSeeking {
+        ProgressView()
+          .tint(ColorToken.grayScale30.color)
+          .scaleEffect(1.3)
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+      }
+    }
+    .animation(.easeInOut(duration: 0.2), value: viewModel.isControlsVisible)
   }
 
   // MARK: - Core Metadata
@@ -440,5 +540,16 @@ struct VideoPlayerView: View {
     let display = DateFormatter()
     display.dateFormat = "yyyy.MM.dd"
     return display.string(from: date)
+  }
+
+  @MainActor
+  private func requestOrientation(_ orientation: UIInterfaceOrientationMask) {
+    AppOrientationLock.supportedOrientations = orientation
+    guard
+      let scene = UIApplication.shared.connectedScenes
+        .compactMap({ $0 as? UIWindowScene })
+        .first(where: { $0.activationState == .foregroundActive })
+    else { return }
+    scene.requestGeometryUpdate(.iOS(interfaceOrientations: orientation))
   }
 }

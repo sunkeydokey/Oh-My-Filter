@@ -143,6 +143,30 @@ struct VideoPlayerViewModelTests {
     #expect(viewModel.selectedQuality == "720p")
     #expect(viewModel.isQualityMenuVisible == false)
   }
+
+  // MARK: - Full Screen
+
+  @Test("full screen actions only update presentation state")
+  func fullScreenActionsUpdatePresentationState() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    await viewModel.send(.task)
+
+    guard let player = viewModel.player else {
+      Issue.record("Expected player to be created")
+      return
+    }
+
+    #expect(viewModel.isFullScreenPresented == false)
+    await viewModel.send(.enterFullScreen)
+    #expect(viewModel.isFullScreenPresented == true)
+    #expect(viewModel.player.map { $0 === player } == true)
+
+    await viewModel.send(.exitFullScreen)
+    #expect(viewModel.isFullScreenPresented == false)
+    #expect(viewModel.player.map { $0 === player } == true)
+  }
 }
 
 // MARK: - Helpers

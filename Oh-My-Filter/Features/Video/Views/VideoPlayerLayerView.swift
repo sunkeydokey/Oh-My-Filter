@@ -4,6 +4,12 @@ import UIKit
 
 struct VideoPlayerLayerView: UIViewRepresentable {
   let player: AVPlayer?
+  let videoGravity: AVLayerVideoGravity
+
+  init(player: AVPlayer?, videoGravity: AVLayerVideoGravity = .resizeAspectFill) {
+    self.player = player
+    self.videoGravity = videoGravity
+  }
 
   func makeUIView(context: Context) -> PlayerUIView {
     let view = PlayerUIView()
@@ -13,6 +19,7 @@ struct VideoPlayerLayerView: UIViewRepresentable {
 
   func updateUIView(_ uiView: PlayerUIView, context: Context) {
     uiView.playerLayer.player = player
+    uiView.playerLayer.videoGravity = videoGravity
   }
 }
 

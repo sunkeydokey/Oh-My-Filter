@@ -4,6 +4,11 @@ import FirebaseMessaging
 import KakaoSDKCommon
 import UserNotifications
 
+@MainActor
+enum AppOrientationLock {
+  static var supportedOrientations: UIInterfaceOrientationMask = .portrait
+}
+
 final class AppDelegate: NSObject, UIApplicationDelegate {
   func application(
     _ application: UIApplication,
@@ -20,6 +25,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
     application.registerForRemoteNotifications()
     return true
+  }
+
+  func application(
+    _ application: UIApplication,
+    supportedInterfaceOrientationsFor window: UIWindow?
+  ) -> UIInterfaceOrientationMask {
+    MainActor.assumeIsolated {
+      AppOrientationLock.supportedOrientations
+    }
   }
 
   func application(
