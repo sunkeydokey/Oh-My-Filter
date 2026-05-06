@@ -39,6 +39,23 @@ nonisolated enum FilterEditParameter: String, CaseIterable, Hashable, Sendable {
     )
   }
 
+  static func filterParameterValues(from values: FilterValues) -> [FilterEditParameter: Double] {
+    [
+      .brightness: values.brightness,
+      .exposure: values.exposure,
+      .contrast: values.contrast,
+      .saturation: values.saturation,
+      .sharpness: values.sharpen,
+      .blur: values.blur,
+      .vignette: values.vignette,
+      .noiseReduction: values.noiseReduction,
+      .highlights: values.highlights,
+      .shadows: values.shadows,
+      .temperature: values.temperature,
+      .blackPoint: values.blackPoint,
+    ]
+  }
+
   private static func value(
     for parameter: FilterEditParameter,
     in values: [FilterEditParameter: Double]

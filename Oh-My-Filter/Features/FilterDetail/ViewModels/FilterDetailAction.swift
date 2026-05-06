@@ -11,6 +11,8 @@ nonisolated enum FilterDetailAction: Equatable, Sendable {
   case replyTapped(commentID: String)
   case cancelReply
   case toggleReplies(commentID: String)
+  case tapEdit
+  case routeHandled
   case dismissAlert
   case confirmAlert
 }

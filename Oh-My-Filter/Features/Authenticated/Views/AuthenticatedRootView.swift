@@ -24,7 +24,9 @@ struct AuthenticatedRootView: View {
           .navigationDestination(for: MainRoute.self) { route in
             switch route {
             case let .filterDetail(filterID):
-              FilterDetailView(filterID: filterID)
+              FilterDetailView(filterID: filterID) { route in
+                mainPath.append(route)
+              }
             case .filterMake:
               MakeFilterView { detail in
                 MainNavigationPathReducer.replaceFilterMakeWithDetail(
@@ -34,6 +36,8 @@ struct AuthenticatedRootView: View {
               }
             case let .filterEdit(draft):
               FilterEditView(draft: draft)
+            case let .filterUpdate(draft):
+              MakeFilterView(mode: .update(filterID: draft.filterID ?? ""), draft: draft)
             }
           }
         }
@@ -47,7 +51,9 @@ struct AuthenticatedRootView: View {
           .navigationDestination(for: MainRoute.self) { route in
             switch route {
             case let .filterDetail(filterID):
-              FilterDetailView(filterID: filterID)
+              FilterDetailView(filterID: filterID) { route in
+                feedPath.append(route)
+              }
             case .filterMake:
               MakeFilterView { detail in
                 MainNavigationPathReducer.replaceFilterMakeWithDetail(
@@ -57,6 +63,8 @@ struct AuthenticatedRootView: View {
               }
             case let .filterEdit(draft):
               FilterEditView(draft: draft)
+            case let .filterUpdate(draft):
+              MakeFilterView(mode: .update(filterID: draft.filterID ?? ""), draft: draft)
             }
           }
         }

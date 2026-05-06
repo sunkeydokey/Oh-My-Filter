@@ -8,6 +8,8 @@ nonisolated struct FilterDetailState: Sendable {
   var expandedReplyCommentIDs: Set<String> = []
   var commentText = ""
   var replyingToCommentID: String?
+  var currentUserID: String?
+  var route: FilterDetailRoute?
 
   var detail: FilterDetail? {
     switch phase {
@@ -17,19 +19,22 @@ nonisolated struct FilterDetailState: Sendable {
       previous
     }
   }
+
+  var isMine: Bool {
+    guard let currentUserID, currentUserID.isEmpty == false else { return false }
+    return detail?.creator.id == currentUserID
+  }
+}
+
+nonisolated enum FilterDetailRoute: Equatable, Sendable {
+  case update(FilterMakeDraft)
 }
 
 nonisolated enum FilterDetailPhase: Sendable {
   case idle
   case loading(previous: FilterDetail?)
-  case loaded(FilterDetail, FilterDetailPreviewState)
+  case loaded(FilterDetail, FilterComparisonPreviewState)
   case failed(message: String, previous: FilterDetail?)
-}
-
-nonisolated enum FilterDetailPreviewState: Sendable {
-  case rendering
-  case rendered(RenderedFilterImages)
-  case fallback(originalImageURL: URL?, filteredImageURL: URL?)
 }
 
 nonisolated struct FilterDetailAlert: Equatable, Sendable {

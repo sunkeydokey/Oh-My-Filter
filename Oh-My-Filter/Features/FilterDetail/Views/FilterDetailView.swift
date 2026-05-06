@@ -4,9 +4,14 @@ import SwiftUI
 struct FilterDetailView: View {
   @State private var viewModel: FilterDetailViewModel
   @State private var didLoad = false
+  private let navigate: (MainRoute) -> Void
 
-  init(filterID: String) {
+  init(
+    filterID: String,
+    navigate: @escaping (MainRoute) -> Void = { _ in }
+  ) {
     _viewModel = State(initialValue: FilterDetailViewModel(filterID: filterID))
+    self.navigate = navigate
   }
 
   var body: some View {
@@ -28,10 +33,28 @@ struct FilterDetailView: View {
     .mulgyeolNavigationTitle(viewModel.state.detail?.title ?? "")
     .toolbarBackground(ColorToken.brandBlackSprout.color, for: .navigationBar)
     .toolbarBackground(.visible, for: .navigationBar)
+    .toolbar {
+      if viewModel.state.isMine {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button("수정") {
+            edit()
+          }
+          .font(TypographyToken.pretendardBody3.font)
+          .foregroundStyle(ColorToken.sesacFilterBrightTurquoise.color)
+        }
+      }
+    }
     .task {
       guard didLoad == false else { return }
       didLoad = true
       await viewModel.send(.task)
+    }
+    .onChange(of: viewModel.state.route) { _, route in
+      guard case let .update(draft)? = route else { return }
+      navigate(.filterUpdate(draft))
+      Task {
+        await viewModel.send(.routeHandled)
+      }
     }
     .sheet(item: paymentRequestBinding) { paymentRequest in
       PortoneWebView(paymentRequest: paymentRequest) { response in
@@ -166,6 +189,12 @@ struct FilterDetailView: View {
   private func toggleReplies(commentID: String) {
     Task {
       await viewModel.send(.toggleReplies(commentID: commentID))
+    }
+  }
+
+  private func edit() {
+    Task {
+      await viewModel.send(.tapEdit)
     }
   }
 
