@@ -1,4 +1,3 @@
-import CoreGraphics
 import Foundation
 
 nonisolated struct FilterDetail: Equatable, Identifiable, Sendable {
@@ -135,9 +134,4 @@ nonisolated struct FilterValueDisplayItem: Equatable, Identifiable, Sendable {
   var valueText: String {
     value.formatted(.number.precision(.fractionLength(0 ... 2)))
   }
-}
-
-nonisolated struct RenderedFilterImages: Sendable {
-  let original: CGImage
-  let filtered: CGImage
 }

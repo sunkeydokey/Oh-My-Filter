@@ -7,6 +7,8 @@ nonisolated enum FilterMakeAction: Equatable, Sendable {
   case priceChanged(String)
   case representativeImageChanged(Data?)
   case representativeImageInfoChanged(FilterMakeSelectedImageInfo)
+  case comparisonPreviewChanged(FilterComparisonPreviewState?)
   case filterParameterValuesChanged([FilterEditParameter: Double])
   case submitTapped
+  case routeHandled
 }

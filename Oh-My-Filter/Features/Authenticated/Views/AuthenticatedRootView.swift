@@ -26,7 +26,12 @@ struct AuthenticatedRootView: View {
             case let .filterDetail(filterID):
               FilterDetailView(filterID: filterID)
             case .filterMake:
-              MakeFilterView()
+              MakeFilterView { detail in
+                MainNavigationPathReducer.replaceFilterMakeWithDetail(
+                  detail.id,
+                  in: &mainPath
+                )
+              }
             case let .filterEdit(draft):
               FilterEditView(draft: draft)
             }
@@ -44,7 +49,12 @@ struct AuthenticatedRootView: View {
             case let .filterDetail(filterID):
               FilterDetailView(filterID: filterID)
             case .filterMake:
-              MakeFilterView()
+              MakeFilterView { detail in
+                MainNavigationPathReducer.replaceFilterMakeWithDetail(
+                  detail.id,
+                  in: &feedPath
+                )
+              }
             case let .filterEdit(draft):
               FilterEditView(draft: draft)
             }
@@ -94,5 +104,14 @@ struct AuthenticatedRootView: View {
     .toolbarBackground(ColorToken.brandBlackSprout.color, for: .tabBar)
     .toolbarBackground(.visible, for: .tabBar)
     .toolbarColorScheme(.dark, for: .tabBar)
+  }
+}
+
+nonisolated enum MainNavigationPathReducer {
+  static func replaceFilterMakeWithDetail(_ filterID: String, in path: inout [MainRoute]) {
+    if path.last == .filterMake {
+      path.removeLast()
+    }
+    path.append(.filterDetail(filterID: filterID))
   }
 }

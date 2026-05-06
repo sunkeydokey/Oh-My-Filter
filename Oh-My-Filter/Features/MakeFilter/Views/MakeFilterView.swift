@@ -1,19 +1,20 @@
+import CoreGraphics
 import PhotosUI
 import SwiftUI
-#if canImport(UIKit)
-import UIKit
-#endif
 
 struct MakeFilterView: View {
   @State private var viewModel: FilterMakeViewModel
   @State private var pickerItem: PhotosPickerItem?
   @FocusState private var isInputFocused: Bool
+  private let onSubmitSucceeded: (FilterDetail) -> Void
 
   init(
     mode: FilterMakeMode = .create,
-    draft: FilterMakeDraft? = nil
+    draft: FilterMakeDraft? = nil,
+    onSubmitSucceeded: @escaping (FilterDetail) -> Void = { _ in }
   ) {
     _viewModel = State(initialValue: FilterMakeViewModel(mode: mode, draft: draft))
+    self.onSubmitSucceeded = onSubmitSucceeded
   }
 
   var body: some View {
@@ -63,6 +64,11 @@ struct MakeFilterView: View {
     }
     .task(id: pickerItem) {
       await loadRepresentativeImage()
+    }
+    .onChange(of: viewModel.state.route) { _, route in
+      guard case let .created(detail)? = route else { return }
+      onSubmitSucceeded(detail)
+      viewModel.send(.routeHandled)
     }
   }
 
@@ -159,6 +165,13 @@ struct MakeFilterView: View {
         Spacer()
 
         if viewModel.state.hasRepresentativeImage {
+          PhotosPicker(selection: $pickerItem, matching: .images) {
+            Image(systemName: "photo.badge.plus")
+              .font(.system(size: 16, weight: .semibold))
+              .foregroundStyle(ColorToken.grayScale60.color)
+          }
+          .accessibilityLabel("대표 사진 변경")
+
           NavigationLink {
             FilterEditView(
               draft: viewModel.state.draft,
@@ -175,21 +188,8 @@ struct MakeFilterView: View {
         }
       }
 
-      if let image = viewModel.state.representativeImage {
-        PhotosPicker(selection: $pickerItem, matching: .images) {
-          Image(uiImage: image)
-            .resizable()
-            .scaledToFill()
-            .frame(maxWidth: .infinity)
-            .aspectRatio(1, contentMode: .fit)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay {
-              RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(ColorToken.brandDeepSprout.color, lineWidth: 2)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-        .buttonStyle(.plain)
+      if let image = viewModel.state.representativePreviewImage {
+        representativePreview(image: image)
 
         FilterDetailMetadataView(
           title: viewModel.state.photoMetadata.headerValue,
@@ -219,6 +219,27 @@ struct MakeFilterView: View {
         }
       }
     }
+  }
+
+  @ViewBuilder
+  private func representativePreview(image: CGImage) -> some View {
+    Group {
+      if let comparisonPreviewState = viewModel.state.comparisonPreviewState {
+        FilterImageComparisonView(previewState: comparisonPreviewState)
+      } else {
+        Image(decorative: image, scale: 1)
+          .resizable()
+          .scaledToFill()
+          .frame(maxWidth: .infinity)
+          .aspectRatio(1, contentMode: .fit)
+      }
+    }
+    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    .overlay {
+      RoundedRectangle(cornerRadius: 12, style: .continuous)
+        .stroke(ColorToken.brandDeepSprout.color, lineWidth: 2)
+    }
+    .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
   }
 
   private var priceSection: some View {
@@ -270,12 +291,3 @@ struct MakeFilterView: View {
     viewModel.send(.representativeImageChanged(data))
   }
 }
-
-#if canImport(UIKit)
-private extension FilterMakeState {
-  var representativeImage: UIImage? {
-    guard let representativeImageData else { return nil }
-    return UIImage(data: representativeImageData)
-  }
-}
-#endif

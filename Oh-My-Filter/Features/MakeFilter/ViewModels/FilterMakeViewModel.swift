@@ -7,15 +7,26 @@ final class FilterMakeViewModel {
   private(set) var state: FilterMakeState
   private let imageInfoReader: any FilterMakeImageInfoReading
   private let submitUseCase: any FilterMakeSubmitting
+  private let renderer: any ImageFilterRendering
+  private var imageInfoTask: Task<Void, Never>?
+  private var imageInfoRequestID = UUID()
+  private var comparisonRenderTask: Task<Void, Never>?
+  private var comparisonRenderRequestID = UUID()
 
   init(
     state: FilterMakeState = FilterMakeState(),
     imageInfoReader: any FilterMakeImageInfoReading = LiveFilterMakeImageInfoReader(),
-    submitUseCase: (any FilterMakeSubmitting)? = nil
+    submitUseCase: (any FilterMakeSubmitting)? = nil,
+    renderer: any ImageFilterRendering = CoreImageFilterRenderer()
   ) {
     self.state = state
     self.imageInfoReader = imageInfoReader
     self.submitUseCase = submitUseCase ?? LiveFilterMakeSubmitUseCase()
+    self.renderer = renderer
+    if let imageData = state.representativeImageData {
+      scheduleRepresentativeImageInfo(for: imageData)
+      scheduleComparisonRender(for: imageData, filterValues: state.filterValues)
+    }
   }
 
   convenience init(
@@ -36,17 +47,42 @@ final class FilterMakeViewModel {
     case let .priceChanged(input):
       state.priceInput = Self.normalizedPriceInput(input)
     case let .representativeImageChanged(data):
-      send(.representativeImageInfoChanged(imageInfoReader.selectedImageInfo(from: data)))
+      state.representativeImageData = data
+      state.representativePreviewImage = nil
+      guard let data else {
+        imageInfoTask?.cancel()
+        comparisonRenderTask?.cancel()
+        imageInfoRequestID = UUID()
+        comparisonRenderRequestID = UUID()
+        state.comparisonPreviewState = nil
+        state.photoMetadata = .empty
+        state.filterParameterValues = FilterEditParameter.defaultValues
+        return
+      }
+      state.comparisonPreviewState = .rendering
+      scheduleRepresentativeImageInfo(for: data)
+      scheduleComparisonRender(for: data, filterValues: state.filterValues)
     case let .representativeImageInfoChanged(info):
       state.representativeImageData = info.imageData
+      state.representativePreviewImage = info.previewImage
       state.photoMetadata = info.metadata
       state.filterParameterValues = info.filterParameterValues
+      if let imageData = info.imageData {
+        scheduleComparisonRender(for: imageData, filterValues: state.filterValues)
+      }
+    case let .comparisonPreviewChanged(previewState):
+      state.comparisonPreviewState = previewState
     case let .filterParameterValuesChanged(values):
       state.filterParameterValues = values
+      guard let imageData = state.representativeImageData else { return }
+      state.comparisonPreviewState = .rendering
+      scheduleComparisonRender(for: imageData, filterValues: state.filterValues)
     case .submitTapped:
       Task {
         await submit()
       }
+    case .routeHandled:
+      state.route = nil
     }
   }
 
@@ -59,14 +95,52 @@ final class FilterMakeViewModel {
     let mode = state.mode
 
     do {
-      _ = try await submitUseCase.submit(draft: draft, mode: mode)
+      let detail = try await submitUseCase.submit(draft: draft, mode: mode)
       state.isSubmitting = false
-      state.submissionMessage = successMessage(for: mode)
+      switch mode {
+      case .create:
+        state.route = .created(detail)
+      case .update:
+        state.submissionMessage = successMessage(for: mode)
+      }
     } catch is CancellationError {
       state.isSubmitting = false
     } catch {
       state.isSubmitting = false
       state.submissionMessage = Self.message(for: error)
+    }
+  }
+
+  private func scheduleRepresentativeImageInfo(for imageData: Data) {
+    imageInfoTask?.cancel()
+    let requestID = UUID()
+    imageInfoRequestID = requestID
+    imageInfoTask = Task { [imageInfoReader, imageData, requestID] in
+      let info = await imageInfoReader.selectedImageInfo(from: imageData)
+      guard Task.isCancelled == false else { return }
+      guard self.imageInfoRequestID == requestID else { return }
+      self.send(.representativeImageInfoChanged(info))
+    }
+  }
+
+  private func scheduleComparisonRender(for imageData: Data, filterValues: FilterValues) {
+    comparisonRenderTask?.cancel()
+    let requestID = UUID()
+    comparisonRenderRequestID = requestID
+    comparisonRenderTask = Task { [renderer, imageData, filterValues, requestID] in
+      do {
+        let images = try await Task.detached(priority: .userInitiated) {
+          try await renderer.render(originalImageData: imageData, filterValues: filterValues)
+        }.value
+        guard Task.isCancelled == false else { return }
+        guard self.comparisonRenderRequestID == requestID else { return }
+        self.send(.comparisonPreviewChanged(.rendered(images)))
+      } catch is CancellationError {
+      } catch {
+        guard Task.isCancelled == false else { return }
+        guard self.comparisonRenderRequestID == requestID else { return }
+        self.send(.comparisonPreviewChanged(nil))
+      }
     }
   }
 

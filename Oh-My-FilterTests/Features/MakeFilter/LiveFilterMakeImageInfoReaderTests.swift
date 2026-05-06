@@ -7,13 +7,15 @@ import UniformTypeIdentifiers
 
 struct LiveFilterMakeImageInfoReaderTests {
   @Test("reader extracts exif metadata and embedded filter values")
-  func readerExtractsImageInfo() throws {
+  func readerExtractsImageInfo() async throws {
     let reader = LiveFilterMakeImageInfoReader()
     let data = try makeJPEGData()
 
-    let info = reader.selectedImageInfo(from: data)
+    let info = await reader.selectedImageInfo(from: data)
 
     #expect(info.metadata.camera == "Apple iPhone 16 Pro")
+    #expect(info.previewImage?.width == 24)
+    #expect(info.previewImage?.height == 24)
     #expect(info.metadata.lens == "Wide 26 mm")
     #expect(info.metadata.focalLength == "26 mm")
     #expect(info.metadata.aperture == "f 1.8")

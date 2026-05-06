@@ -8,7 +8,7 @@ nonisolated struct FilterResponseDTO: Decodable, Sendable {
   let description: String?
   let files: [String]
   let creator: CommentUserDTO?
-  let metadata: FilterMetadataDTO?
+  let photoMetadata: PhotoMetadataDTO?
   let filterValues: FilterValuesDTO?
   let comments: [CommentDTO]
   let isDownloaded: Bool
@@ -35,7 +35,7 @@ nonisolated struct FilterResponseDTO: Decodable, Sendable {
     description = try container.decodeIfPresent(String.self, forKey: .description)
     files = (try? container.decode([String].self, forKey: .files)) ?? []
     creator = try container.decodeIfPresent(CommentUserDTO.self, forKey: .creator)
-    metadata = try container.decodeIfPresent(FilterMetadataDTO.self, forKey: .metadata)
+    photoMetadata = try container.decodeIfPresent(PhotoMetadataDTO.self, forKey: .photoMetadata)
     filterValues = try container.decodeIfPresent(FilterValuesDTO.self, forKey: .filterValues)
     comments = (try? container.decode([CommentDTO].self, forKey: .comments)) ?? []
     isDownloaded = try container.decodeFlexibleBool(forKey: .isDownloaded) ?? false
@@ -57,7 +57,7 @@ nonisolated struct FilterResponseDTO: Decodable, Sendable {
     case description
     case files
     case creator
-    case metadata
+    case photoMetadata
     case filterValues
     case comments
     case isDownloaded
@@ -73,13 +73,54 @@ nonisolated struct FilterResponseDTO: Decodable, Sendable {
 
 typealias FilterDetailUserDTO = CommentUserDTO
 
-nonisolated struct FilterMetadataDTO: Decodable, Sendable {
+nonisolated struct PhotoMetadataDTO: Decodable, Sendable {
   let camera: String?
-  let lens: String?
-  let focalLength: String?
-  let aperture: String?
+  let lensInfo: String?
+  let focalLength: Double?
+  let aperture: Double?
+  let iso: Int?
   let shutterSpeed: String?
-  let iso: String?
+  let pixelWidth: Int?
+  let pixelHeight: Int?
+  let fileSize: Double?
+  let format: String?
+  let dateTimeOriginal: String?
+  let latitude: Double?
+  let longitude: Double?
+
+  nonisolated init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+
+    camera = try container.decodeIfPresent(String.self, forKey: .camera)
+    lensInfo = try container.decodeIfPresent(String.self, forKey: .lensInfo)
+    focalLength = try container.decodeFlexibleDouble(forKey: .focalLength)
+    aperture = try container.decodeFlexibleDouble(forKey: .aperture)
+    iso = try container.decodeFlexibleInt(forKey: .iso)
+    shutterSpeed = try container.decodeIfPresent(String.self, forKey: .shutterSpeed)
+    pixelWidth = try container.decodeFlexibleInt(forKey: .pixelWidth)
+    pixelHeight = try container.decodeFlexibleInt(forKey: .pixelHeight)
+    fileSize = try container.decodeFlexibleDouble(forKey: .fileSize)
+    format = try container.decodeIfPresent(String.self, forKey: .format)
+    dateTimeOriginal = try container.decodeIfPresent(String.self, forKey: .dateTimeOriginal)
+    latitude = try container.decodeFlexibleDouble(forKey: .latitude)
+    longitude = try container.decodeFlexibleDouble(forKey: .longitude)
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case camera
+    case lensInfo
+    case focalLength
+    case aperture
+    case iso
+    case shutterSpeed
+    case pixelWidth
+    case pixelHeight
+    case fileSize
+    case format
+    case dateTimeOriginal
+    case latitude
+    case longitude
+  }
 }
 
 nonisolated struct FilterValuesDTO: Decodable, Sendable {
@@ -119,11 +160,11 @@ typealias FilterReplyDTO = CommentReplyDTO
 
 private extension KeyedDecodingContainer {
   nonisolated func decodeFlexibleString(forKey key: Key) throws -> String? {
-    if let value = try decodeIfPresent(String.self, forKey: key) {
+    if let value = try? decodeIfPresent(String.self, forKey: key) {
       return value
     }
 
-    if let value = try decodeIfPresent(Int.self, forKey: key) {
+    if let value = try? decodeIfPresent(Int.self, forKey: key) {
       return String(value)
     }
 
@@ -131,27 +172,47 @@ private extension KeyedDecodingContainer {
   }
 
   nonisolated func decodeFlexibleInt(forKey key: Key) throws -> Int? {
-    if let value = try decodeIfPresent(Int.self, forKey: key) {
+    if let value = try? decodeIfPresent(Int.self, forKey: key) {
       return value
     }
 
-    if let value = try decodeIfPresent(String.self, forKey: key) {
+    if let value = try? decodeIfPresent(Double.self, forKey: key) {
+      return Int(value)
+    }
+
+    if let value = try? decodeIfPresent(String.self, forKey: key) {
       return Int(value)
     }
 
     return nil
   }
 
-  nonisolated func decodeFlexibleBool(forKey key: Key) throws -> Bool? {
-    if let value = try decodeIfPresent(Bool.self, forKey: key) {
+  nonisolated func decodeFlexibleDouble(forKey key: Key) throws -> Double? {
+    if let value = try? decodeIfPresent(Double.self, forKey: key) {
       return value
     }
 
-    if let value = try decodeIfPresent(Int.self, forKey: key) {
+    if let value = try? decodeIfPresent(Int.self, forKey: key) {
+      return Double(value)
+    }
+
+    if let value = try? decodeIfPresent(String.self, forKey: key) {
+      return Double(value)
+    }
+
+    return nil
+  }
+
+  nonisolated func decodeFlexibleBool(forKey key: Key) throws -> Bool? {
+    if let value = try? decodeIfPresent(Bool.self, forKey: key) {
+      return value
+    }
+
+    if let value = try? decodeIfPresent(Int.self, forKey: key) {
       return value != 0
     }
 
-    if let value = try decodeIfPresent(String.self, forKey: key) {
+    if let value = try? decodeIfPresent(String.self, forKey: key) {
       return Bool(value)
     }
 
