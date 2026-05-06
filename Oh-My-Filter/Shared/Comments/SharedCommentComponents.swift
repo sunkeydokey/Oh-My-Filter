@@ -164,7 +164,7 @@ private struct SharedCommentComposerView: View {
         HStack(spacing: 8) {
           Text("답글")
             .font(TypographyToken.pretendardCaption2.font.weight(.bold))
-            .foregroundStyle(ColorToken.sesacFilterBrightTurquoise.color)
+            .foregroundStyle(ColorToken.mainAccent.color)
 
           Button("취소", action: onCancelReply)
             .font(TypographyToken.pretendardCaption2.font.weight(.bold))
@@ -185,7 +185,7 @@ private struct SharedCommentComposerView: View {
         Button(action: onSubmit) {
           Image(systemName: "paperplane.fill")
             .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? ColorToken.grayScale60.color : ColorToken.sesacFilterBrightTurquoise.color)
+            .foregroundStyle(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? ColorToken.grayScale60.color : ColorToken.mainAccent.color)
         }
         .buttonStyle(.plain)
         .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -240,4 +240,3 @@ private extension String {
     return self
   }
 }
-

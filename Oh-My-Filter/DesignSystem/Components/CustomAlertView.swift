@@ -40,7 +40,7 @@ struct CustomAlertView: View {
             .foregroundStyle(ColorToken.grayScale0.color)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
-            .background(ColorToken.sesacFilterBrightTurquoise.color)
+            .background(ColorToken.mainAccent.color)
             .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
         }
         .buttonStyle(.plain)
@@ -101,7 +101,7 @@ struct CustomAlertSingleButtonView: View {
           .foregroundStyle(ColorToken.grayScale0.color)
           .frame(maxWidth: .infinity)
           .padding(.vertical, 8)
-          .background(ColorToken.sesacFilterBrightTurquoise.color)
+          .background(ColorToken.mainAccent.color)
           .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
           .buttonStyle(.plain)
       }

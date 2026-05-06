@@ -17,7 +17,7 @@ struct MainHotTrendFailedCardView: View {
 
       Button("다시 시도", action: retryAction)
         .buttonStyle(.bordered)
-        .tint(ColorToken.sesacFilterBrightTurquoise.color)
+        .tint(ColorToken.mainAccent.color)
     }
     .padding(20)
     .frame(maxWidth: .infinity, alignment: .leading)

@@ -116,7 +116,7 @@ struct MakeFilterView: View {
       TextField(placeholder, text: text)
         .font(TypographyToken.pretendardBody3.font)
         .foregroundStyle(ColorToken.grayScale0.color)
-        .tint(ColorToken.sesacFilterBrightTurquoise.color)
+        .tint(ColorToken.mainAccent.color)
         .focused($isInputFocused)
         .padding(.horizontal, 12)
         .frame(height: 42)
@@ -257,7 +257,7 @@ struct MakeFilterView: View {
         .keyboardType(.numberPad)
         .font(TypographyToken.pretendardBody3.font)
         .foregroundStyle(ColorToken.grayScale0.color)
-        .tint(ColorToken.sesacFilterBrightTurquoise.color)
+        .tint(ColorToken.mainAccent.color)
         .focused($isInputFocused)
 
         Text("원")

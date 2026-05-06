@@ -127,7 +127,7 @@ struct FilterEditView: View {
             _ = viewModel.send(isEditing ? .valueEditingStarted : .valueEditingEnded, values: filterParameterValues)
           }
         )
-        .tint(ColorToken.sesacFilterBrightTurquoise.color)
+        .tint(ColorToken.mainAccent.color)
 
         Text(selectedParameter.displayText(for: selectedValue))
           .font(TypographyToken.pretendardBody3.font)

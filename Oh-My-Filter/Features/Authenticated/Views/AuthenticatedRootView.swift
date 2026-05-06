@@ -41,6 +41,7 @@ struct AuthenticatedRootView: View {
             }
           }
         }
+        .toolbar(.hidden, for: .navigationBar)
       }
 
       Tab("피드", systemImage: IconToken.board.symbolName, value: .feed) {
@@ -108,7 +109,7 @@ struct AuthenticatedRootView: View {
         }
       }
     }
-    .tint(ColorToken.sesacFilterBrightTurquoise.color)
+    .tint(ColorToken.mainAccent.color)
     .toolbarBackground(ColorToken.brandBlackSprout.color, for: .tabBar)
     .toolbarBackground(.visible, for: .tabBar)
     .toolbarColorScheme(.dark, for: .tabBar)

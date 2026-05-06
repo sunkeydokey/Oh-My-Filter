@@ -7,7 +7,7 @@ struct MainBannerLoadingView: View {
         .fill(ColorToken.brandDeepSprout.color)
         .overlay {
           ProgressView()
-            .tint(ColorToken.sesacFilterBrightTurquoise.color)
+            .tint(ColorToken.mainAccent.color)
         }
     }
     .frame(maxWidth: .infinity)

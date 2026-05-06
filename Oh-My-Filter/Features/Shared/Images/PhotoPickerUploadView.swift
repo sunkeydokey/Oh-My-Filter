@@ -27,7 +27,7 @@ struct PhotoPickerUploadView: View {
             .foregroundStyle(ColorToken.brandBlackSprout.color)
             .padding(.horizontal, 12)
             .frame(height: 36)
-            .background(ColorToken.sesacFilterBrightTurquoise.color, in: .rect(cornerRadius: 8))
+            .background(ColorToken.mainAccent.color, in: .rect(cornerRadius: 8))
         }
 
         Text("\(displayedSelections.count)/\(preset.maxCount)")
@@ -50,7 +50,7 @@ struct PhotoPickerUploadView: View {
       if let statusMessage {
         Text(statusMessage)
           .font(TypographyToken.pretendardCaption2.font)
-          .foregroundStyle(ColorToken.sesacFilterBrightTurquoise.color)
+          .foregroundStyle(ColorToken.mainAccent.color)
       }
     }
     .onChange(of: pickerItems) { _, newItems in

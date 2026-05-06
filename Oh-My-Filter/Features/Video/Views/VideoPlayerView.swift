@@ -106,7 +106,7 @@ struct VideoPlayerView: View {
           .foregroundStyle(ColorToken.grayScale45.color)
           .padding(.horizontal, 14)
           .frame(height: 34)
-          .background(ColorToken.sesacFilterBrightTurquoise.color)
+          .background(ColorToken.mainAccent.color)
           .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
       }
     }
@@ -278,7 +278,7 @@ struct VideoPlayerView: View {
         .padding(.horizontal, 14)
         .frame(height: 42)
         .frame(maxWidth: .infinity)
-        .background(viewModel.isLiked ? ColorToken.sesacFilterBrightTurquoise.color : ColorToken.brandBlackSprout.color)
+        .background(viewModel.isLiked ? ColorToken.mainAccent.color : ColorToken.brandBlackSprout.color)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay {
           if viewModel.isLiked {
@@ -408,7 +408,7 @@ struct VideoPlayerView: View {
           .padding(.horizontal, 12)
           .frame(height: 36)
           .frame(maxWidth: .infinity)
-          .background(isSelected ? ColorToken.sesacFilterBrightTurquoise.color : ColorToken.brandBlackSprout.color)
+          .background(isSelected ? ColorToken.mainAccent.color : ColorToken.brandBlackSprout.color)
           .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
       }

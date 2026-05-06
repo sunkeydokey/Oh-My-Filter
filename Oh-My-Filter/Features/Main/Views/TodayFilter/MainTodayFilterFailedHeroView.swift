@@ -43,7 +43,7 @@ struct MainTodayFilterFailedHeroView: View {
 
         Button("다시 시도", action: retryAction)
           .buttonStyle(.borderedProminent)
-          .tint(ColorToken.sesacFilterBrightTurquoise.color)
+          .tint(ColorToken.mainAccent.color)
 
         Spacer(minLength: 0)
 
