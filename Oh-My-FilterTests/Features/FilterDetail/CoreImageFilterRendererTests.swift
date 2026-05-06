@@ -79,6 +79,20 @@ struct CoreImageFilterRendererTests {
     #expect(images.filtered.height == 2)
   }
 
+  @Test("preview render downsamples to requested maximum")
+  func previewRenderDownsamplesToRequestedMaximum() async throws {
+    let renderer = CoreImageFilterRenderer()
+    let imageData = try Self.jpegData(width: 400, height: 200, orientation: 1)
+
+    let image = try await renderer.renderPreview(
+      originalImageData: imageData,
+      maxPixelSize: 100,
+      filterValues: .neutral
+    )
+
+    #expect(max(image.width, image.height) <= 100)
+  }
+
   private static func pngData() throws -> Data {
     let data = NSMutableData()
     let destination = try #require(CGImageDestinationCreateWithData(

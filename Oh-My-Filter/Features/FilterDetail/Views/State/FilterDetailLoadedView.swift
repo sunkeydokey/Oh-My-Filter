@@ -2,7 +2,7 @@ import SwiftUI
 
 struct FilterDetailLoadedView: View {
   let detail: FilterDetail
-  let previewState: FilterDetailPreviewState
+  let previewState: FilterComparisonPreviewState
   let isPaymentProcessing: Bool
   let expandedReplyCommentIDs: Set<String>
   let replyingToCommentID: String?
@@ -26,7 +26,7 @@ struct FilterDetailLoadedView: View {
         FilterDetailMetadataView(metadata: detail.metadata)
         FilterDetailValuesView(
           values: detail.filterValues,
-          isLocked: detail.isDownloaded == false
+          isLocked: false
         )
 
         Button(buttonTitle, action: action)

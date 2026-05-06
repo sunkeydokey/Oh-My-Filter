@@ -141,7 +141,7 @@ private extension FilterResponseDTO {
       originalImageURL: AuthenticatedRemoteImageSupport.url(from: files.first),
       fallbackFilteredImageURL: AuthenticatedRemoteImageSupport.url(from: files.dropFirst().first),
       creator: fallbackCreator,
-      metadata: metadata?.toDomainForFilterMake() ?? FilterDetailMetadata(
+      metadata: photoMetadata?.toDomainForFilterMake() ?? FilterDetailMetadata(
         camera: nil,
         lens: nil,
         focalLength: nil,
@@ -163,16 +163,22 @@ private extension FilterResponseDTO {
   }
 }
 
-private extension FilterMetadataDTO {
+private extension PhotoMetadataDTO {
   nonisolated func toDomainForFilterMake() -> FilterDetailMetadata {
     FilterDetailMetadata(
       camera: camera,
-      lens: lens,
-      focalLength: focalLength,
-      aperture: aperture,
+      lens: lensInfo,
+      focalLength: focalLength.map { "\($0.formattedExifNumber) mm" },
+      aperture: aperture.map { "f/\($0.formattedExifNumber)" },
       shutterSpeed: shutterSpeed,
-      iso: iso
+      iso: iso?.formatted(.number)
     )
+  }
+}
+
+private extension Double {
+  nonisolated var formattedExifNumber: String {
+    formatted(.number.precision(.fractionLength(0 ... 2)))
   }
 }
 

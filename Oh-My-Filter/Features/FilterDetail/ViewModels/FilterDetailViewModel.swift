@@ -17,19 +17,22 @@ final class FilterDetailViewModel {
   private let orderCreateUseCase: any OrderCreateUseCase
   private let paymentValidationUseCase: any PaymentValidationUseCase
   private let renderer: any ImageFilterRendering
+  private let imageDataLoader: any AuthenticatedImageDataLoading
 
   init(
     filterID: String,
     useCase: any FilterDetailUseCase,
     orderCreateUseCase: (any OrderCreateUseCase)? = nil,
     paymentValidationUseCase: (any PaymentValidationUseCase)? = nil,
-    renderer: any ImageFilterRendering
+    renderer: any ImageFilterRendering,
+    imageDataLoader: any AuthenticatedImageDataLoading = LiveAuthenticatedImageDataLoader()
   ) {
     self.filterID = filterID
     self.useCase = useCase
     self.orderCreateUseCase = orderCreateUseCase ?? LiveOrderCreateUseCase()
     self.paymentValidationUseCase = paymentValidationUseCase ?? LivePaymentValidationUseCase()
     self.renderer = renderer
+    self.imageDataLoader = imageDataLoader
   }
 
   convenience init(
@@ -80,6 +83,10 @@ final class FilterDetailViewModel {
       } else {
         state.expandedReplyCommentIDs.insert(commentID)
       }
+    case .tapEdit:
+      await routeToUpdate()
+    case .routeHandled:
+      state.route = nil
     case .dismissAlert, .confirmAlert:
       state.alert = nil
     }
@@ -90,7 +97,10 @@ final class FilterDetailViewModel {
     state.phase = .loading(previous: previous)
 
     do {
-      let detail = try await useCase.loadFilterDetail(filterID: filterID)
+      async let detailResponse = useCase.loadFilterDetail(filterID: filterID)
+      async let currentUserIDResponse = useCase.loadCurrentUserID()
+      let detail = try await detailResponse
+      state.currentUserID = try? await currentUserIDResponse
       state.expandedReplyCommentIDs = Set(detail.comments.map(\.id))
       state.phase = .loaded(detail, .rendering)
       await renderPreview(for: detail)
@@ -213,6 +223,42 @@ final class FilterDetailViewModel {
         confirmTitle: "확인"
       )
     }
+  }
+
+  private func routeToUpdate() async {
+    guard state.isMine, let detail = state.detail else { return }
+
+    do {
+      state.route = .update(try await updateDraft(from: detail))
+    } catch is CancellationError {
+    } catch {
+      state.alert = FilterDetailAlert(
+        title: "필터 수정",
+        message: "수정 화면을 준비할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+        cancelTitle: "취소",
+        confirmTitle: "확인"
+      )
+    }
+  }
+
+  private func updateDraft(from detail: FilterDetail) async throws -> FilterMakeDraft {
+    let representativeImageData: Data?
+    if let originalImageURL = detail.originalImageURL {
+      representativeImageData = try await imageDataLoader.loadImageData(from: originalImageURL)
+    } else {
+      representativeImageData = nil
+    }
+
+    return FilterMakeDraft(
+      filterID: detail.id,
+      name: detail.title,
+      category: detail.category.flatMap(FilterMakeCategory.init(rawValue:)) ?? .portrait,
+      introduction: detail.introduction ?? detail.description,
+      price: detail.price,
+      representativeImageData: representativeImageData,
+      photoMetadata: detail.metadata,
+      filterParameterValues: FilterEditParameter.filterParameterValues(from: detail.filterValues)
+    )
   }
 
   private func showPaymentAlert(message: String) {

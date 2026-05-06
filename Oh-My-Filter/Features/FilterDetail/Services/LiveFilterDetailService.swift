@@ -72,6 +72,36 @@ actor LiveFilterDetailService: FilterDetailServicing {
     }
   }
 
+  func loadCurrentUserID() async throws -> String {
+    let response: NetworkResponse
+    do {
+      response = try await networkManager.request(UserApiRouter.getOwnProfile)
+    } catch let error as NetworkError {
+      throw mappedNetworkError(error)
+    } catch {
+      Self.logger.error("❌ [FilterDetailAPI] own profile failed \(String(describing: error), privacy: .public)")
+      throw FilterDetailServiceError.transport
+    }
+
+    switch response.statusCode {
+    case 200 ..< 300:
+      do {
+        let profile = try decoder.decode(CurrentUserProfileResponseDTO.self, from: response.data)
+        guard profile.userId.isEmpty == false else {
+          throw FilterDetailServiceError.invalidResponse
+        }
+        return profile.userId
+      } catch let error as FilterDetailServiceError {
+        throw error
+      } catch {
+        Self.logger.error("❌ [FilterDetailAPI] own profile decode failed \(String(describing: error), privacy: .public)")
+        throw FilterDetailServiceError.invalidResponse
+      }
+    default:
+      throw FilterDetailServiceError.serverError
+    }
+  }
+
   private func mappedNetworkError(_ error: NetworkError) -> FilterDetailServiceError {
     switch error {
     case .invalidRequest, .invalidResponse:
@@ -113,7 +143,7 @@ private extension FilterResponseDTO {
       originalImageURL: AuthenticatedRemoteImageSupport.url(from: files.first),
       fallbackFilteredImageURL: AuthenticatedRemoteImageSupport.url(from: files.dropFirst().first),
       creator: fallbackCreator,
-      metadata: metadata?.toDomain() ?? FilterDetailMetadata(
+      metadata: photoMetadata?.toDomain() ?? FilterDetailMetadata(
         camera: nil,
         lens: nil,
         focalLength: nil,
@@ -135,16 +165,22 @@ private extension FilterResponseDTO {
   }
 }
 
-private extension FilterMetadataDTO {
+private extension PhotoMetadataDTO {
   nonisolated func toDomain() -> FilterDetailMetadata {
     FilterDetailMetadata(
       camera: camera,
-      lens: lens,
-      focalLength: focalLength,
-      aperture: aperture,
+      lens: lensInfo,
+      focalLength: focalLength.map { "\($0.formattedExifNumber) mm" },
+      aperture: aperture.map { "f/\($0.formattedExifNumber)" },
       shutterSpeed: shutterSpeed,
-      iso: iso
+      iso: iso?.formatted(.number)
     )
+  }
+}
+
+private extension Double {
+  nonisolated var formattedExifNumber: String {
+    formatted(.number.precision(.fractionLength(0 ... 2)))
   }
 }
 

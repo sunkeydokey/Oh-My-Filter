@@ -179,6 +179,84 @@ struct FilterDetailViewModelTests {
     #expect(viewModel.state.commentText.isEmpty)
   }
 
+  @Test("load marks detail mine when current user matches creator")
+  func loadMarksDetailMineWhenCurrentUserMatchesCreator() async {
+    let useCase = MockFilterDetailUseCase(
+      result: .success(.sample),
+      currentUserIDResult: .success("user-1")
+    )
+    let renderer = MockImageFilterRenderer(result: .success(.sample))
+    let viewModel = FilterDetailViewModel(filterID: "filter-123", useCase: useCase, renderer: renderer)
+
+    await viewModel.send(.task)
+
+    #expect(viewModel.state.currentUserID == "user-1")
+    #expect(viewModel.state.isMine == true)
+  }
+
+  @Test("load marks detail not mine when current user differs from creator")
+  func loadMarksDetailNotMineWhenCurrentUserDiffersFromCreator() async {
+    let useCase = MockFilterDetailUseCase(
+      result: .success(.sample),
+      currentUserIDResult: .success("user-2")
+    )
+    let renderer = MockImageFilterRenderer(result: .success(.sample))
+    let viewModel = FilterDetailViewModel(filterID: "filter-123", useCase: useCase, renderer: renderer)
+
+    await viewModel.send(.task)
+
+    #expect(viewModel.state.currentUserID == "user-2")
+    #expect(viewModel.state.isMine == false)
+  }
+
+  @Test("tap edit routes to update draft for own filter")
+  func tapEditRoutesToUpdateDraftForOwnFilter() async {
+    let useCase = MockFilterDetailUseCase(
+      result: .success(.sample),
+      currentUserIDResult: .success("user-1")
+    )
+    let renderer = MockImageFilterRenderer(result: .success(.sample))
+    let imageDataLoader = MockAuthenticatedImageDataLoader(data: Data([0x01, 0x02]))
+    let viewModel = FilterDetailViewModel(
+      filterID: "filter-123",
+      useCase: useCase,
+      renderer: renderer,
+      imageDataLoader: imageDataLoader
+    )
+
+    await viewModel.send(.task)
+    await viewModel.send(.tapEdit)
+
+    guard case let .update(draft)? = viewModel.state.route else {
+      Issue.record("Expected update route")
+      return
+    }
+
+    #expect(draft.filterID == "filter-123")
+    #expect(draft.name == "청록새록")
+    #expect(draft.category == .landscape)
+    #expect(draft.introduction == "맑은 청록빛")
+    #expect(draft.representativeImageData == Data([0x01, 0x02]))
+
+    await viewModel.send(.routeHandled)
+    #expect(viewModel.state.route == nil)
+  }
+
+  @Test("tap edit does not route for another user's filter")
+  func tapEditDoesNotRouteForOtherUserFilter() async {
+    let useCase = MockFilterDetailUseCase(
+      result: .success(.sample),
+      currentUserIDResult: .success("user-2")
+    )
+    let renderer = MockImageFilterRenderer(result: .success(.sample))
+    let viewModel = FilterDetailViewModel(filterID: "filter-123", useCase: useCase, renderer: renderer)
+
+    await viewModel.send(.task)
+    await viewModel.send(.tapEdit)
+
+    #expect(viewModel.state.route == nil)
+  }
+
   private func paymentReadyViewModel(
     paymentResult: Result<Void, Error> = .success(())
   ) async -> FilterDetailViewModel {
@@ -201,6 +279,7 @@ struct FilterDetailViewModelTests {
 
 private struct MockFilterDetailUseCase: FilterDetailUseCase {
   let result: Result<FilterDetail, Error>
+  var currentUserIDResult: Result<String, Error> = .success("user-2")
   var createdComment = CommentReply(
     id: "reply-1",
     content: "답글입니다",
@@ -210,6 +289,10 @@ private struct MockFilterDetailUseCase: FilterDetailUseCase {
 
   func loadFilterDetail(filterID: String) async throws -> FilterDetail {
     try result.get()
+  }
+
+  func loadCurrentUserID() async throws -> String {
+    try currentUserIDResult.get()
   }
 
   func createComment(filterID: String, parentCommentID: String?, content: String) async throws -> CommentReply {
@@ -222,6 +305,14 @@ private struct MockFilterDetailUseCase: FilterDetailUseCase {
   }
 }
 
+private struct MockAuthenticatedImageDataLoader: AuthenticatedImageDataLoading {
+  let data: Data
+
+  func loadImageData(from url: URL) async throws -> Data {
+    data
+  }
+}
+
 private struct MockImageFilterRenderer: ImageFilterRendering {
   let result: Result<RenderedFilterImages, Error>
 
@@ -231,6 +322,14 @@ private struct MockImageFilterRenderer: ImageFilterRendering {
 
   func render(originalImageData: Data, filterValues: FilterValues) async throws -> RenderedFilterImages {
     try result.get()
+  }
+
+  func renderPreview(
+    originalImageData: Data,
+    maxPixelSize: Int,
+    filterValues: FilterValues
+  ) async throws -> CGImage {
+    try result.get().filtered
   }
 }
 
@@ -275,6 +374,10 @@ private actor SequencedFilterDetailUseCase: FilterDetailUseCase {
     }
 
     return try results.removeFirst().get()
+  }
+
+  func loadCurrentUserID() async throws -> String {
+    "user-2"
   }
 
   func createComment(filterID: String, parentCommentID: String?, content: String) async throws -> CommentReply {

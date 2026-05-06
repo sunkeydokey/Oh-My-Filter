@@ -1,8 +1,24 @@
+import CoreGraphics
 import Foundation
 import ImageIO
 
 nonisolated struct LiveFilterMakeImageInfoReader: FilterMakeImageInfoReading {
-  func selectedImageInfo(from imageData: Data?) -> FilterMakeSelectedImageInfo {
+  private let previewMaxPixelSize: Int
+
+  init(previewMaxPixelSize: Int = 1_600) {
+    self.previewMaxPixelSize = previewMaxPixelSize
+  }
+
+  func selectedImageInfo(from imageData: Data?) async -> FilterMakeSelectedImageInfo {
+    await Task.detached(priority: .userInitiated) {
+      selectedImageInfo(from: imageData, previewMaxPixelSize: previewMaxPixelSize)
+    }.value
+  }
+
+  private func selectedImageInfo(
+    from imageData: Data?,
+    previewMaxPixelSize: Int
+  ) -> FilterMakeSelectedImageInfo {
     guard
       let imageData,
       let source = CGImageSourceCreateWithData(imageData as CFData, nil),
@@ -10,6 +26,7 @@ nonisolated struct LiveFilterMakeImageInfoReader: FilterMakeImageInfoReading {
     else {
       return FilterMakeSelectedImageInfo(
         imageData: imageData,
+        previewImage: previewImage(from: imageData, maxPixelSize: previewMaxPixelSize),
         metadata: .empty,
         filterParameterValues: FilterEditParameter.defaultValues
       )
@@ -17,9 +34,28 @@ nonisolated struct LiveFilterMakeImageInfoReader: FilterMakeImageInfoReading {
 
     return FilterMakeSelectedImageInfo(
       imageData: imageData,
+      previewImage: thumbnail(from: source, maxPixelSize: previewMaxPixelSize),
       metadata: metadata(from: properties),
       filterParameterValues: filterParameterValues(from: properties)
     )
+  }
+
+  private func previewImage(from imageData: Data?, maxPixelSize: Int) -> CGImage? {
+    guard let imageData,
+          let source = CGImageSourceCreateWithData(imageData as CFData, nil) else {
+      return nil
+    }
+    return thumbnail(from: source, maxPixelSize: maxPixelSize)
+  }
+
+  private func thumbnail(from source: CGImageSource, maxPixelSize: Int) -> CGImage? {
+    let options: [CFString: Any] = [
+      kCGImageSourceCreateThumbnailFromImageAlways: true,
+      kCGImageSourceCreateThumbnailWithTransform: true,
+      kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+    ]
+
+    return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
   }
 
   private func metadata(from properties: [AnyHashable: Any]) -> FilterDetailMetadata {
@@ -247,8 +283,8 @@ nonisolated struct LiveFilterMakeImageInfoReader: FilterMakeImageInfoReading {
   }
 }
 
-private extension FilterDetailMetadata {
-  static let empty = FilterDetailMetadata(
+extension FilterDetailMetadata {
+  nonisolated static let empty = FilterDetailMetadata(
     camera: nil,
     lens: nil,
     focalLength: nil,

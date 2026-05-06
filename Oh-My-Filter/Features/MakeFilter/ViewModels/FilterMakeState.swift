@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 nonisolated struct FilterMakeState: Equatable, Sendable {
@@ -8,7 +9,10 @@ nonisolated struct FilterMakeState: Equatable, Sendable {
   var priceInput = "1,000"
   var isSubmitting = false
   var submissionMessage: String?
+  var route: FilterMakeRoute?
   var representativeImageData: Data?
+  var representativePreviewImage: CGImage?
+  var comparisonPreviewState: FilterComparisonPreviewState?
   var photoMetadata = FilterDetailMetadata(
     camera: nil,
     lens: nil,
@@ -33,6 +37,22 @@ nonisolated struct FilterMakeState: Equatable, Sendable {
     representativeImageData = draft.representativeImageData
     photoMetadata = draft.photoMetadata
     filterParameterValues = draft.filterParameterValues
+  }
+
+  static func == (lhs: FilterMakeState, rhs: FilterMakeState) -> Bool {
+    lhs.mode == rhs.mode
+      && lhs.name == rhs.name
+      && lhs.category == rhs.category
+      && lhs.introduction == rhs.introduction
+      && lhs.priceInput == rhs.priceInput
+      && lhs.isSubmitting == rhs.isSubmitting
+      && lhs.submissionMessage == rhs.submissionMessage
+      && lhs.route == rhs.route
+      && lhs.representativeImageData == rhs.representativeImageData
+      && lhs.representativePreviewImage === rhs.representativePreviewImage
+      && lhs.comparisonPreviewState == rhs.comparisonPreviewState
+      && lhs.photoMetadata == rhs.photoMetadata
+      && lhs.filterParameterValues == rhs.filterParameterValues
   }
 
   var hasRepresentativeImage: Bool {
@@ -76,6 +96,10 @@ nonisolated struct FilterMakeState: Equatable, Sendable {
   var filterValues: FilterValues {
     FilterEditParameter.filterValues(from: filterParameterValues)
   }
+}
+
+nonisolated enum FilterMakeRoute: Equatable, Sendable {
+  case created(FilterDetail)
 }
 
 nonisolated enum FilterMakeMode: Equatable, Hashable, Sendable {

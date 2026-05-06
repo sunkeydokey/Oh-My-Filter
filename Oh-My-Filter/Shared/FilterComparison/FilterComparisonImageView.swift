@@ -1,14 +1,9 @@
 import Kingfisher
 import SwiftUI
 
-enum FilterDetailPreviewImageKind {
-  case before
-  case after
-}
-
-struct FilterDetailPreviewImage: View {
-  let kind: FilterDetailPreviewImageKind
-  let previewState: FilterDetailPreviewState
+struct FilterComparisonImageView: View {
+  let kind: FilterComparisonImageKind
+  let previewState: FilterComparisonPreviewState
 
   var body: some View {
     Group {

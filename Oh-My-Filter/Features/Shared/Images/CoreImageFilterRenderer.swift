@@ -33,6 +33,18 @@ nonisolated struct CoreImageFilterRenderer: ImageFilterRendering {
     try render(data: originalImageData, filterValues: filterValues)
   }
 
+  func renderPreview(
+    originalImageData: Data,
+    maxPixelSize: Int,
+    filterValues: FilterValues
+  ) async throws -> CGImage {
+    try previewImage(
+      data: originalImageData,
+      maxPixelSize: maxPixelSize,
+      filterValues: filterValues
+    )
+  }
+
   private func render(data: Data, filterValues: FilterValues) throws -> RenderedFilterImages {
     guard let originalImage = CIImage(data: data) else {
       throw ImageFilterRenderingError.invalidImageData
@@ -46,6 +58,34 @@ nonisolated struct CoreImageFilterRenderer: ImageFilterRendering {
     }
 
     return RenderedFilterImages(original: originalCGImage, filtered: filteredCGImage)
+  }
+
+  private func previewImage(
+    data: Data,
+    maxPixelSize: Int,
+    filterValues: FilterValues
+  ) throws -> CGImage {
+    guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+      throw ImageFilterRenderingError.invalidImageData
+    }
+
+    let options: [CFString: Any] = [
+      kCGImageSourceCreateThumbnailFromImageAlways: true,
+      kCGImageSourceCreateThumbnailWithTransform: true,
+      kCGImageSourceThumbnailMaxPixelSize: max(maxPixelSize, 1),
+    ]
+
+    guard let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+      throw ImageFilterRenderingError.invalidImageData
+    }
+
+    let image = CIImage(cgImage: thumbnail)
+    let filteredImage = apply(filterValues, to: image)
+    guard let filteredCGImage = context.createCGImage(filteredImage, from: image.extent) else {
+      throw ImageFilterRenderingError.renderFailed
+    }
+
+    return filteredCGImage
   }
 
   private func exifOrientation(from data: Data) -> Int32 {

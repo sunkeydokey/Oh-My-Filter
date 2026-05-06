@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 @testable import Oh_My_Filter
@@ -163,6 +164,15 @@ private struct MockEditImageFilterRenderer: ImageFilterRendering {
   func render(originalImageData: Data, filterValues: FilterValues) async throws -> RenderedFilterImages {
     await storage.record(filterValues)
     return .sample
+  }
+
+  func renderPreview(
+    originalImageData: Data,
+    maxPixelSize: Int,
+    filterValues: FilterValues
+  ) async throws -> CGImage {
+    await storage.record(filterValues)
+    return TestImageFactory.makeCGImage()
   }
 }
 

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct FilterImageComparisonView: View {
-  let previewState: FilterDetailPreviewState
+  let previewState: FilterComparisonPreviewState
   @State private var splitRatio = 0.28
 
   var body: some View {
@@ -10,10 +10,10 @@ struct FilterImageComparisonView: View {
         let splitX = proxy.size.width * splitRatio
 
         ZStack(alignment: .leading) {
-          FilterDetailPreviewImage(kind: .before, previewState: previewState)
+          FilterComparisonImageView(kind: .before, previewState: previewState)
             .frame(width: proxy.size.width, height: proxy.size.height)
 
-          FilterDetailPreviewImage(kind: .after, previewState: previewState)
+          FilterComparisonImageView(kind: .after, previewState: previewState)
             .frame(width: proxy.size.width, height: proxy.size.height)
             .mask(alignment: .leading) {
               Rectangle()
@@ -36,7 +36,7 @@ struct FilterImageComparisonView: View {
       }
       .aspectRatio(350.0 / 384.0, contentMode: .fit)
 
-      FilterDetailCompareControlView(splitRatio: $splitRatio)
+      FilterComparisonControlView(splitRatio: $splitRatio)
     }
   }
 }

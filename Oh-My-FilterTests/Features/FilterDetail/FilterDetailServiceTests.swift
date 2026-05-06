@@ -20,6 +20,10 @@ struct FilterDetailServiceTests {
     #expect(detail.id == "filter-123")
     #expect(detail.title == "청록새록")
     #expect(detail.metadata.camera == "Apple iPhone 16 Pro")
+    #expect(detail.metadata.lens == "와이드 카메라")
+    #expect(detail.metadata.focalLength == "50 mm")
+    #expect(detail.metadata.aperture == "f/4")
+    #expect(detail.metadata.iso == "100")
     #expect(detail.filterValues.brightness == 0.12)
     #expect(detail.creator.nick == "SESAC YOON")
     #expect(detail.comments.first?.replies.first?.content == "저도 좋아요")
@@ -33,8 +37,8 @@ struct FilterDetailServiceTests {
 
     let dto = try decoder.decode(FilterResponseDTO.self, from: Self.minimumDetailData)
 
-    #expect(dto.metadata?.camera == "iPhone")
-    #expect(dto.metadata?.lens == nil)
+    #expect(dto.photoMetadata?.camera == "iPhone")
+    #expect(dto.photoMetadata?.lensInfo == nil)
     #expect(dto.comments.isEmpty)
   }
 
@@ -49,6 +53,18 @@ struct FilterDetailServiceTests {
     #expect(await manager.capturedURLs == ["http://filter.sesac.kr:42598/v1/filters/filter-123/comments"])
     #expect(comment.content == "댓글")
     #expect(comment.creator.nick == "sesac")
+  }
+
+  @Test("current user id loads from own profile endpoint")
+  func currentUserIDLoadsFromOwnProfileEndpoint() async throws {
+    let manager = MockFilterDetailNetworkManager()
+    let service = LiveFilterDetailService(networkManager: manager)
+
+    await manager.enqueueResponse(NetworkResponse(data: Self.ownProfileData, statusCode: 200))
+    let currentUserID = try await service.loadCurrentUserID()
+
+    #expect(await manager.capturedURLs == ["http://filter.sesac.kr:42598/v1/users/me/profile"])
+    #expect(currentUserID == "user-1")
   }
 
   @Test("network failures map to transport")
@@ -160,13 +176,20 @@ private extension FilterDetailServiceTests {
           "introduction": "자연의 색을 담습니다.",
           "hashTags": ["섬세함", "자연"]
         },
-        "metadata": {
+        "photoMetadata": {
           "camera": "Apple iPhone 16 Pro",
-          "lens": "24mm",
-          "focal_length": "24mm",
-          "aperture": "f/1.8",
+          "lens_info": "와이드 카메라",
+          "focal_length": 50,
+          "aperture": 4,
           "shutter_speed": "1/120",
-          "iso": "100"
+          "iso": 100,
+          "pixel_width": 8192,
+          "pixel_height": 5464,
+          "file_size": 25000000,
+          "format": "JPEG",
+          "date_time_original": "9999-10-20T15:30:00Z",
+          "latitude": 37.51775,
+          "longitude": 126.886557
         },
         "filter_values": {
           "brightness": 0.12,
@@ -217,7 +240,7 @@ private extension FilterDetailServiceTests {
       "filter_id": "filter-123",
       "title": "청록새록",
       "files": [],
-      "metadata": { "camera": "iPhone" }
+      "photoMetadata": { "camera": "iPhone" }
     }
     """.utf8
   )
@@ -233,6 +256,15 @@ private extension FilterDetailServiceTests {
         "nick": "sesac",
         "hashTags": []
       }
+    }
+    """.utf8
+  )
+
+  static let ownProfileData = Data(
+    """
+    {
+      "user_id": "user-1",
+      "nick": "sesac"
     }
     """.utf8
   )

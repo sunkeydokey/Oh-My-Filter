@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct FilterDetailCompareControlView: View {
+struct FilterComparisonControlView: View {
   @Binding var splitRatio: Double
 
   var body: some View {
