@@ -165,8 +165,8 @@ final class VideoPlayerViewModel {
       let url = qualityURL(for: selectedQuality, in: stream) ?? stream.streamURL
       Self.logger.info("ℹ️ [VideoPlayerViewModel] loadStream url=\(String(describing: url), privacy: .public)")
 
-      // 무음 모드에서도 재생 (Netflix/YouTube 동작과 동일)
-      try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback, options: [])
+      // 무음 모드에서도 재생하되 다른 앱 오디오를 중단하지 않음
+      try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback, options: [.mixWithOthers])
       try? AVAudioSession.sharedInstance().setActive(true)
       setupPlayer(url: url)
       playerPhase = .ready(isPlaying: false)
