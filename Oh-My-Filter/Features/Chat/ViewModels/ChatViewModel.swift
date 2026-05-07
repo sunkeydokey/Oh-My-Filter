@@ -48,7 +48,7 @@ final class ChatViewModel {
       try? store.markRoomSeen(roomID: state.roomID, at: .now)
     case .enterForeground:
       guard hasLoaded else { return }
-      await syncMessagesAfterRecovery()
+      await recoverAfterForeground()
     case let .composerChanged(text):
       state.composerText = text
     case let .imageSelectionChanged(selections):
@@ -81,15 +81,30 @@ final class ChatViewModel {
     }
   }
 
+  private func recoverAfterForeground() async {
+    // scenePhase .active 전환 직후엔 네트워크가 아직 복구 중일 수 있어 짧게 대기
+    try? await Task.sleep(for: .seconds(1))
+    guard !Task.isCancelled else { return }
+    await syncMessagesAfterRecovery()
+    // 소켓이 끊겨 있으면 재연결 시도
+    if case .disconnected = state.connectionState {
+      try? await socketManager.connect(roomID: state.roomID)
+    }
+  }
+
   private func syncMessagesAfterRecovery() async {
     let newestLocalDate = try? store.newestMessageDate(roomID: state.roomID)
-    let remoteMessages = (try? await service.syncMessages(
-      roomID: state.roomID,
-      newestLocalCreatedAt: newestLocalDate
-    )) ?? []
-    try? store.upsertMessages(remoteMessages)
-    state.messages = (try? store.fetchMessages(roomID: state.roomID)) ?? state.messages
-    try? store.markRoomSeen(roomID: state.roomID, at: .now)
+    do {
+      let remoteMessages = try await service.syncMessages(
+        roomID: state.roomID,
+        newestLocalCreatedAt: newestLocalDate
+      )
+      try? store.upsertMessages(remoteMessages)
+      state.messages = (try? store.fetchMessages(roomID: state.roomID)) ?? state.messages
+      try? store.markRoomSeen(roomID: state.roomID, at: .now)
+    } catch {
+      Self.logger.warning("[ChatViewModel] syncMessagesAfterRecovery failed, messages may be stale: \(String(describing: error), privacy: .public)")
+    }
   }
 
   private func updateImageSelections(_ selections: [PhotoPickerUploadSelection]) {
