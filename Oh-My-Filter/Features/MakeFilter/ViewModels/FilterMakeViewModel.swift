@@ -7,17 +7,20 @@ final class FilterMakeViewModel {
   private(set) var state: FilterMakeState
   private let submitUseCase: any FilterMakeSubmitting
   private let renderer: any ImageFilterRendering
+  private let filterChangeDebounceDuration: Duration
   private var comparisonRenderTask: Task<Void, Never>?
   private var comparisonRenderRequestID = UUID()
 
   init(
     state: FilterMakeState = FilterMakeState(),
     submitUseCase: (any FilterMakeSubmitting)? = nil,
-    renderer: any ImageFilterRendering = CoreImageFilterRenderer()
+    renderer: any ImageFilterRendering = CoreImageFilterRenderer(),
+    filterChangeDebounceDuration: Duration = .milliseconds(300)
   ) {
     self.state = state
     self.submitUseCase = submitUseCase ?? LiveFilterMakeSubmitUseCase()
     self.renderer = renderer
+    self.filterChangeDebounceDuration = filterChangeDebounceDuration
     if let imageData = state.representativeImageData {
       scheduleComparisonRender(for: imageData, filterValues: state.filterValues)
     }
@@ -67,7 +70,7 @@ final class FilterMakeViewModel {
       state.filterParameterValues = values
       guard let imageData = state.representativeImageData else { return }
       state.comparisonPreviewState = .rendering
-      scheduleComparisonRender(for: imageData, filterValues: state.filterValues)
+      scheduleComparisonRender(for: imageData, filterValues: state.filterValues, debounce: filterChangeDebounceDuration)
     case .submitTapped:
       Task {
         await submit()
@@ -102,14 +105,18 @@ final class FilterMakeViewModel {
     }
   }
 
-  private func scheduleComparisonRender(for imageData: Data, filterValues: FilterValues) {
+  private func scheduleComparisonRender(for imageData: Data, filterValues: FilterValues, debounce: Duration? = nil) {
     comparisonRenderTask?.cancel()
     let requestID = UUID()
     comparisonRenderRequestID = requestID
     comparisonRenderTask = Task { [renderer, imageData, filterValues, requestID] in
       do {
+        if let debounce {
+          try await Task.sleep(for: debounce)
+          try Task.checkCancellation()
+        }
         let images = try await Task.detached(priority: .userInitiated) {
-          try await renderer.renderComparisonPreview(originalImageData: imageData, maxPixelSize: 1_600, filterValues: filterValues)
+          try await renderer.renderComparisonPreview(originalImageData: imageData, maxPixelSize: 1_024, filterValues: filterValues)
         }.value
         guard Task.isCancelled == false else { return }
         guard self.comparisonRenderRequestID == requestID else { return }

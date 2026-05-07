@@ -65,7 +65,7 @@ struct FilterMakeViewModelTests {
   func filterValueChangesRerenderComparisonPreview() async {
     let storage = MockImageFilterRendererStorage()
     let renderer = MockImageFilterRenderer(result: .success(.sample), storage: storage)
-    let viewModel = FilterMakeViewModel(renderer: renderer)
+    let viewModel = FilterMakeViewModel(renderer: renderer, filterChangeDebounceDuration: .zero)
     let info = FilterMakeSelectedImageInfo(
       imageData: Data([0x01, 0x02]),
       previewImage: TestImageFactory.makeCGImage(),
@@ -181,11 +181,11 @@ struct FilterMakeViewModelTests {
   private func waitForImageInfo(
     condition: @escaping () async -> Bool
   ) async {
-    for _ in 0 ..< 20 {
+    for _ in 0 ..< 50 {
       if await condition() {
         return
       }
-      try? await Task.sleep(for: .milliseconds(10))
+      try? await Task.sleep(for: .milliseconds(20))
     }
   }
 }
