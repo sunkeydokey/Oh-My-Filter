@@ -12,6 +12,7 @@ final class SocketIOChatSocketManager: ChatSocketManaging {
   var onMessage: (@MainActor (ChatMessage) -> Void)?
   var onConnected: (@MainActor () -> Void)?
   var onDisconnected: (@MainActor () -> Void)?
+  var onReconnectSucceeded: (@MainActor () -> Void)?
 
   private let tokenCoordinator: any TokenRefreshCoordinating
   private let decoder: JSONDecoder
