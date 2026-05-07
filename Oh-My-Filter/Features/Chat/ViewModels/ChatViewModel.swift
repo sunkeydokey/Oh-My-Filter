@@ -67,23 +67,26 @@ final class ChatViewModel {
   private func load() async {
     do {
       state.messages = try store.fetchMessages(roomID: state.roomID)
-      let newestLocalDate = try store.newestMessageDate(roomID: state.roomID)
       state.connectionState = .syncing
-
-      let remoteMessages = try await service.syncMessages(
-        roomID: state.roomID,
-        newestLocalCreatedAt: newestLocalDate
-      )
-      try store.upsertMessages(remoteMessages)
-      state.messages = try store.fetchMessages(roomID: state.roomID)
+      await syncMessagesAfterRecovery()
       try store.markRoomSeen(roomID: state.roomID, at: .now)
-
       try await socketManager.connect(roomID: state.roomID)
     } catch is CancellationError {
       return
     } catch {
       state.connectionState = .disconnected
     }
+  }
+
+  private func syncMessagesAfterRecovery() async {
+    let newestLocalDate = try? store.newestMessageDate(roomID: state.roomID)
+    let remoteMessages = (try? await service.syncMessages(
+      roomID: state.roomID,
+      newestLocalCreatedAt: newestLocalDate
+    )) ?? []
+    try? store.upsertMessages(remoteMessages)
+    state.messages = (try? store.fetchMessages(roomID: state.roomID)) ?? state.messages
+    try? store.markRoomSeen(roomID: state.roomID, at: .now)
   }
 
   private func updateImageSelections(_ selections: [PhotoPickerUploadSelection]) {
@@ -137,6 +140,9 @@ final class ChatViewModel {
     }
     socketManager.onDisconnected = { [weak self] in
       self?.state.connectionState = .disconnected
+    }
+    socketManager.onReconnectSucceeded = { [weak self] in
+      Task { await self?.syncMessagesAfterRecovery() }
     }
     socketManager.onMessage = { [weak self] message in
       guard let self else { return }
