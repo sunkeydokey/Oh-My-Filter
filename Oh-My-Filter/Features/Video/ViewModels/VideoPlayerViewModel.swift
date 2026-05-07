@@ -3,6 +3,17 @@ import Foundation
 import OSLog
 import Observation
 
+private enum HLSPolicy {
+  /// 서버 HLS 세그먼트 길이(초) — 서버 설정에 맞게 조정
+  static let segmentDuration: Double = 2.0
+  /// 버퍼 잔여량이 이 미만이면 즉시 전환 (지연 전환 없음)
+  static let deferThreshold: Double = segmentDuration
+  /// 경계 옵저버를 버퍼 끝보다 이만큼 앞에서 발화
+  static let boundaryLeadTime: Double = 0.1
+  /// 지연 전환 중 기존 아이템의 추가 버퍼링 허용량(초)
+  static let frozenBufferDuration: Double = segmentDuration
+}
+
 enum VideoPlayerAction {
   case task
   case retry
@@ -53,6 +64,17 @@ final class VideoPlayerViewModel {
   private var statusObservation: NSKeyValueObservation?
   private var itemStatusObservation: NSKeyValueObservation?
   private var controlsHideTask: Task<Void, Never>?
+  private var pendingQuality: PendingQualityChange?
+  private(set) var pendingQualityLabel: String?
+
+  private struct PendingQualityChange {
+    let label: String
+    let url: URL
+    let bufferedEnd: Double
+    var loadedAsset: AVURLAsset?
+    var preloadTask: Task<Void, Never>?
+    var boundaryToken: Any?
+  }
 
   init(video: CommunityVideo, service: any VideoPlayerServicing) {
     self.video = video
@@ -197,6 +219,9 @@ final class VideoPlayerViewModel {
       return
     }
 
+    cancelPendingQualityChange()
+
+    let previousQuality = selectedQuality
     let wasPlaying: Bool
     if case .ready(let playing) = playerPhase {
       wasPlaying = playing
@@ -204,27 +229,126 @@ final class VideoPlayerViewModel {
       wasPlaying = false
     }
 
-    let resumeTime = player?.currentTime().seconds ?? 0
-
     selectedQuality = label
+    pendingQualityLabel = label
     isQualityMenuVisible = false
 
     do {
       let stream = try await service.loadStream(videoId: video.id)
       guard let url = qualityURL(for: label, in: stream) ?? stream.streamURL else {
+        selectedQuality = previousQuality
+        pendingQualityLabel = nil
         playerPhase = .error(message: VideoPlayerServiceError.invalidResponse.errorDescription ?? "잠시 후 다시 시도해 주세요.")
         return
       }
-      Self.logger.info("ℹ️ [VideoPlayerViewModel] quality changed to=\(label, privacy: .public) url=\(url, privacy: .public)")
+      Self.logger.info("ℹ️ [VideoPlayerViewModel] quality change requested label=\(label, privacy: .public)")
 
-      swapPlayerItem(url: url, resumeTime: resumeTime, play: wasPlaying)
+      let bufferedEnd = min(currentBufferedEnd(), duration - 0.05)
+      let remaining = bufferedEnd - currentTime
+
+      if remaining < HLSPolicy.deferThreshold {
+        pendingQualityLabel = nil
+        swapPlayerItem(url: url, resumeTime: currentTime, play: wasPlaying)
+      } else {
+        scheduleDeferredQualitySwap(label: label, url: url, bufferedEnd: bufferedEnd)
+      }
     } catch {
+      selectedQuality = previousQuality
+      pendingQualityLabel = nil
       let message = (error as? VideoPlayerServiceError)?.errorDescription
         ?? VideoPlayerServiceError.serverError.errorDescription
         ?? "잠시 후 다시 시도해 주세요."
       playerPhase = .error(message: message)
       Self.logger.error("❌ [VideoPlayerViewModel] quality change failed error=\(String(describing: error), privacy: .public)")
     }
+  }
+
+  private func currentBufferedEnd() -> Double {
+    guard let item = player?.currentItem else { return 0 }
+    let current = player?.currentTime().seconds ?? 0
+    return item.loadedTimeRanges
+      .map { $0.timeRangeValue }
+      .filter { $0.start.seconds <= current + 0.5 }
+      .map { ($0.start + $0.duration).seconds }
+      .max() ?? current
+  }
+
+  private func cancelPendingQualityChange() {
+    guard let pending = pendingQuality else { return }
+    if let token = pending.boundaryToken {
+      player?.removeTimeObserver(token)
+    }
+    pending.preloadTask?.cancel()
+    player?.currentItem?.preferredForwardBufferDuration = 0
+    pendingQuality = nil
+    pendingQualityLabel = nil
+    Self.logger.info("ℹ️ [VideoPlayerViewModel] pending quality change cancelled")
+  }
+
+  private func scheduleDeferredQualitySwap(label: String, url: URL, bufferedEnd: Double) {
+    guard let currentPlayer = player else { return }
+
+    currentPlayer.currentItem?.preferredForwardBufferDuration = HLSPolicy.frozenBufferDuration
+
+    var pending = PendingQualityChange(label: label, url: url, bufferedEnd: bufferedEnd)
+
+    pending.preloadTask = Task { [weak self] in
+      let asset = AVURLAsset(url: url)
+      _ = try? await asset.load(.isPlayable)
+      await MainActor.run { self?.pendingQuality?.loadedAsset = asset }
+    }
+
+    let triggerTime = max(bufferedEnd - HLSPolicy.boundaryLeadTime, currentTime + 0.1)
+    let cmTime = CMTime(seconds: triggerTime, preferredTimescale: 600)
+
+    let token = currentPlayer.addBoundaryTimeObserver(
+      forTimes: [NSValue(time: cmTime)],
+      queue: .main
+    ) { [weak self] in
+      Task { @MainActor [weak self] in self?.executePendingSwap() }
+    }
+    pending.boundaryToken = token
+
+    pendingQuality = pending
+    Self.logger.info("ℹ️ [VideoPlayerViewModel] deferred quality swap scheduled bufferedEnd=\(bufferedEnd, privacy: .public) label=\(label, privacy: .public)")
+  }
+
+  private func executePendingSwap() {
+    guard let pending = pendingQuality, let currentPlayer = player else { return }
+
+    if let token = pending.boundaryToken {
+      currentPlayer.removeTimeObserver(token)
+    }
+    pending.preloadTask?.cancel()
+
+    let cutTime = currentPlayer.currentTime().seconds
+    let asset = pending.loadedAsset ?? AVURLAsset(url: pending.url)
+    let newItem = AVPlayerItem(asset: asset)
+
+    currentPlayer.currentItem?.preferredForwardBufferDuration = 0
+
+    itemStatusObservation?.invalidate()
+    itemStatusObservation = newItem.observe(\.status, options: [.new]) { [weak self] item, _ in
+      guard let self else { return }
+      Task { @MainActor in
+        if case .failed = item.status {
+          Self.logger.error("❌ [VideoPlayerViewModel] playerItem failed error=\(String(describing: item.error), privacy: .public)")
+          self.playerPhase = .error(message: "재생 중 오류가 발생했습니다.")
+        }
+      }
+    }
+
+    currentPlayer.replaceCurrentItem(with: newItem)
+    let target = CMTime(seconds: cutTime, preferredTimescale: 600)
+    currentPlayer.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
+
+    if case .ready(true) = playerPhase {
+      currentPlayer.play()
+    }
+
+    pendingQuality = nil
+    pendingQualityLabel = nil
+    Self.logger.info("ℹ️ [VideoPlayerViewModel] deferred quality swap executed cutTime=\(cutTime, privacy: .public) label=\(pending.label, privacy: .public)")
   }
 
   // 새 아이템을 미리 로드한 뒤 교체 — 교체 직전까지 기존 버퍼 화면 유지, 교체 시점에 바로 재생
@@ -278,6 +402,13 @@ final class VideoPlayerViewModel {
 
   private func handleSeek(to time: Double) async {
     guard let player else { return }
+
+    if let pending = pendingQuality {
+      cancelPendingQualityChange()
+      swapPlayerItem(url: pending.url, resumeTime: time, play: { if case .ready(let p) = playerPhase { return p }; return false }())
+      return
+    }
+
     currentTime = time
     isSeeking = true
     let target = CMTime(seconds: time, preferredTimescale: 600)
@@ -348,6 +479,7 @@ final class VideoPlayerViewModel {
   }
 
   private func cleanupPlayer() {
+    cancelPendingQualityChange()
     if let observer = timeObserver {
       player?.removeTimeObserver(observer)
       timeObserver = nil
