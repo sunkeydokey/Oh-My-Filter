@@ -5,6 +5,9 @@ enum ChatConnectionState: Equatable, Sendable {
   case syncing
   case connected
   case disconnected
+  case connecting(attempt: Int)
+  case reconnecting(attempt: Int)
+  case failed(message: String)
 }
 
 struct ChatPendingMessageAlert: Equatable, Identifiable, Sendable {

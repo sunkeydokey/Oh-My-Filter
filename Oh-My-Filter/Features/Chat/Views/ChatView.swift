@@ -7,6 +7,7 @@ struct ChatView: View {
   @State private var imagePreview: ChatImagePreview?
   @State private var isPresentingImageViewer = false
   @FocusState private var isComposerFocused: Bool
+  @Environment(\.scenePhase) private var scenePhase
 
   init(
     room: ChatRoom,
@@ -40,6 +41,11 @@ struct ChatView: View {
     .toolbar(.hidden, for: .navigationBar)
     .task {
       await viewModel.send(.task)
+    }
+    .onChange(of: scenePhase) { _, newPhase in
+      if newPhase == .active {
+        Task { await viewModel.send(.enterForeground) }
+      }
     }
     .onDisappear {
       guard isPresentingImageViewer == false else { return }
@@ -195,6 +201,12 @@ struct ChatView: View {
       return "온라인"
     case .disconnected:
       return "오프라인"
+    case .connecting:
+      return "연결 중"
+    case let .reconnecting(attempt):
+      return "재연결 중 (\(attempt)회)"
+    case .failed:
+      return "연결 실패"
     }
   }
 

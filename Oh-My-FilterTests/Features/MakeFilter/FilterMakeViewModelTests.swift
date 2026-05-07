@@ -17,12 +17,17 @@ struct FilterMakeViewModelTests {
 
   @Test("selected image info syncs metadata and filter values")
   func selectedImageInfoSyncsMetadataAndFilterValues() async {
-    let viewModel = FilterMakeViewModel(imageInfoReader: MockFilterMakeImageInfoReader())
+    let viewModel = FilterMakeViewModel()
+    var values = FilterEditParameter.defaultValues
+    values[.brightness] = 0.35
+    let info = FilterMakeSelectedImageInfo(
+      imageData: Data([0x01, 0x02]),
+      previewImage: TestImageFactory.makeCGImage(),
+      metadata: FilterDetailMetadata(camera: "Apple iPhone 16 Pro", lens: "Wide 26 mm", focalLength: nil, aperture: nil, shutterSpeed: nil, iso: nil),
+      filterParameterValues: values
+    )
 
-    viewModel.send(.representativeImageChanged(Data([0x01, 0x02])))
-    await waitForImageInfo {
-      viewModel.state.photoMetadata.camera == "Apple iPhone 16 Pro"
-    }
+    viewModel.send(.representativeImageInfoChanged(info))
 
     #expect(viewModel.state.photoMetadata.camera == "Apple iPhone 16 Pro")
     #expect(viewModel.state.representativePreviewImage != nil)
@@ -35,12 +40,15 @@ struct FilterMakeViewModelTests {
   @Test("selected image renders comparison preview")
   func selectedImageRendersComparisonPreview() async {
     let renderer = MockImageFilterRenderer(result: .success(.sample))
-    let viewModel = FilterMakeViewModel(
-      imageInfoReader: MockFilterMakeImageInfoReader(),
-      renderer: renderer
+    let viewModel = FilterMakeViewModel(renderer: renderer)
+    let info = FilterMakeSelectedImageInfo(
+      imageData: Data([0x01, 0x02]),
+      previewImage: TestImageFactory.makeCGImage(),
+      metadata: .empty,
+      filterParameterValues: FilterEditParameter.defaultValues
     )
 
-    viewModel.send(.representativeImageChanged(Data([0x01, 0x02])))
+    viewModel.send(.representativeImageInfoChanged(info))
     await waitForImageInfo {
       guard case .rendered? = viewModel.state.comparisonPreviewState else { return false }
       return true
@@ -57,12 +65,15 @@ struct FilterMakeViewModelTests {
   func filterValueChangesRerenderComparisonPreview() async {
     let storage = MockImageFilterRendererStorage()
     let renderer = MockImageFilterRenderer(result: .success(.sample), storage: storage)
-    let viewModel = FilterMakeViewModel(
-      imageInfoReader: MockFilterMakeImageInfoReader(),
-      renderer: renderer
+    let viewModel = FilterMakeViewModel(renderer: renderer, filterChangeDebounceDuration: .zero)
+    let info = FilterMakeSelectedImageInfo(
+      imageData: Data([0x01, 0x02]),
+      previewImage: TestImageFactory.makeCGImage(),
+      metadata: .empty,
+      filterParameterValues: FilterEditParameter.defaultValues
     )
 
-    viewModel.send(.representativeImageChanged(Data([0x01, 0x02])))
+    viewModel.send(.representativeImageInfoChanged(info))
     await waitForImageInfo {
       guard case .rendered? = viewModel.state.comparisonPreviewState else { return false }
       return true
@@ -76,16 +87,20 @@ struct FilterMakeViewModelTests {
     }
 
     #expect(await storage.renderedFilterValues().contains { $0.brightness == 0.5 })
+    #expect(await storage.calledMethods().allSatisfy { $0 == "renderComparisonPreview" })
   }
 
   @Test("removing representative image clears comparison preview")
   func removingRepresentativeImageClearsComparisonPreview() async {
-    let viewModel = FilterMakeViewModel(
-      imageInfoReader: MockFilterMakeImageInfoReader(),
-      renderer: MockImageFilterRenderer(result: .success(.sample))
+    let viewModel = FilterMakeViewModel(renderer: MockImageFilterRenderer(result: .success(.sample)))
+    let info = FilterMakeSelectedImageInfo(
+      imageData: Data([0x01, 0x02]),
+      previewImage: TestImageFactory.makeCGImage(),
+      metadata: .empty,
+      filterParameterValues: FilterEditParameter.defaultValues
     )
 
-    viewModel.send(.representativeImageChanged(Data([0x01, 0x02])))
+    viewModel.send(.representativeImageInfoChanged(info))
     await waitForImageInfo {
       guard case .rendered? = viewModel.state.comparisonPreviewState else { return false }
       return true
@@ -166,33 +181,12 @@ struct FilterMakeViewModelTests {
   private func waitForImageInfo(
     condition: @escaping () async -> Bool
   ) async {
-    for _ in 0 ..< 20 {
+    for _ in 0 ..< 50 {
       if await condition() {
         return
       }
-      try? await Task.sleep(for: .milliseconds(10))
+      try? await Task.sleep(for: .milliseconds(20))
     }
-  }
-}
-
-private struct MockFilterMakeImageInfoReader: FilterMakeImageInfoReading {
-  func selectedImageInfo(from imageData: Data?) async -> FilterMakeSelectedImageInfo {
-    var values = FilterEditParameter.defaultValues
-    values[.brightness] = 0.35
-
-    return FilterMakeSelectedImageInfo(
-      imageData: imageData,
-      previewImage: TestImageFactory.makeCGImage(),
-      metadata: FilterDetailMetadata(
-        camera: "Apple iPhone 16 Pro",
-        lens: "Wide 26 mm",
-        focalLength: nil,
-        aperture: nil,
-        shutterSpeed: nil,
-        iso: nil
-      ),
-      filterParameterValues: values
-    )
   }
 }
 
@@ -210,14 +204,14 @@ private struct MockImageFilterRenderer: ImageFilterRendering {
 
   func render(originalImageURL: URL, filterValues: FilterValues) async throws -> RenderedFilterImages {
     if let storage {
-      await storage.append(filterValues)
+      await storage.append(filterValues, method: "render(url:)")
     }
     return try result.get()
   }
 
   func render(originalImageData: Data, filterValues: FilterValues) async throws -> RenderedFilterImages {
     if let storage {
-      await storage.append(filterValues)
+      await storage.append(filterValues, method: "render(data:)")
     }
     return try result.get()
   }
@@ -228,21 +222,38 @@ private struct MockImageFilterRenderer: ImageFilterRendering {
     filterValues: FilterValues
   ) async throws -> CGImage {
     if let storage {
-      await storage.append(filterValues)
+      await storage.append(filterValues, method: "renderPreview")
     }
     return try result.get().filtered
+  }
+
+  func renderComparisonPreview(
+    originalImageData: Data,
+    maxPixelSize: Int,
+    filterValues: FilterValues
+  ) async throws -> RenderedFilterImages {
+    if let storage {
+      await storage.append(filterValues, method: "renderComparisonPreview")
+    }
+    return try result.get()
   }
 }
 
 private actor MockImageFilterRendererStorage {
   private var values: [FilterValues] = []
+  private var methods: [String] = []
 
-  func append(_ filterValues: FilterValues) {
+  func append(_ filterValues: FilterValues, method: String) {
     values.append(filterValues)
+    methods.append(method)
   }
 
   func renderedFilterValues() -> [FilterValues] {
     values
+  }
+
+  func calledMethods() -> [String] {
+    methods
   }
 }
 

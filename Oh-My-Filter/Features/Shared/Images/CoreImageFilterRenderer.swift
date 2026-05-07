@@ -10,7 +10,7 @@ nonisolated struct CoreImageFilterRenderer: ImageFilterRendering {
 
   init(
     session: URLSession = .shared,
-    context: CIContext = CIContext(),
+    context: CIContext = CIContext(options: [.cacheIntermediates: false]),
     tokenRefreshCoordinator: any TokenRefreshCoordinating = AppTokenRefreshCoordinator.shared
   ) {
     self.session = session
@@ -43,6 +43,36 @@ nonisolated struct CoreImageFilterRenderer: ImageFilterRendering {
       maxPixelSize: maxPixelSize,
       filterValues: filterValues
     )
+  }
+
+  func renderComparisonPreview(
+    originalImageData: Data,
+    maxPixelSize: Int,
+    filterValues: FilterValues
+  ) async throws -> RenderedFilterImages {
+    guard let source = CGImageSourceCreateWithData(originalImageData as CFData, nil) else {
+      throw ImageFilterRenderingError.invalidImageData
+    }
+
+    let options: [CFString: Any] = [
+      kCGImageSourceCreateThumbnailFromImageAlways: true,
+      kCGImageSourceCreateThumbnailWithTransform: true,
+      kCGImageSourceThumbnailMaxPixelSize: max(maxPixelSize, 1),
+    ]
+
+    guard let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+      throw ImageFilterRenderingError.invalidImageData
+    }
+
+    let ciImage = CIImage(cgImage: thumbnail)
+    let filteredCIImage = apply(filterValues, to: ciImage)
+
+    guard let originalCGImage = context.createCGImage(ciImage, from: ciImage.extent),
+          let filteredCGImage = context.createCGImage(filteredCIImage, from: ciImage.extent) else {
+      throw ImageFilterRenderingError.renderFailed
+    }
+
+    return RenderedFilterImages(original: originalCGImage, filtered: filteredCGImage)
   }
 
   private func render(data: Data, filterValues: FilterValues) throws -> RenderedFilterImages {
@@ -112,6 +142,8 @@ nonisolated struct CoreImageFilterRenderer: ImageFilterRendering {
     return 1
   }
 
+  /// 고정 파이프라인 순서: CIColorControls → ExposureAdjust → TemperatureAndTint →
+  /// HighlightShadowAdjust → NoiseReduction → SharpenLuminance → GaussianBlur → Vignette → ColorMatrix
   private func apply(_ values: FilterValues, to image: CIImage) -> CIImage {
     var output = image
 

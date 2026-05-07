@@ -46,6 +46,9 @@ final class ChatViewModel {
       socketManager.disconnect()
       state.connectionState = .disconnected
       try? store.markRoomSeen(roomID: state.roomID, at: .now)
+    case .enterForeground:
+      guard hasLoaded else { return }
+      await recoverAfterForeground()
     case let .composerChanged(text):
       state.composerText = text
     case let .imageSelectionChanged(selections):
@@ -67,22 +70,40 @@ final class ChatViewModel {
   private func load() async {
     do {
       state.messages = try store.fetchMessages(roomID: state.roomID)
-      let newestLocalDate = try store.newestMessageDate(roomID: state.roomID)
       state.connectionState = .syncing
-
-      let remoteMessages = try await service.syncMessages(
-        roomID: state.roomID,
-        newestLocalCreatedAt: newestLocalDate
-      )
-      try store.upsertMessages(remoteMessages)
-      state.messages = try store.fetchMessages(roomID: state.roomID)
+      await syncMessagesAfterRecovery()
       try store.markRoomSeen(roomID: state.roomID, at: .now)
-
       try await socketManager.connect(roomID: state.roomID)
     } catch is CancellationError {
       return
     } catch {
       state.connectionState = .disconnected
+    }
+  }
+
+  private func recoverAfterForeground() async {
+    // scenePhase .active 전환 직후엔 네트워크가 아직 복구 중일 수 있어 짧게 대기
+    try? await Task.sleep(for: .seconds(1))
+    guard !Task.isCancelled else { return }
+    await syncMessagesAfterRecovery()
+    // 소켓이 끊겨 있으면 재연결 시도
+    if case .disconnected = state.connectionState {
+      try? await socketManager.connect(roomID: state.roomID)
+    }
+  }
+
+  private func syncMessagesAfterRecovery() async {
+    let newestLocalDate = try? store.newestMessageDate(roomID: state.roomID)
+    do {
+      let remoteMessages = try await service.syncMessages(
+        roomID: state.roomID,
+        newestLocalCreatedAt: newestLocalDate
+      )
+      try? store.upsertMessages(remoteMessages)
+      state.messages = (try? store.fetchMessages(roomID: state.roomID)) ?? state.messages
+      try? store.markRoomSeen(roomID: state.roomID, at: .now)
+    } catch {
+      Self.logger.warning("[ChatViewModel] syncMessagesAfterRecovery failed, messages may be stale: \(String(describing: error), privacy: .public)")
     }
   }
 
@@ -137,6 +158,17 @@ final class ChatViewModel {
     }
     socketManager.onDisconnected = { [weak self] in
       self?.state.connectionState = .disconnected
+    }
+    socketManager.onReconnectSucceeded = { [weak self] in
+      guard let self else { return }
+      self.state.connectionState = .connected
+      Task { await self.syncMessagesAfterRecovery() }
+    }
+    socketManager.onReconnectAttempt = { [weak self] attempt in
+      self?.state.connectionState = .reconnecting(attempt: attempt)
+    }
+    socketManager.onReconnectFailed = { [weak self] message in
+      self?.state.connectionState = .failed(message: message)
     }
     socketManager.onMessage = { [weak self] message in
       guard let self else { return }

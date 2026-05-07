@@ -27,6 +27,9 @@ enum VideoPlayerAction {
   case tapPlayerArea
   case enterFullScreen
   case exitFullScreen
+  case enterBackground
+  case enterForeground
+  case becomeInactive
 }
 
 enum VideoPlayerPhase: Equatable {
@@ -57,6 +60,7 @@ final class VideoPlayerViewModel {
   var isControlsVisible: Bool = true
   var isFullScreenPresented: Bool = false
   private(set) var player: AVPlayer?
+  private var isInactive = false
 
   let video: CommunityVideo
   private let service: any VideoPlayerServicing
@@ -90,6 +94,13 @@ final class VideoPlayerViewModel {
   }
 
   func send(_ action: VideoPlayerAction) async {
+    if isInactive {
+      switch action {
+      case .enterBackground, .enterForeground, .becomeInactive: break
+      default: return
+      }
+    }
+
     switch action {
     case .task:
       await loadStream()
@@ -124,6 +135,19 @@ final class VideoPlayerViewModel {
       if case .ready(true) = playerPhase {
         scheduleControlsHide()
       }
+    case .enterBackground:
+      if case .ready(true) = playerPhase {
+        player?.pause()
+        playerPhase = .ready(isPlaying: false)
+      }
+      cancelPendingQualityChange()
+      cancelControlsHideTimer()
+      isControlsVisible = true
+      isInactive = true
+    case .enterForeground:
+      isInactive = false
+    case .becomeInactive:
+      isInactive = true
     }
   }
 
@@ -141,6 +165,8 @@ final class VideoPlayerViewModel {
       let url = qualityURL(for: selectedQuality, in: stream) ?? stream.streamURL
       Self.logger.info("ℹ️ [VideoPlayerViewModel] loadStream url=\(String(describing: url), privacy: .public)")
 
+      try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+      try? AVAudioSession.sharedInstance().setActive(true)
       setupPlayer(url: url)
       playerPhase = .ready(isPlaying: false)
       isControlsVisible = true
@@ -490,6 +516,7 @@ final class VideoPlayerViewModel {
     itemStatusObservation = nil
     player?.pause()
     player = nil
+    try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
   }
 
   private func qualityURL(for label: String, in stream: VideoStream) -> URL? {
