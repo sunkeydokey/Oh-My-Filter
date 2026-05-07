@@ -46,6 +46,9 @@ final class ChatViewModel {
       socketManager.disconnect()
       state.connectionState = .disconnected
       try? store.markRoomSeen(roomID: state.roomID, at: .now)
+    case .enterForeground:
+      guard hasLoaded else { return }
+      await syncMessagesAfterRecovery()
     case let .composerChanged(text):
       state.composerText = text
     case let .imageSelectionChanged(selections):
