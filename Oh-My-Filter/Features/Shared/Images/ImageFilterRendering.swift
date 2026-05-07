@@ -9,6 +9,11 @@ nonisolated protocol ImageFilterRendering: Sendable {
     maxPixelSize: Int,
     filterValues: FilterValues
   ) async throws -> CGImage
+  func renderComparisonPreview(
+    originalImageData: Data,
+    maxPixelSize: Int,
+    filterValues: FilterValues
+  ) async throws -> RenderedFilterImages
 }
 
 nonisolated enum ImageFilterRenderingError: Error, Equatable, Sendable {

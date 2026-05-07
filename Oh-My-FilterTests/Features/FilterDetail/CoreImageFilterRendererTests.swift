@@ -93,6 +93,34 @@ struct CoreImageFilterRendererTests {
     #expect(max(image.width, image.height) <= 100)
   }
 
+  @Test("renderComparisonPreview downsamples to requested maximum pixel size")
+  func renderComparisonPreviewDownsamples() async throws {
+    let renderer = CoreImageFilterRenderer()
+    let imageData = try Self.jpegData(width: 2000, height: 2000, orientation: 1)
+
+    let images = try await renderer.renderComparisonPreview(
+      originalImageData: imageData,
+      maxPixelSize: 400,
+      filterValues: .neutral
+    )
+
+    #expect(images.original.width <= 400)
+    #expect(images.filtered.width <= 400)
+  }
+
+  @Test("renderComparisonPreview throws invalidImageData on bad input")
+  func renderComparisonPreviewThrowsOnBadInput() async throws {
+    let renderer = CoreImageFilterRenderer()
+
+    await #expect(throws: ImageFilterRenderingError.invalidImageData) {
+      _ = try await renderer.renderComparisonPreview(
+        originalImageData: Data("not-image".utf8),
+        maxPixelSize: 400,
+        filterValues: .neutral
+      )
+    }
+  }
+
   private static func pngData() throws -> Data {
     let data = NSMutableData()
     let destination = try #require(CGImageDestinationCreateWithData(

@@ -130,7 +130,7 @@ final class FilterMakeViewModel {
     comparisonRenderTask = Task { [renderer, imageData, filterValues, requestID] in
       do {
         let images = try await Task.detached(priority: .userInitiated) {
-          try await renderer.render(originalImageData: imageData, filterValues: filterValues)
+          try await renderer.renderComparisonPreview(originalImageData: imageData, maxPixelSize: 1_600, filterValues: filterValues)
         }.value
         guard Task.isCancelled == false else { return }
         guard self.comparisonRenderRequestID == requestID else { return }

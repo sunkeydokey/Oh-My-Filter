@@ -45,6 +45,36 @@ nonisolated struct CoreImageFilterRenderer: ImageFilterRendering {
     )
   }
 
+  func renderComparisonPreview(
+    originalImageData: Data,
+    maxPixelSize: Int,
+    filterValues: FilterValues
+  ) async throws -> RenderedFilterImages {
+    guard let source = CGImageSourceCreateWithData(originalImageData as CFData, nil) else {
+      throw ImageFilterRenderingError.invalidImageData
+    }
+
+    let options: [CFString: Any] = [
+      kCGImageSourceCreateThumbnailFromImageAlways: true,
+      kCGImageSourceCreateThumbnailWithTransform: true,
+      kCGImageSourceThumbnailMaxPixelSize: max(maxPixelSize, 1),
+    ]
+
+    guard let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+      throw ImageFilterRenderingError.invalidImageData
+    }
+
+    let ciImage = CIImage(cgImage: thumbnail)
+    let filteredCIImage = apply(filterValues, to: ciImage)
+
+    guard let originalCGImage = context.createCGImage(ciImage, from: ciImage.extent),
+          let filteredCGImage = context.createCGImage(filteredCIImage, from: ciImage.extent) else {
+      throw ImageFilterRenderingError.renderFailed
+    }
+
+    return RenderedFilterImages(original: originalCGImage, filtered: filteredCGImage)
+  }
+
   private func render(data: Data, filterValues: FilterValues) throws -> RenderedFilterImages {
     guard let originalImage = CIImage(data: data) else {
       throw ImageFilterRenderingError.invalidImageData
