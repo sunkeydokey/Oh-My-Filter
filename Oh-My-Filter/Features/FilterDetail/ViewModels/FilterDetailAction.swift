@@ -4,6 +4,13 @@ nonisolated enum FilterDetailAction: Equatable, Sendable {
   case task
   case retry
   case tapDownload
+  case tapApply
+  case tapPurchaseRequired
+  case photosSelected([Data])
+  case saveCurrentFilteredImage
+  case saveAllFilteredImages
+  case previewIndexChanged(Int)
+  case dismissApplySheet
   case paymentResponseReceived(PortonePaymentResponse?)
   case dismissPaymentSheet
   case commentTextChanged(String)

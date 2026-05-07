@@ -75,6 +75,8 @@
 		<string>supertoss</string>
 		<string>newsmartpib</string>
 	</array>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>필터가 적용된 사진을 앨범에 저장합니다.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

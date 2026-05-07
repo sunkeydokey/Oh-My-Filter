@@ -114,3 +114,4 @@ AGENTS.md
 GoogleService-Info.plist
 *.p8
 **/Docs/*
+.claude/settings.local.json

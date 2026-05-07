@@ -4,10 +4,13 @@ struct FilterDetailLoadedView: View {
   let detail: FilterDetail
   let previewState: FilterComparisonPreviewState
   let isPaymentProcessing: Bool
+  let isMine: Bool
   let expandedReplyCommentIDs: Set<String>
   let replyingToCommentID: String?
   let commentText: String
   let action: () -> Void
+  let onApply: () -> Void
+  let onPurchaseRequired: () -> Void
   let onCommentTextChanged: (String) -> Void
   let onSubmitComment: () -> Void
   let onReply: (String) -> Void
@@ -29,17 +32,40 @@ struct FilterDetailLoadedView: View {
           isLocked: false
         )
 
-        Button(buttonTitle, action: action)
-          .disabled(detail.isDownloaded || isPaymentProcessing)
-          .font(TypographyToken.pretendardBody1.font)
-          .bold()
-          .foregroundStyle(detail.isDownloaded || isPaymentProcessing ? ColorToken.grayScale0.color : ColorToken.grayScale60.color)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 12)
+        Button("적용해보기") {
+          if isMine || detail.isDownloaded {
+            onApply()
+          } else {
+            onPurchaseRequired()
+          }
+        }
+        .font(TypographyToken.pretendardBody1.font)
+        .bold()
+        .foregroundStyle(ColorToken.mainAccent.color)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
         .background(
-            detail.isDownloaded || isPaymentProcessing ? ColorToken.grayScale75.color : ColorToken.mainAccent.color,
-            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-          )
+          RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .stroke(ColorToken.mainAccent.color, lineWidth: 1.5)
+        )
+
+        Button(buttonTitle) {
+          if isMine || detail.isDownloaded {
+            action()
+          } else {
+            onPurchaseRequired()
+          }
+        }
+        .disabled(isPaymentProcessing)
+        .font(TypographyToken.pretendardBody1.font)
+        .bold()
+        .foregroundStyle(isPaymentProcessing ? ColorToken.grayScale0.color : ColorToken.grayScale60.color)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(
+          isPaymentProcessing ? ColorToken.grayScale75.color : ColorToken.mainAccent.color,
+          in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+        )
 
         Divider()
           .overlay(ColorToken.grayScale90.color)
@@ -72,6 +98,8 @@ struct FilterDetailLoadedView: View {
   }
 
   private var buttonTitle: String {
-    isPaymentProcessing ? "결제 처리 중" : detail.buttonTitle
+    if isPaymentProcessing { return "결제 처리 중" }
+    if isMine { return "내 필터" }
+    return detail.buttonTitle
   }
 }
