@@ -3,6 +3,7 @@ import OSLog
 
 actor LiveVideoPlayerService: VideoPlayerServicing {
   private let networkManager: any AuthenticatedNetworkManaging
+  private let tokenRefreshCoordinator: any TokenRefreshCoordinating
   private let decoder: JSONDecoder
   private static let logger = Logger(
     subsystem: Bundle.main.bundleIdentifier ?? "Oh-My-Filter",
@@ -11,9 +12,11 @@ actor LiveVideoPlayerService: VideoPlayerServicing {
 
   init(
     networkManager: any AuthenticatedNetworkManaging,
+    tokenRefreshCoordinator: any TokenRefreshCoordinating = AppTokenRefreshCoordinator.shared,
     decoder: JSONDecoder = JSONDecoder()
   ) {
     self.networkManager = networkManager
+    self.tokenRefreshCoordinator = tokenRefreshCoordinator
     let configuredDecoder = decoder
     configuredDecoder.keyDecodingStrategy = .convertFromSnakeCase
     self.decoder = configuredDecoder
@@ -29,6 +32,33 @@ actor LiveVideoPlayerService: VideoPlayerServicing {
 
     let response = try await request(VideoApiRouter.stream(videoId: videoId), parameters: .empty)
     return try decode(VideoStreamDTO.self, from: response).toDomain()
+  }
+
+  func loadSubtitleCues(from url: URL) async throws -> [VideoSubtitleCue] {
+    var request = URLRequest(url: url)
+    request.setValue(Server.apiKey(), forHTTPHeaderField: "SeSACKey")
+    if let authorization = try? await tokenRefreshCoordinator.authorizationHeaderValue() {
+      request.setValue(authorization, forHTTPHeaderField: "Authorization")
+    }
+
+    do {
+      let (data, response) = try await URLSession.shared.data(for: request)
+      guard let httpResponse = response as? HTTPURLResponse else {
+        throw VideoPlayerServiceError.invalidResponse
+      }
+      guard 200 ..< 300 ~= httpResponse.statusCode else {
+        throw VideoPlayerServiceError.serverError
+      }
+      guard let string = String(data: data, encoding: .utf8) else {
+        throw VideoPlayerServiceError.invalidResponse
+      }
+      return WebVTTSubtitleParser.parse(string)
+    } catch let error as VideoPlayerServiceError {
+      throw error
+    } catch {
+      Self.logger.error("❌ [VideoPlayerAPI] subtitle load failed error=\(String(describing: error), privacy: .public)")
+      throw VideoPlayerServiceError.transport
+    }
   }
 
   func toggleLike(videoId: String, status: Bool) async throws -> Bool {

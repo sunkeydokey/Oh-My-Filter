@@ -20,3 +20,9 @@ nonisolated struct VideoSubtitle: Sendable {
   let isDefault: Bool
   let url: URL?
 }
+
+nonisolated struct VideoSubtitleCue: Equatable, Sendable {
+  let startTime: Double
+  let endTime: Double
+  let text: String
+}
