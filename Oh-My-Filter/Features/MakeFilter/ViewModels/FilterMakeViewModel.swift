@@ -5,26 +5,20 @@ import Observation
 @Observable
 final class FilterMakeViewModel {
   private(set) var state: FilterMakeState
-  private let imageInfoReader: any FilterMakeImageInfoReading
   private let submitUseCase: any FilterMakeSubmitting
   private let renderer: any ImageFilterRendering
-  private var imageInfoTask: Task<Void, Never>?
-  private var imageInfoRequestID = UUID()
   private var comparisonRenderTask: Task<Void, Never>?
   private var comparisonRenderRequestID = UUID()
 
   init(
     state: FilterMakeState = FilterMakeState(),
-    imageInfoReader: any FilterMakeImageInfoReading = LiveFilterMakeImageInfoReader(),
     submitUseCase: (any FilterMakeSubmitting)? = nil,
     renderer: any ImageFilterRendering = CoreImageFilterRenderer()
   ) {
     self.state = state
-    self.imageInfoReader = imageInfoReader
     self.submitUseCase = submitUseCase ?? LiveFilterMakeSubmitUseCase()
     self.renderer = renderer
     if let imageData = state.representativeImageData {
-      scheduleRepresentativeImageInfo(for: imageData)
       scheduleComparisonRender(for: imageData, filterValues: state.filterValues)
     }
   }
@@ -50,9 +44,7 @@ final class FilterMakeViewModel {
       state.representativeImageData = data
       state.representativePreviewImage = nil
       guard let data else {
-        imageInfoTask?.cancel()
         comparisonRenderTask?.cancel()
-        imageInfoRequestID = UUID()
         comparisonRenderRequestID = UUID()
         state.comparisonPreviewState = nil
         state.photoMetadata = .empty
@@ -60,7 +52,6 @@ final class FilterMakeViewModel {
         return
       }
       state.comparisonPreviewState = .rendering
-      scheduleRepresentativeImageInfo(for: data)
       scheduleComparisonRender(for: data, filterValues: state.filterValues)
     case let .representativeImageInfoChanged(info):
       state.representativeImageData = info.imageData
@@ -108,18 +99,6 @@ final class FilterMakeViewModel {
     } catch {
       state.isSubmitting = false
       state.submissionMessage = Self.message(for: error)
-    }
-  }
-
-  private func scheduleRepresentativeImageInfo(for imageData: Data) {
-    imageInfoTask?.cancel()
-    let requestID = UUID()
-    imageInfoRequestID = requestID
-    imageInfoTask = Task { [imageInfoReader, imageData, requestID] in
-      let info = await imageInfoReader.selectedImageInfo(from: imageData)
-      guard Task.isCancelled == false else { return }
-      guard self.imageInfoRequestID == requestID else { return }
-      self.send(.representativeImageInfoChanged(info))
     }
   }
 

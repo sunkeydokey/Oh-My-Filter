@@ -1,4 +1,6 @@
 import CoreGraphics
+import ImageIO
+import Photos
 import PhotosUI
 import SwiftUI
 
@@ -284,10 +286,40 @@ struct MakeFilterView: View {
   @MainActor
   private func loadRepresentativeImage() async {
     guard let pickerItem else { return }
-    defer {
-      self.pickerItem = nil
-    }
+    defer { self.pickerItem = nil }
+
     guard let data = try? await pickerItem.loadTransferable(type: Data.self) else { return }
-    viewModel.send(.representativeImageChanged(data))
+
+    let assetIdentifier = pickerItem.itemIdentifier
+    let metadata = await Task.detached(priority: .userInitiated) {
+      metadataFromOriginalAsset(identifier: assetIdentifier)
+    }.value
+
+    let info = await LiveFilterMakeImageInfoReader().selectedImageInfo(from: data, overridingMetadata: metadata)
+    viewModel.send(.representativeImageInfoChanged(info))
   }
+}
+
+private func metadataFromOriginalAsset(identifier: String?) -> FilterDetailMetadata? {
+  guard
+    let identifier,
+    let asset = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil).firstObject
+  else { return nil }
+
+  var result: FilterDetailMetadata?
+  let options = PHImageRequestOptions()
+  options.version = .original
+  options.isNetworkAccessAllowed = true
+  options.isSynchronous = true
+
+  PHImageManager.default().requestImageDataAndOrientation(for: asset, options: options) { data, _, _, _ in
+    guard
+      let data,
+      let source = CGImageSourceCreateWithData(data as CFData, nil),
+      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [AnyHashable: Any]
+    else { return }
+    result = LiveFilterMakeImageInfoReader().metadata(from: properties)
+  }
+
+  return result
 }

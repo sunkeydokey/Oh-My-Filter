@@ -11,12 +11,19 @@ nonisolated struct LiveFilterMakeImageInfoReader: FilterMakeImageInfoReading {
 
   func selectedImageInfo(from imageData: Data?) async -> FilterMakeSelectedImageInfo {
     await Task.detached(priority: .userInitiated) {
-      selectedImageInfo(from: imageData, previewMaxPixelSize: previewMaxPixelSize)
+      selectedImageInfo(from: imageData, overridingMetadata: nil, previewMaxPixelSize: previewMaxPixelSize)
+    }.value
+  }
+
+  func selectedImageInfo(from imageData: Data?, overridingMetadata: FilterDetailMetadata?) async -> FilterMakeSelectedImageInfo {
+    await Task.detached(priority: .userInitiated) {
+      selectedImageInfo(from: imageData, overridingMetadata: overridingMetadata, previewMaxPixelSize: previewMaxPixelSize)
     }.value
   }
 
   private func selectedImageInfo(
     from imageData: Data?,
+    overridingMetadata: FilterDetailMetadata?,
     previewMaxPixelSize: Int
   ) -> FilterMakeSelectedImageInfo {
     guard
@@ -27,7 +34,7 @@ nonisolated struct LiveFilterMakeImageInfoReader: FilterMakeImageInfoReading {
       return FilterMakeSelectedImageInfo(
         imageData: imageData,
         previewImage: previewImage(from: imageData, maxPixelSize: previewMaxPixelSize),
-        metadata: .empty,
+        metadata: overridingMetadata ?? .empty,
         filterParameterValues: FilterEditParameter.defaultValues
       )
     }
@@ -35,7 +42,7 @@ nonisolated struct LiveFilterMakeImageInfoReader: FilterMakeImageInfoReading {
     return FilterMakeSelectedImageInfo(
       imageData: imageData,
       previewImage: thumbnail(from: source, maxPixelSize: previewMaxPixelSize),
-      metadata: metadata(from: properties),
+      metadata: overridingMetadata ?? metadata(from: properties),
       filterParameterValues: filterParameterValues(from: properties)
     )
   }
@@ -58,7 +65,7 @@ nonisolated struct LiveFilterMakeImageInfoReader: FilterMakeImageInfoReading {
     return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
   }
 
-  private func metadata(from properties: [AnyHashable: Any]) -> FilterDetailMetadata {
+  func metadata(from properties: [AnyHashable: Any]) -> FilterDetailMetadata {
     let tiff = dictionaryValue(for: kCGImagePropertyTIFFDictionary, in: properties)
     let exif = dictionaryValue(for: kCGImagePropertyExifDictionary, in: properties)
 
