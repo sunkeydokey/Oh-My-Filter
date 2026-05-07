@@ -76,6 +76,7 @@ struct FilterMakeViewModelTests {
     }
 
     #expect(await storage.renderedFilterValues().contains { $0.brightness == 0.5 })
+    #expect(await storage.calledMethods().allSatisfy { $0 == "renderComparisonPreview" })
   }
 
   @Test("removing representative image clears comparison preview")
@@ -210,14 +211,14 @@ private struct MockImageFilterRenderer: ImageFilterRendering {
 
   func render(originalImageURL: URL, filterValues: FilterValues) async throws -> RenderedFilterImages {
     if let storage {
-      await storage.append(filterValues)
+      await storage.append(filterValues, method: "render(url:)")
     }
     return try result.get()
   }
 
   func render(originalImageData: Data, filterValues: FilterValues) async throws -> RenderedFilterImages {
     if let storage {
-      await storage.append(filterValues)
+      await storage.append(filterValues, method: "render(data:)")
     }
     return try result.get()
   }
@@ -228,21 +229,38 @@ private struct MockImageFilterRenderer: ImageFilterRendering {
     filterValues: FilterValues
   ) async throws -> CGImage {
     if let storage {
-      await storage.append(filterValues)
+      await storage.append(filterValues, method: "renderPreview")
     }
     return try result.get().filtered
+  }
+
+  func renderComparisonPreview(
+    originalImageData: Data,
+    maxPixelSize: Int,
+    filterValues: FilterValues
+  ) async throws -> RenderedFilterImages {
+    if let storage {
+      await storage.append(filterValues, method: "renderComparisonPreview")
+    }
+    return try result.get()
   }
 }
 
 private actor MockImageFilterRendererStorage {
   private var values: [FilterValues] = []
+  private var methods: [String] = []
 
-  func append(_ filterValues: FilterValues) {
+  func append(_ filterValues: FilterValues, method: String) {
     values.append(filterValues)
+    methods.append(method)
   }
 
   func renderedFilterValues() -> [FilterValues] {
     values
+  }
+
+  func calledMethods() -> [String] {
+    methods
   }
 }
 
