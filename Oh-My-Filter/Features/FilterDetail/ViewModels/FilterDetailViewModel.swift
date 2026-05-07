@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 import OSLog
+import Photos
+import UIKit
 
 @MainActor
 @Observable
@@ -83,11 +85,29 @@ final class FilterDetailViewModel {
       } else {
         state.expandedReplyCommentIDs.insert(commentID)
       }
+    case .tapApply:
+      await handleTapApply()
+    case let .photosSelected(dataList):
+      await renderUserPhotos(dataList: dataList)
+    case .saveCurrentFilteredImage:
+      await saveCurrentFilteredImage()
+    case .saveAllFilteredImages:
+      await saveAllFilteredImages()
+    case let .previewIndexChanged(index):
+      if case let .readyToSave(images, _) = state.applyPhotoPhase {
+        state.applyPhotoPhase = .readyToSave(images: images, currentIndex: index)
+      }
+    case .dismissApplySheet:
+      state.applyPhotoPhase = .idle
+    case .tapPurchaseRequired:
+      await startPayment()
     case .tapEdit:
       await routeToUpdate()
     case .routeHandled:
       state.route = nil
-    case .dismissAlert, .confirmAlert:
+    case .dismissAlert:
+      state.alert = nil
+    case .confirmAlert:
       state.alert = nil
     }
   }
@@ -223,6 +243,69 @@ final class FilterDetailViewModel {
         confirmTitle: "확인"
       )
     }
+  }
+
+  private func handleTapApply() async {
+    guard let detail = state.detail, detail.isDownloaded || state.isMine else { return }
+    state.applyPhotoPhase = .picking
+  }
+
+  private func renderUserPhotos(dataList: [Data]) async {
+    guard let detail = state.detail else { return }
+    var rendered: [CGImage] = []
+    for (index, data) in dataList.enumerated() {
+      state.applyPhotoPhase = .rendering(progress: index, total: dataList.count)
+      do {
+        let images = try await renderer.render(originalImageData: data, filterValues: detail.filterValues)
+        rendered.append(images.filtered)
+      } catch {
+        state.applyPhotoPhase = .failed("필터 적용에 실패했습니다.")
+        Self.logger.error("❌ [FilterDetailViewModel] renderUserPhotos failed at index \(index): \(String(describing: error), privacy: .public)")
+        return
+      }
+    }
+    state.applyPhotoPhase = .readyToSave(images: rendered, currentIndex: 0)
+  }
+
+  private func saveCurrentFilteredImage() async {
+    guard case let .readyToSave(images, currentIndex) = state.applyPhotoPhase,
+          images.indices.contains(currentIndex) else { return }
+    await persistImages([images[currentIndex]])
+  }
+
+  private func saveAllFilteredImages() async {
+    guard case let .readyToSave(images, _) = state.applyPhotoPhase else { return }
+    await persistImages(images)
+  }
+
+  private func persistImages(_ images: [CGImage]) async {
+    let total = images.count
+    for (index, cgImage) in images.enumerated() {
+      state.applyPhotoPhase = .saving(progress: index, total: total)
+      do {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+          PHPhotoLibrary.shared().performChanges({
+            let request = PHAssetCreationRequest.forAsset()
+            request.addResource(
+              with: .photo,
+              data: UIImage(cgImage: cgImage).jpegData(compressionQuality: 0.95) ?? Data(),
+              options: nil
+            )
+          }) { _, error in
+            if let error {
+              continuation.resume(throwing: error)
+            } else {
+              continuation.resume()
+            }
+          }
+        }
+      } catch {
+        state.applyPhotoPhase = .failed("사진 저장에 실패했습니다.")
+        Self.logger.error("❌ [FilterDetailViewModel] persistImages failed at index \(index): \(String(describing: error), privacy: .public)")
+        return
+      }
+    }
+    state.applyPhotoPhase = .saved
   }
 
   private func routeToUpdate() async {

@@ -9,14 +9,17 @@ final class CommunityPostViewModel {
 
   init(
     mode: CommunityPostMode,
+    preloadedImages: [PhotoPickerUploadSelection] = [],
     useCase: any CommunityFeedUseCase
   ) {
-    self.state = CommunityPostState(mode: mode)
+    var initialState = CommunityPostState(mode: mode)
+    initialState.selectedImages = preloadedImages
+    self.state = initialState
     self.useCase = useCase
   }
 
-  convenience init(mode: CommunityPostMode) {
-    self.init(mode: mode, useCase: LiveCommunityFeedUseCase())
+  convenience init(mode: CommunityPostMode, preloadedImages: [PhotoPickerUploadSelection] = []) {
+    self.init(mode: mode, preloadedImages: preloadedImages, useCase: LiveCommunityFeedUseCase())
   }
 
   func updateCategory(_ category: String) {

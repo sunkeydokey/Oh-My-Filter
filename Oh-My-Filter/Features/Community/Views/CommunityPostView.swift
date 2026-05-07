@@ -11,9 +11,10 @@ struct CommunityPostView: View {
 
   init(
     mode: CommunityPostMode,
+    preloadedImages: [PhotoPickerUploadSelection] = [],
     navigate: @escaping (CommunityRoute) -> Void = { _ in }
   ) {
-    self._viewModel = State(initialValue: CommunityPostViewModel(mode: mode))
+    self._viewModel = State(initialValue: CommunityPostViewModel(mode: mode, preloadedImages: preloadedImages))
     self.navigate = navigate
   }
 
