@@ -8,7 +8,11 @@ struct LiveLoginServiceTests {
   func requestUsesSignInRouter() async throws {
     let manager = MockLoginNetworkManager()
     let tokenStore = MockAuthTokenStore()
-    let service = LiveLoginService(networkManager: manager, tokenStore: tokenStore)
+    let service = LiveLoginService(
+      networkManager: manager,
+      tokenStore: tokenStore,
+      deviceTokenStore: MockDeviceTokenStore()
+    )
     let request = LoginRequest(email: "sesac@sesac.com", password: "password123!")
 
     await manager.enqueueResponse(
@@ -30,7 +34,11 @@ struct LiveLoginServiceTests {
   func kakaoLoginRequestUsesKakaoRouter() async throws {
     let manager = MockLoginNetworkManager()
     let tokenStore = MockAuthTokenStore()
-    let service = LiveLoginService(networkManager: manager, tokenStore: tokenStore)
+    let service = LiveLoginService(
+      networkManager: manager,
+      tokenStore: tokenStore,
+      deviceTokenStore: MockDeviceTokenStore()
+    )
     let request = KakaoLoginRequest(oauthToken: "kakao-access-token")
 
     await manager.enqueueResponse(
@@ -52,7 +60,11 @@ struct LiveLoginServiceTests {
   func appleLoginRequestUsesAppleRouter() async throws {
     let manager = MockLoginNetworkManager()
     let tokenStore = MockAuthTokenStore()
-    let service = LiveLoginService(networkManager: manager, tokenStore: tokenStore)
+    let service = LiveLoginService(
+      networkManager: manager,
+      tokenStore: tokenStore,
+      deviceTokenStore: MockDeviceTokenStore()
+    )
     let request = AppleLoginRequest(idToken: "apple-id-token")
 
     await manager.enqueueResponse(
@@ -78,6 +90,7 @@ struct LiveLoginServiceTests {
     let service = LiveLoginService(
       networkManager: manager,
       tokenStore: tokenStore,
+      deviceTokenStore: MockDeviceTokenStore(),
       now: { now }
     )
 
@@ -102,7 +115,11 @@ struct LiveLoginServiceTests {
   func invalidRequestMapsMessage() async {
     let manager = MockLoginNetworkManager()
     let tokenStore = MockAuthTokenStore()
-    let service = LiveLoginService(networkManager: manager, tokenStore: tokenStore)
+    let service = LiveLoginService(
+      networkManager: manager,
+      tokenStore: tokenStore,
+      deviceTokenStore: MockDeviceTokenStore()
+    )
 
     await manager.enqueueResponse(
       NetworkResponse(data: Self.invalidRequestData, statusCode: 400)
@@ -122,7 +139,11 @@ struct LiveLoginServiceTests {
   func unauthorizedMapsMessage() async {
     let manager = MockLoginNetworkManager()
     let tokenStore = MockAuthTokenStore()
-    let service = LiveLoginService(networkManager: manager, tokenStore: tokenStore)
+    let service = LiveLoginService(
+      networkManager: manager,
+      tokenStore: tokenStore,
+      deviceTokenStore: MockDeviceTokenStore()
+    )
 
     await manager.enqueueResponse(
       NetworkResponse(data: Self.unauthorizedData, statusCode: 401)
@@ -142,7 +163,11 @@ struct LiveLoginServiceTests {
   func networkFailuresMapToServiceErrors() async {
     let manager = MockLoginNetworkManager()
     let tokenStore = MockAuthTokenStore()
-    let service = LiveLoginService(networkManager: manager, tokenStore: tokenStore)
+    let service = LiveLoginService(
+      networkManager: manager,
+      tokenStore: tokenStore,
+      deviceTokenStore: MockDeviceTokenStore()
+    )
 
     await manager.enqueueFailure(NetworkError.transport)
 
@@ -154,6 +179,25 @@ struct LiveLoginServiceTests {
     } catch {
       #expect(error as? LoginServiceError == .transport)
     }
+  }
+
+  @Test("login injects stored device token when request does not provide one")
+  func loginInjectsStoredDeviceToken() async throws {
+    let manager = MockLoginNetworkManager()
+    let tokenStore = MockAuthTokenStore()
+    let service = LiveLoginService(
+      networkManager: manager,
+      tokenStore: tokenStore,
+      deviceTokenStore: MockDeviceTokenStore(token: "fcm-token")
+    )
+
+    await manager.enqueueResponse(NetworkResponse(data: Self.successData, statusCode: 200))
+
+    _ = try await service.login(
+      request: LoginRequest(email: "sesac@sesac.com", password: "password123!")
+    )
+
+    #expect(await manager.capturedBodyRequest?.loginBody?.deviceToken == "fcm-token")
   }
 }
 
@@ -171,6 +215,20 @@ private actor MockAuthTokenStore: AuthTokenStoring {
   func delete() async throws {
     savedTokens = nil
   }
+}
+
+private struct MockDeviceTokenStore: DeviceTokenStoring {
+  let token: String?
+
+  init(token: String? = nil) {
+    self.token = token
+  }
+
+  func deviceToken() -> String? {
+    token
+  }
+
+  func saveDeviceToken(_ token: String) {}
 }
 
 private actor MockLoginNetworkManager: BaseNetworkManaging {

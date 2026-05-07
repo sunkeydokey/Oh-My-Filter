@@ -3,17 +3,20 @@ import Foundation
 struct LiveLoginService: LoginServicing {
   private let networkManager: any BaseNetworkManaging
   private let tokenStore: any AuthTokenStoring
+  private let deviceTokenStore: any DeviceTokenStoring
   private let decoder: JSONDecoder
   private let now: @Sendable () -> Date
 
   init(
     networkManager: any BaseNetworkManaging,
     tokenStore: any AuthTokenStoring,
+    deviceTokenStore: any DeviceTokenStoring = AppDeviceTokenStore(),
     decoder: JSONDecoder = JSONDecoder(),
     now: @escaping @Sendable () -> Date = { .now }
   ) {
     self.networkManager = networkManager
     self.tokenStore = tokenStore
+    self.deviceTokenStore = deviceTokenStore
     self.decoder = decoder
     self.now = now
   }
@@ -26,21 +29,35 @@ struct LiveLoginService: LoginServicing {
     self.init(
       networkManager: BaseNetworkManager(),
       tokenStore: KeychainAuthTokenStore(),
+      deviceTokenStore: AppDeviceTokenStore(),
       decoder: decoder,
       now: now
     )
   }
 
   func login(request: LoginRequest) async throws -> LoginSession {
-    try await performLogin(router: UserApiRouter.signIn, body: request)
+    let request = LoginRequest(
+      email: request.email,
+      password: request.password,
+      deviceToken: request.deviceToken ?? deviceTokenStore.deviceToken()
+    )
+    return try await performLogin(router: UserApiRouter.signIn, body: request)
   }
 
   func loginWithKakao(request: KakaoLoginRequest) async throws -> LoginSession {
-    try await performLogin(router: UserApiRouter.kakaoLogin, body: request)
+    let request = KakaoLoginRequest(
+      oauthToken: request.oauthToken,
+      deviceToken: request.deviceToken ?? deviceTokenStore.deviceToken()
+    )
+    return try await performLogin(router: UserApiRouter.kakaoLogin, body: request)
   }
 
   func loginWithApple(request: AppleLoginRequest) async throws -> LoginSession {
-    try await performLogin(router: UserApiRouter.appleLogin, body: request)
+    let request = AppleLoginRequest(
+      idToken: request.idToken,
+      deviceToken: request.deviceToken ?? deviceTokenStore.deviceToken()
+    )
+    return try await performLogin(router: UserApiRouter.appleLogin, body: request)
   }
 
   private func performLogin<Body: Encodable>(

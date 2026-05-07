@@ -10,6 +10,8 @@ enum AppOrientationLock {
 }
 
 final class AppDelegate: NSObject, UIApplicationDelegate {
+  private let deviceTokenStore: any DeviceTokenStoring = AppDeviceTokenStore()
+
   func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
@@ -45,6 +47,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         if let error = error {
             print("FCM token error: \(error)")
             return
+        }
+        if let token {
+          self.deviceTokenStore.saveDeviceToken(token)
         }
         print("FCM token: \(token ?? "nil")")
     }  }
@@ -84,6 +89,9 @@ private extension AppDelegate {
 
 extension AppDelegate: MessagingDelegate {
   func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+    if let fcmToken {
+      AppDeviceTokenStore().saveDeviceToken(fcmToken)
+    }
     print("function called:", #function)
     print("FCM token: \(fcmToken ?? "nil")")
   }

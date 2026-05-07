@@ -12,14 +12,23 @@ import iamport_ios
 
 @main
 struct OhMyFilterApp: App {
-  @State private var coordinator = AppCoordinator(
-    loginService: LiveLoginService(),
-    signupService: LiveSignupService()
-  )
+  private let modelContainer: ModelContainer
+  @State private var coordinator: AppCoordinator
 
   @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
   init() {
+    do {
+      let modelContainer = try ModelContainer(for: ChatRoomRecord.self, ChatMessageRecord.self)
+      self.modelContainer = modelContainer
+      _coordinator = State(initialValue: AppCoordinator(
+        loginService: LiveLoginService(),
+        signupService: LiveSignupService(),
+        localSessionDataResetter: SwiftDataLocalSessionDataResetter(container: modelContainer)
+      ))
+    } catch {
+      fatalError("Failed to create SwiftData model container: \(error)")
+    }
     TabBarAppearance.configure()
   }
 
@@ -27,10 +36,7 @@ struct OhMyFilterApp: App {
     WindowGroup {
       ContentView(coordinator: coordinator)
         .preferredColorScheme(.dark)
-        .modelContainer(for: [
-          ChatRoomRecord.self,
-          ChatMessageRecord.self,
-        ])
+        .modelContainer(modelContainer)
         .onOpenURL { url in
           if url.scheme == SDK.Payment.appScheme {
             Iamport.shared.receivedURL(url)

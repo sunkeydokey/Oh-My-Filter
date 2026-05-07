@@ -3,17 +3,20 @@ import Foundation
 struct LiveSignupService: SignupServicing {
   private let networkManager: any BaseNetworkManaging
   private let tokenStore: any AuthTokenStoring
+  private let deviceTokenStore: any DeviceTokenStoring
   private let decoder: JSONDecoder
   private let now: @Sendable () -> Date
 
   init(
     networkManager: any BaseNetworkManaging,
     tokenStore: any AuthTokenStoring,
+    deviceTokenStore: any DeviceTokenStoring = AppDeviceTokenStore(),
     decoder: JSONDecoder = JSONDecoder(),
     now: @escaping @Sendable () -> Date = { .now }
   ) {
     self.networkManager = networkManager
     self.tokenStore = tokenStore
+    self.deviceTokenStore = deviceTokenStore
     self.decoder = decoder
     self.now = now
   }
@@ -26,6 +29,7 @@ struct LiveSignupService: SignupServicing {
     self.init(
       networkManager: BaseNetworkManager(),
       tokenStore: KeychainAuthTokenStore(),
+      deviceTokenStore: AppDeviceTokenStore(),
       decoder: decoder,
       now: now
     )
@@ -56,6 +60,12 @@ struct LiveSignupService: SignupServicing {
   }
 
   func join(request: SignupRequest) async throws -> LoginSession {
+    let request = SignupRequest(
+      email: request.email,
+      password: request.password,
+      nick: request.nick,
+      deviceToken: request.deviceToken ?? deviceTokenStore.deviceToken()
+    )
     let response: NetworkResponse
 
     do {
