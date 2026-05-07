@@ -142,7 +142,15 @@ final class ChatViewModel {
       self?.state.connectionState = .disconnected
     }
     socketManager.onReconnectSucceeded = { [weak self] in
-      Task { await self?.syncMessagesAfterRecovery() }
+      guard let self else { return }
+      self.state.connectionState = .connected
+      Task { await self.syncMessagesAfterRecovery() }
+    }
+    socketManager.onReconnectAttempt = { [weak self] attempt in
+      self?.state.connectionState = .reconnecting(attempt: attempt)
+    }
+    socketManager.onReconnectFailed = { [weak self] message in
+      self?.state.connectionState = .failed(message: message)
     }
     socketManager.onMessage = { [weak self] message in
       guard let self else { return }

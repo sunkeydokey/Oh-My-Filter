@@ -194,6 +194,62 @@ struct ChatViewModelTests {
     #expect(viewModel.state.messages.map(\.id).contains("after-reconnect"))
   }
 
+  @Test("reconnect attempt reflects reconnecting state")
+  func reconnectAttemptReflectsState() async throws {
+    let socket = SpyChatSocketManager()
+    let viewModel = ChatViewModel(
+      room: try .fixture(id: "room-1"),
+      currentUserID: "me",
+      service: FakeChatService(),
+      store: InMemoryChatStore(),
+      socketManager: socket
+    )
+    await viewModel.send(.task)
+
+    socket.emitReconnectAttempt(2)
+
+    #expect(viewModel.state.connectionState == .reconnecting(attempt: 2))
+  }
+
+  @Test("reconnect failure reflects failed state")
+  func reconnectFailureReflectsState() async throws {
+    let socket = SpyChatSocketManager()
+    let viewModel = ChatViewModel(
+      room: try .fixture(id: "room-1"),
+      currentUserID: "me",
+      service: FakeChatService(),
+      store: InMemoryChatStore(),
+      socketManager: socket
+    )
+    await viewModel.send(.task)
+
+    socket.emitReconnectFailed("연결을 복구할 수 없습니다.")
+
+    #expect(viewModel.state.connectionState == .failed(message: "연결을 복구할 수 없습니다."))
+  }
+
+  @Test("reconnect success sets connected and triggers sync")
+  func reconnectSuccessSetsConnectedAndTriggersSync() async throws {
+    let store = InMemoryChatStore()
+    let service = FakeChatService()
+    let socket = SpyChatSocketManager()
+    let viewModel = ChatViewModel(
+      room: try .fixture(id: "room-1"),
+      currentUserID: "me",
+      service: service,
+      store: store,
+      socketManager: socket
+    )
+    await viewModel.send(.task)
+    let syncCountAfterLoad = await service.syncCallCount
+
+    socket.emitReconnectSucceeded()
+    try await Task.sleep(for: .milliseconds(100))
+
+    #expect(viewModel.state.connectionState == .connected)
+    #expect(await service.syncCallCount == syncCountAfterLoad + 1)
+  }
+
   @Test("chat list filters search and unread rooms")
   func chatListSearchAndUnreadFiltering() async throws {
     let store = InMemoryChatStore()
@@ -346,7 +402,10 @@ private final class SpyChatSocketManager: ChatSocketManaging {
   var onConnected: (@MainActor () -> Void)?
   var onDisconnected: (@MainActor () -> Void)?
   var onReconnectSucceeded: (@MainActor () -> Void)?
+  var onReconnectAttempt: (@MainActor (Int) -> Void)?
+  var onReconnectFailed: (@MainActor (String) -> Void)?
   private(set) var connectedRoomIDs: [String] = []
+  private(set) var disconnectCallCount = 0
 
   func connect(roomID: String) async throws {
     connectedRoomIDs.append(roomID)
@@ -354,6 +413,7 @@ private final class SpyChatSocketManager: ChatSocketManaging {
   }
 
   func disconnect() {
+    disconnectCallCount += 1
     onDisconnected?()
   }
 
@@ -363,6 +423,14 @@ private final class SpyChatSocketManager: ChatSocketManaging {
 
   func emitReconnectSucceeded() {
     onReconnectSucceeded?()
+  }
+
+  func emitReconnectAttempt(_ attempt: Int) {
+    onReconnectAttempt?(attempt)
+  }
+
+  func emitReconnectFailed(_ message: String) {
+    onReconnectFailed?(message)
   }
 }
 
