@@ -157,8 +157,15 @@ struct AppCoordinatorTests {
     let refresher = MockAuthSessionRefresher()
     await refresher.setResult(.success(.tokens))
     let tokenStore = MockAuthTokenStore()
+    let userSessionStore = MockUserSessionStore(currentUserID: "66115b1197488f90d3e7e6e5")
+    let deviceTokenService = MockDeviceTokenService()
     await tokenStore.saveWithoutThrowing(.tokens)
-    let coordinator = makeCoordinator(authSessionRefresher: refresher, tokenStore: tokenStore)
+    let coordinator = makeCoordinator(
+      authSessionRefresher: refresher,
+      tokenStore: tokenStore,
+      userSessionStore: userSessionStore,
+      deviceTokenService: deviceTokenService
+    )
     await coordinator.start()?.value
 
     await coordinator.logout().value
@@ -167,20 +174,66 @@ struct AppCoordinatorTests {
     #expect(coordinator.loginViewModel != nil)
     #expect(coordinator.signupViewModel != nil)
     #expect(await tokenStore.tokensWithoutThrowing() == nil)
+    #expect(userSessionStore.currentUserID() == nil)
+    #expect(deviceTokenService.updatedTokens == [""])
+  }
+
+  @Test("successful login stores user id")
+  func successfulLoginStoresUserID() async throws {
+    let loginService = MockLoginService()
+    let userSessionStore = MockUserSessionStore()
+    await loginService.setResult(.success(.fixture))
+    let coordinator = makeCoordinator(loginService: loginService, userSessionStore: userSessionStore)
+    await coordinator.start()?.value
+    let loginViewModel = try #require(coordinator.loginViewModel)
+
+    loginViewModel.send(.emailChanged("sesac@sesac.com"))
+    loginViewModel.send(.passwordChanged("password123!"))
+    await loginViewModel.send(.submitTapped)?.value
+
+    #expect(userSessionStore.currentUserID() == LoginSession.fixture.userID)
+    #expect(userSessionStore.localDataOwnerUserID() == LoginSession.fixture.userID)
+  }
+
+  @Test("different user login resets local data")
+  func differentUserLoginResetsLocalData() async throws {
+    let loginService = MockLoginService()
+    let userSessionStore = MockUserSessionStore(localDataOwnerUserID: "old-user")
+    let resetter = MockLocalSessionDataResetter()
+    await loginService.setResult(.success(.fixture))
+    let coordinator = makeCoordinator(
+      loginService: loginService,
+      userSessionStore: userSessionStore,
+      localSessionDataResetter: resetter
+    )
+    await coordinator.start()?.value
+    let loginViewModel = try #require(coordinator.loginViewModel)
+
+    loginViewModel.send(.emailChanged("sesac@sesac.com"))
+    loginViewModel.send(.passwordChanged("password123!"))
+    await loginViewModel.send(.submitTapped)?.value
+
+    #expect(resetter.resetCount == 1)
   }
 
   private func makeCoordinator(
     loginService: MockLoginService = MockLoginService(),
     authSessionRefresher: MockAuthSessionRefresher = MockAuthSessionRefresher(),
     tokenStore: MockAuthTokenStore = MockAuthTokenStore(),
-    kakaoOAuthProvider: MockKakaoOAuthProvider = MockKakaoOAuthProvider()
+    kakaoOAuthProvider: MockKakaoOAuthProvider = MockKakaoOAuthProvider(),
+    userSessionStore: MockUserSessionStore = MockUserSessionStore(),
+    deviceTokenService: MockDeviceTokenService = MockDeviceTokenService(),
+    localSessionDataResetter: (any LocalSessionDataResetting)? = nil
   ) -> AppCoordinator {
     AppCoordinator(
       loginService: loginService,
       kakaoOAuthProvider: kakaoOAuthProvider,
       signupService: PassiveSignupService(),
       authSessionRefresher: authSessionRefresher,
-      tokenStore: tokenStore
+      tokenStore: tokenStore,
+      userSessionStore: userSessionStore,
+      deviceTokenService: deviceTokenService,
+      localSessionDataResetter: localSessionDataResetter
     )
   }
 }
@@ -262,6 +315,53 @@ private actor MockAuthTokenStore: AuthTokenStoring {
 
   func tokensWithoutThrowing() -> StoredAuthTokens? {
     storedTokens
+  }
+}
+
+private final class MockUserSessionStore: UserSessionStoring, @unchecked Sendable {
+  private var current: String?
+  private var owner: String?
+
+  init(
+    currentUserID: String? = nil,
+    localDataOwnerUserID: String? = nil
+  ) {
+    current = currentUserID
+    owner = localDataOwnerUserID
+  }
+
+  func currentUserID() -> String? {
+    current
+  }
+
+  func localDataOwnerUserID() -> String? {
+    owner
+  }
+
+  func saveAuthenticatedUserID(_ userID: String) {
+    current = userID
+    owner = userID
+  }
+
+  func clearCurrentUserID() {
+    current = nil
+  }
+}
+
+private final class MockDeviceTokenService: DeviceTokenServicing, @unchecked Sendable {
+  private(set) var updatedTokens: [String] = []
+
+  func updateDeviceToken(_ token: String) async throws {
+    updatedTokens.append(token)
+  }
+}
+
+@MainActor
+private final class MockLocalSessionDataResetter: LocalSessionDataResetting {
+  private(set) var resetCount = 0
+
+  func resetLocalSessionData() throws {
+    resetCount += 1
   }
 }
 

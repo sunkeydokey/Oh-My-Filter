@@ -42,7 +42,9 @@ struct ContentView: View {
         ProgressView()
       }
     case .authenticated:
-      AuthenticatedRootView()
+      AuthenticatedRootView {
+        _ = coordinator.logout()
+      }
     }
   }
 }

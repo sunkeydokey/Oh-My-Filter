@@ -115,7 +115,8 @@ private extension MainBanner {
     id: "banner-1",
     title: "이번 주 추천",
     subtitle: "가장 많이 본 필터를 확인해 보세요",
-    imageUrl: URL(string: "https://example.com/banner-1.png")
+    imageUrl: URL(string: "https://example.com/banner-1.png"),
+    webViewURL: nil
   )
 }
 

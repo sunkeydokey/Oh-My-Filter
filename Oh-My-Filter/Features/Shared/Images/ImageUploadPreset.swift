@@ -48,7 +48,12 @@ nonisolated enum ImageUploadPreset: Equatable, Sendable {
   }
 
   var multipartFieldName: String {
-    "files"
+    switch self {
+    case .profile:
+      "profile"
+    case .chat, .communityPost, .filter:
+      "files"
+    }
   }
 
   var maximumSelectionMessage: String {

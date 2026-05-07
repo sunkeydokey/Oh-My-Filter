@@ -7,7 +7,11 @@ struct LiveSignupServiceTests {
   func validateEmailMapsStatusCodes() async throws {
     let manager = MockBaseNetworkManager()
     let tokenStore = MockAuthTokenStore()
-    let service = await LiveSignupService(networkManager: manager, tokenStore: tokenStore)
+    let service = await LiveSignupService(
+      networkManager: manager,
+      tokenStore: tokenStore,
+      deviceTokenStore: MockDeviceTokenStore()
+    )
 
     await manager.enqueueResponse(NetworkResponse(data: Data(), statusCode: 200))
     let available = try await service.validateEmail("sesac@sesac.com")
@@ -26,7 +30,11 @@ struct LiveSignupServiceTests {
   func joinMapsStatusCodes() async throws {
     let manager = MockBaseNetworkManager()
     let tokenStore = MockAuthTokenStore()
-    let service = await LiveSignupService(networkManager: manager, tokenStore: tokenStore)
+    let service = await LiveSignupService(
+      networkManager: manager,
+      tokenStore: tokenStore,
+      deviceTokenStore: MockDeviceTokenStore()
+    )
     let request = SignupRequest(email: "sesac@sesac.com", password: "1234Abcd!", nick: "새싹이")
 
     await manager.enqueueResponse(NetworkResponse(data: Data(), statusCode: 400))
@@ -58,6 +66,7 @@ struct LiveSignupServiceTests {
     let service = await LiveSignupService(
       networkManager: manager,
       tokenStore: tokenStore,
+      deviceTokenStore: MockDeviceTokenStore(),
       now: { now }
     )
     let request = SignupRequest(email: "sesac@sesac.com", password: "1234Abcd!", nick: "새싹이")
@@ -79,7 +88,11 @@ struct LiveSignupServiceTests {
   func joinMapsNetworkFailures() async throws {
     let manager = MockBaseNetworkManager()
     let tokenStore = MockAuthTokenStore()
-    let service = await LiveSignupService(networkManager: manager, tokenStore: tokenStore)
+    let service = await LiveSignupService(
+      networkManager: manager,
+      tokenStore: tokenStore,
+      deviceTokenStore: MockDeviceTokenStore()
+    )
     let request = SignupRequest(email: "sesac@sesac.com", password: "1234Abcd!", nick: "새싹이")
 
     await manager.enqueueFailure(NetworkError.transport)
@@ -92,6 +105,25 @@ struct LiveSignupServiceTests {
     } catch {
       Issue.record("Unexpected error: \(error)")
     }
+  }
+
+  @Test("signup injects stored device token")
+  func joinInjectsStoredDeviceToken() async throws {
+    let manager = MockBaseNetworkManager()
+    let tokenStore = MockAuthTokenStore()
+    let service = await LiveSignupService(
+      networkManager: manager,
+      tokenStore: tokenStore,
+      deviceTokenStore: MockDeviceTokenStore(token: "fcm-token")
+    )
+
+    await manager.enqueueResponse(NetworkResponse(data: Self.successData, statusCode: 200))
+
+    _ = try await service.join(
+      request: SignupRequest(email: "sesac@sesac.com", password: "1234Abcd!", nick: "새싹이")
+    )
+
+    #expect(await manager.capturedSignupBody?.deviceToken == "fcm-token")
   }
 }
 
@@ -109,6 +141,20 @@ private actor MockAuthTokenStore: AuthTokenStoring {
   func delete() async throws {
     savedTokens = nil
   }
+}
+
+private struct MockDeviceTokenStore: DeviceTokenStoring {
+  let token: String?
+
+  init(token: String? = nil) {
+    self.token = token
+  }
+
+  func deviceToken() -> String? {
+    token
+  }
+
+  func saveDeviceToken(_ token: String) {}
 }
 
 private extension LiveSignupServiceTests {
@@ -137,6 +183,7 @@ private extension LoginSession {
 
 private actor MockBaseNetworkManager: BaseNetworkManaging {
   private var queuedResults: [Result<NetworkResponse, Error>] = []
+  private(set) var capturedSignupBody: SignupRequest?
 
   func enqueueResponse(_ response: NetworkResponse) {
     queuedResults.append(.success(response))
@@ -160,7 +207,8 @@ private actor MockBaseNetworkManager: BaseNetworkManaging {
     headers: [String: String],
     parameters: RequestQuery
   ) async throws -> NetworkResponse {
-    try nextResult()
+    capturedSignupBody = body as? SignupRequest
+    return try nextResult()
   }
 
   private func nextResult() throws -> NetworkResponse {

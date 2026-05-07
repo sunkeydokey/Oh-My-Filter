@@ -15,6 +15,9 @@ final class AppCoordinator {
   private let signupService: any SignupServicing
   private let authSessionRefresher: any AuthSessionRefreshing
   private let tokenStore: any AuthTokenStoring
+  private let userSessionStore: any UserSessionStoring
+  private let deviceTokenService: any DeviceTokenServicing
+  private let localSessionDataResetter: (any LocalSessionDataResetting)?
   private var hasStarted = false
 
   init(
@@ -22,26 +25,36 @@ final class AppCoordinator {
     kakaoOAuthProvider: any KakaoOAuthProviding = LiveKakaoOAuthProvider(),
     signupService: any SignupServicing,
     authSessionRefresher: any AuthSessionRefreshing,
-    tokenStore: any AuthTokenStoring
+    tokenStore: any AuthTokenStoring,
+    userSessionStore: any UserSessionStoring = AppUserSessionStore(),
+    deviceTokenService: (any DeviceTokenServicing)? = nil,
+    localSessionDataResetter: (any LocalSessionDataResetting)? = nil
   ) {
     self.loginService = loginService
     self.kakaoOAuthProvider = kakaoOAuthProvider
     self.signupService = signupService
     self.authSessionRefresher = authSessionRefresher
     self.tokenStore = tokenStore
+    self.userSessionStore = userSessionStore
+    self.deviceTokenService = deviceTokenService ?? LiveDeviceTokenService()
+    self.localSessionDataResetter = localSessionDataResetter
   }
 
   @MainActor
   convenience init(
     loginService: any LoginServicing,
-    signupService: any SignupServicing
+    signupService: any SignupServicing,
+    localSessionDataResetter: (any LocalSessionDataResetting)? = nil
   ) {
     self.init(
       loginService: loginService,
       kakaoOAuthProvider: LiveKakaoOAuthProvider(),
       signupService: signupService,
       authSessionRefresher: LiveAuthSessionRefreshService(),
-      tokenStore: KeychainAuthTokenStore()
+      tokenStore: KeychainAuthTokenStore(),
+      userSessionStore: AppUserSessionStore(),
+      deviceTokenService: LiveDeviceTokenService(),
+      localSessionDataResetter: localSessionDataResetter
     )
   }
 
@@ -81,13 +94,32 @@ final class AppCoordinator {
     scene = .authenticated
   }
 
+  func finishAuthentication(session: LoginSession) {
+    resetLocalDataIfNeeded(for: session.userID)
+    userSessionStore.saveAuthenticatedUserID(session.userID)
+    finishAuthentication()
+  }
+
   @discardableResult
   func logout() -> Task<Void, Never> {
     authPath.removeAll()
     return Task {
+      try? await deviceTokenService.updateDeviceToken("")
       try? await tokenStore.delete()
+      userSessionStore.clearCurrentUserID()
       prepareAuthenticationFlow()
     }
+  }
+
+  private func resetLocalDataIfNeeded(for userID: String) {
+    guard
+      let previousUserID = userSessionStore.localDataOwnerUserID(),
+      previousUserID != userID
+    else {
+      return
+    }
+
+    try? localSessionDataResetter?.resetLocalSessionData()
   }
 
   private func prepareAuthenticationFlow() {
@@ -99,11 +131,11 @@ final class AppCoordinator {
     )
     let signupViewModel = SignupViewModel(service: signupService)
 
-    loginViewModel.onLoginSucceeded = { [weak self] _ in
-      self?.finishAuthentication()
+    loginViewModel.onLoginSucceeded = { [weak self] session in
+      self?.finishAuthentication(session: session)
     }
-    signupViewModel.onSignupSucceeded = { [weak self] _ in
-      self?.finishAuthentication()
+    signupViewModel.onSignupSucceeded = { [weak self] session in
+      self?.finishAuthentication(session: session)
     }
 
     self.loginViewModel = loginViewModel

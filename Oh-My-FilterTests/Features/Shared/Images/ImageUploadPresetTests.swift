@@ -11,6 +11,7 @@ struct ImageUploadPresetTests {
     #expect(ImageUploadPreset.profile.supportedFileExtensions == ["jpg", "png", "jpeg"])
     #expect(ImageUploadPreset.profile.maxBytes == 1_000_000)
     #expect(ImageUploadPreset.profile.maxCount == 1)
+    #expect(ImageUploadPreset.profile.multipartFieldName == "profile")
 
     #expect(ImageUploadPreset.communityPost.supportedFileExtensions == [
       "jpg",

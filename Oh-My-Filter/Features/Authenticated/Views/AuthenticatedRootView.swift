@@ -13,6 +13,12 @@ struct AuthenticatedRootView: View {
   @State private var mainPath: [MainRoute] = []
   @State private var feedPath: [MainRoute] = []
   @State private var communityPath: [CommunityRoute] = []
+  @State private var profilePath: [ProfileRoute] = []
+  let onLogout: () -> Void
+
+  init(onLogout: @escaping () -> Void = {}) {
+    self.onLogout = onLogout
+  }
 
   var body: some View {
     TabView(selection: $selectedTab) {
@@ -104,8 +110,25 @@ struct AuthenticatedRootView: View {
       }
 
       Tab("프로필", systemImage: IconToken.profile.symbolName, value: .profile) {
-        NavigationStack {
-          ProfileView()
+        NavigationStack(path: $profilePath) {
+          MyView(
+            navigate: { route in
+              profilePath.append(route)
+            },
+            onLogout: onLogout
+          )
+          .navigationDestination(for: ProfileRoute.self) { route in
+            switch route {
+            case .profile:
+              ProfileView {
+                profilePath.append(.edit)
+              }
+            case .edit:
+              ProfileEditView()
+            case .receipts:
+              ReceiptView()
+            }
+          }
         }
       }
     }

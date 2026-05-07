@@ -145,7 +145,7 @@ private extension CommunityPost {
     title: "제목",
     content: "내용",
     creator: .creator,
-    imageURLs: [],
+    attachments: [],
     imagePaths: ["/data/posts/image.jpg"],
     isLiked: false,
     likeCount: 3,
