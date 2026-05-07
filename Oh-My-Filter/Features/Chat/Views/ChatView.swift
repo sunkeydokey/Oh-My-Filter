@@ -195,6 +195,12 @@ struct ChatView: View {
       return "온라인"
     case .disconnected:
       return "오프라인"
+    case .connecting:
+      return "연결 중"
+    case let .reconnecting(attempt):
+      return "재연결 중 (\(attempt)회)"
+    case .failed:
+      return "연결 실패"
     }
   }
 
