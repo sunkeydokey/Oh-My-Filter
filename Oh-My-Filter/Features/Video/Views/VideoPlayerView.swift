@@ -6,6 +6,7 @@ import UIKit
 struct VideoPlayerView: View {
   @State private var viewModel: VideoPlayerViewModel
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.scenePhase) private var scenePhase
 
   private static let cardBackground = Color(red: 20 / 255, green: 20 / 255, blue: 26 / 255)
   private static let cardStroke = Color(red: 38 / 255, green: 38 / 255, blue: 43 / 255).opacity(0.5)
@@ -34,6 +35,16 @@ struct VideoPlayerView: View {
     }
     .onChange(of: viewModel.isFullScreenPresented) { _, isFullScreen in
       requestOrientation(isFullScreen ? .landscape : .portrait)
+    }
+    .onChange(of: scenePhase) { _, newPhase in
+      Task {
+        switch newPhase {
+        case .background: await viewModel.send(.enterBackground)
+        case .inactive:   await viewModel.send(.becomeInactive)
+        case .active:     await viewModel.send(.enterForeground)
+        @unknown default: break
+        }
+      }
     }
     .task { await viewModel.send(.task) }
   }

@@ -144,6 +144,102 @@ struct VideoPlayerViewModelTests {
     #expect(viewModel.isQualityMenuVisible == false)
   }
 
+  // MARK: - Lifecycle
+
+  @Test("enterBackground pauses a playing video")
+  func enterBackgroundPausesPlayingVideo() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    await viewModel.send(.task)
+    viewModel.playerPhase = .ready(isPlaying: true)
+
+    await viewModel.send(.enterBackground)
+
+    #expect(viewModel.playerPhase == .ready(isPlaying: false))
+  }
+
+  @Test("enterBackground while already paused is a no-op")
+  func enterBackgroundWhilePausedIsNoOp() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    await viewModel.send(.task)
+
+    await viewModel.send(.enterBackground)
+
+    #expect(viewModel.playerPhase == .ready(isPlaying: false))
+  }
+
+  @Test("enterBackground twice is idempotent")
+  func enterBackgroundTwiceIsIdempotent() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    await viewModel.send(.task)
+    viewModel.playerPhase = .ready(isPlaying: true)
+
+    await viewModel.send(.enterBackground)
+    await viewModel.send(.enterBackground)
+
+    #expect(viewModel.playerPhase == .ready(isPlaying: false))
+  }
+
+  @Test("enterForeground does not auto-resume")
+  func enterForegroundDoesNotAutoResume() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    await viewModel.send(.task)
+    viewModel.playerPhase = .ready(isPlaying: true)
+
+    await viewModel.send(.enterBackground)
+    await viewModel.send(.enterForeground)
+
+    #expect(viewModel.playerPhase == .ready(isPlaying: false))
+  }
+
+  @Test("becomeInactive blocks togglePlay")
+  func becomeInactiveBlocksTogglePlay() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    await viewModel.send(.task)
+
+    await viewModel.send(.becomeInactive)
+    await viewModel.send(.togglePlay)
+
+    #expect(viewModel.playerPhase == .ready(isPlaying: false))
+  }
+
+  @Test("enterForeground re-enables user input")
+  func enterForegroundReEnablesInput() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    await viewModel.send(.task)
+
+    await viewModel.send(.becomeInactive)
+    await viewModel.send(.enterForeground)
+    await viewModel.send(.togglePlay)
+
+    #expect(viewModel.playerPhase == .ready(isPlaying: true))
+  }
+
+  @Test("enterBackground cancels pending quality change")
+  func enterBackgroundCancelsPendingQuality() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    await service.enqueueStream(.success(Self.makeStream()))
+    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    await viewModel.send(.task)
+    await viewModel.send(.selectQuality("720p"))
+
+    await viewModel.send(.enterBackground)
+
+    #expect(viewModel.pendingQualityLabel == nil)
+  }
+
   // MARK: - Full Screen
 
   @Test("full screen actions only update presentation state")
