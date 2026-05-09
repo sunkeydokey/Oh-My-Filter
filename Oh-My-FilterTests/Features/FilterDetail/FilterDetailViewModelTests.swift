@@ -331,6 +331,14 @@ private struct MockImageFilterRenderer: ImageFilterRendering {
   ) async throws -> CGImage {
     try result.get().filtered
   }
+
+  func renderComparisonPreview(
+    originalImageData: Data,
+    maxPixelSize: Int,
+    filterValues: FilterValues
+  ) async throws -> RenderedFilterImages {
+    try result.get()
+  }
 }
 
 private actor MockOrderCreateUseCase: OrderCreateUseCase {

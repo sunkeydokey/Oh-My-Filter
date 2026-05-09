@@ -240,6 +240,95 @@ struct VideoPlayerViewModelTests {
     #expect(viewModel.pendingQualityLabel == nil)
   }
 
+  // MARK: - Subtitles
+
+  @Test("task exposes available subtitles and selects default")
+  func taskExposesSubtitles() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream(subtitles: Self.makeSubtitles())))
+    await service.enqueueSubtitle(language: "ko", cues: Self.makeKoreanCues())
+    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+
+    await viewModel.send(.task)
+
+    #expect(viewModel.subtitles.map(\.language) == ["en", "ko"])
+    #expect(viewModel.selectedSubtitleLanguage == "ko")
+    #expect(viewModel.isSubtitlesEnabled == true)
+  }
+
+  @Test("task loads default cues and seek shows current text")
+  func taskLoadsDefaultCuesAndSeekShowsCurrentText() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream(subtitles: Self.makeSubtitles())))
+    await service.enqueueSubtitle(language: "ko", cues: Self.makeKoreanCues())
+    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    await viewModel.send(.task)
+
+    await viewModel.send(.seek(to: 1.5))
+
+    #expect(viewModel.isSubtitlesEnabled == true)
+    #expect(viewModel.currentSubtitleText == "첫 번째 자막")
+  }
+
+  @Test("toggleSubtitles turns enabled subtitles off")
+  func toggleSubtitlesTurnsEnabledSubtitlesOff() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream(subtitles: Self.makeSubtitles())))
+    await service.enqueueSubtitle(language: "ko", cues: Self.makeKoreanCues())
+    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    await viewModel.send(.task)
+    await viewModel.send(.seek(to: 1.5))
+
+    await viewModel.send(.toggleSubtitles)
+
+    #expect(viewModel.isSubtitlesEnabled == false)
+    #expect(viewModel.currentSubtitleText == nil)
+  }
+
+  @Test("seek updates current subtitle text")
+  func seekUpdatesCurrentSubtitleText() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream(subtitles: Self.makeSubtitles())))
+    await service.enqueueSubtitle(language: "ko", cues: Self.makeKoreanCues())
+    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    await viewModel.send(.task)
+
+    await viewModel.send(.seek(to: 4.5))
+
+    #expect(viewModel.currentSubtitleText == "두 번째 자막")
+  }
+
+  @Test("selectSubtitle loads selected language cues")
+  func selectSubtitleLoadsSelectedLanguage() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream(subtitles: Self.makeSubtitles())))
+    await service.enqueueSubtitle(language: "ko", cues: Self.makeKoreanCues())
+    await service.enqueueSubtitle(language: "en", cues: [
+      VideoSubtitleCue(startTime: 0, endTime: 3, text: "First caption")
+    ])
+    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    await viewModel.send(.task)
+    await viewModel.send(.seek(to: 1))
+
+    await viewModel.send(.selectSubtitle("en"))
+
+    #expect(viewModel.selectedSubtitleLanguage == "en")
+    #expect(viewModel.currentSubtitleText == "First caption")
+  }
+
+  @Test("toggleSubtitles is ignored when no subtitles are available")
+  func toggleSubtitlesWithoutTracksIsIgnored() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    await viewModel.send(.task)
+
+    await viewModel.send(.toggleSubtitles)
+
+    #expect(viewModel.isSubtitlesEnabled == false)
+    #expect(viewModel.currentSubtitleText == nil)
+  }
+
   // MARK: - Full Screen
 
   @Test("full screen actions only update presentation state")
@@ -268,7 +357,7 @@ struct VideoPlayerViewModelTests {
 // MARK: - Helpers
 
 private extension VideoPlayerViewModelTests {
-  static func makeStream() -> VideoStream {
+  static func makeStream(subtitles: [VideoSubtitle] = []) -> VideoStream {
     VideoStream(
       videoId: "video-1",
       streamURL: URL(string: "https://example.com/stream.m3u8"),
@@ -276,8 +365,32 @@ private extension VideoPlayerViewModelTests {
         VideoQuality(label: "1080p", url: URL(string: "https://example.com/1080p.m3u8")),
         VideoQuality(label: "720p", url: URL(string: "https://example.com/720p.m3u8")),
       ],
-      subtitles: []
+      subtitles: subtitles
     )
+  }
+
+  static func makeSubtitles() -> [VideoSubtitle] {
+    [
+      VideoSubtitle(
+        language: "en",
+        name: "English",
+        isDefault: false,
+        url: URL(string: "https://example.com/subtitles/en.vtt")
+      ),
+      VideoSubtitle(
+        language: "ko",
+        name: "한국어",
+        isDefault: true,
+        url: URL(string: "https://example.com/subtitles/ko.vtt")
+      ),
+    ]
+  }
+
+  static func makeKoreanCues() -> [VideoSubtitleCue] {
+    [
+      VideoSubtitleCue(startTime: 1, endTime: 3, text: "첫 번째 자막"),
+      VideoSubtitleCue(startTime: 4, endTime: 6, text: "두 번째 자막"),
+    ]
   }
 }
 
@@ -286,6 +399,7 @@ private extension VideoPlayerViewModelTests {
 private actor MockVideoPlayerService: VideoPlayerServicing {
   private var streamResults: [Result<VideoStream, Error>] = []
   private var likeResults: [Result<Bool, Error>] = []
+  private var subtitleResults: [String: Result<[VideoSubtitleCue], Error>] = [:]
 
   func enqueueStream(_ result: Result<VideoStream, Error>) {
     streamResults.append(result)
@@ -293,6 +407,10 @@ private actor MockVideoPlayerService: VideoPlayerServicing {
 
   func enqueueLike(_ result: Result<Bool, Error>) {
     likeResults.append(result)
+  }
+
+  func enqueueSubtitle(language: String, cues: [VideoSubtitleCue]) {
+    subtitleResults[language] = .success(cues)
   }
 
   func loadStream(videoId: String) async throws -> VideoStream {
@@ -307,5 +425,15 @@ private actor MockVideoPlayerService: VideoPlayerServicing {
       throw VideoPlayerServiceError.serverError
     }
     return try likeResults.removeFirst().get()
+  }
+
+  func loadSubtitleCues(from url: URL) async throws -> [VideoSubtitleCue] {
+    guard let language = url.deletingPathExtension().lastPathComponent.split(separator: "/").last else {
+      throw VideoPlayerServiceError.invalidRequest
+    }
+    guard let result = subtitleResults[String(language)] else {
+      throw VideoPlayerServiceError.serverError
+    }
+    return try result.get()
   }
 }

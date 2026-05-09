@@ -23,6 +23,9 @@ enum VideoPlayerAction {
   case toggleQualityMenu
   case selectQuality(String)
   case toggleMute
+  case toggleSubtitles
+  case toggleSubtitleMenu
+  case selectSubtitle(String)
   case seek(to: Double)
   case tapPlayerArea
   case enterFullScreen
@@ -54,6 +57,12 @@ final class VideoPlayerViewModel {
   var currentTime: Double = 0
   var duration: Double
   var isMuted: Bool = false
+  var subtitles: [VideoSubtitle] = []
+  var selectedSubtitleLanguage: String?
+  var isSubtitlesEnabled: Bool = false
+  var isSubtitleMenuVisible: Bool = false
+  var isSubtitleLoading: Bool = false
+  var currentSubtitleText: String?
   var isDescriptionExpanded: Bool = false
   var isQualityMenuVisible: Bool = false
   var isSeeking: Bool = false
@@ -70,6 +79,7 @@ final class VideoPlayerViewModel {
   private var controlsHideTask: Task<Void, Never>?
   private var pendingQuality: PendingQualityChange?
   private(set) var pendingQualityLabel: String?
+  private var subtitleCueCache: [String: [VideoSubtitleCue]] = [:]
 
   private struct PendingQualityChange {
     let label: String
@@ -119,6 +129,13 @@ final class VideoPlayerViewModel {
     case .toggleMute:
       isMuted.toggle()
       player?.isMuted = isMuted
+    case .toggleSubtitles:
+      await handleToggleSubtitles()
+    case .toggleSubtitleMenu:
+      guard subtitles.count > 1 else { return }
+      isSubtitleMenuVisible.toggle()
+    case let .selectSubtitle(language):
+      await handleSelectSubtitle(language)
     case let .seek(time):
       await handleSeek(to: time)
     case .tapPlayerArea:
@@ -158,6 +175,7 @@ final class VideoPlayerViewModel {
     do {
       let stream = try await service.loadStream(videoId: video.id)
       qualities = stream.qualities
+      configureSubtitles(stream.subtitles)
       if let firstQuality = stream.qualities.first(where: { $0.label == selectedQuality }) ?? stream.qualities.first {
         selectedQuality = firstQuality.label
       }
@@ -171,6 +189,7 @@ final class VideoPlayerViewModel {
       playerPhase = .ready(isPlaying: false)
       isControlsVisible = true
       Self.logger.info("ℹ️ [VideoPlayerViewModel] player ready quality=\(self.selectedQuality, privacy: .public)")
+      await enableDefaultSubtitlesIfAvailable()
     } catch {
       let message = (error as? VideoPlayerServiceError)?.errorDescription
         ?? VideoPlayerServiceError.serverError.errorDescription
@@ -237,6 +256,116 @@ final class VideoPlayerViewModel {
       likeCount = previousCount
       Self.logger.error("❌ [VideoPlayerViewModel] toggleLike failed error=\(String(describing: error), privacy: .public)")
     }
+  }
+
+  private func handleToggleSubtitles() async {
+    guard subtitles.isEmpty == false else { return }
+
+    if isSubtitlesEnabled {
+      isSubtitlesEnabled = false
+      currentSubtitleText = nil
+      return
+    }
+
+    if selectedSubtitleLanguage == nil {
+      selectedSubtitleLanguage = defaultSubtitle()?.language
+    }
+
+    guard let selectedSubtitleLanguage else { return }
+
+    do {
+      try await loadSubtitleIfNeeded(language: selectedSubtitleLanguage)
+      isSubtitlesEnabled = true
+      updateCurrentSubtitle(for: currentTime)
+    } catch {
+      isSubtitlesEnabled = false
+      currentSubtitleText = nil
+      Self.logger.error("❌ [VideoPlayerViewModel] subtitle load failed error=\(String(describing: error), privacy: .public)")
+    }
+  }
+
+  private func enableDefaultSubtitlesIfAvailable() async {
+    guard
+      subtitles.isEmpty == false,
+      isSubtitlesEnabled == false
+    else { return }
+
+    if selectedSubtitleLanguage == nil {
+      selectedSubtitleLanguage = defaultSubtitle()?.language
+    }
+
+    guard let selectedSubtitleLanguage else { return }
+
+    do {
+      try await loadSubtitleIfNeeded(language: selectedSubtitleLanguage)
+      isSubtitlesEnabled = true
+      updateCurrentSubtitle(for: currentTime)
+    } catch {
+      isSubtitlesEnabled = false
+      currentSubtitleText = nil
+      Self.logger.error("❌ [VideoPlayerViewModel] default subtitle load failed error=\(String(describing: error), privacy: .public)")
+    }
+  }
+
+  private func handleSelectSubtitle(_ language: String) async {
+    guard subtitles.contains(where: { $0.language == language }) else { return }
+
+    selectedSubtitleLanguage = language
+    isSubtitleMenuVisible = false
+
+    guard isSubtitlesEnabled else {
+      currentSubtitleText = nil
+      return
+    }
+
+    do {
+      try await loadSubtitleIfNeeded(language: language)
+      updateCurrentSubtitle(for: currentTime)
+    } catch {
+      isSubtitlesEnabled = false
+      currentSubtitleText = nil
+      Self.logger.error("❌ [VideoPlayerViewModel] subtitle selection failed error=\(String(describing: error), privacy: .public)")
+    }
+  }
+
+  private func configureSubtitles(_ loadedSubtitles: [VideoSubtitle]) {
+    subtitles = loadedSubtitles.filter { $0.url != nil }
+    subtitleCueCache.removeAll()
+    isSubtitleMenuVisible = false
+    isSubtitleLoading = false
+    isSubtitlesEnabled = false
+    currentSubtitleText = nil
+    selectedSubtitleLanguage = defaultSubtitle()?.language
+  }
+
+  private func defaultSubtitle() -> VideoSubtitle? {
+    subtitles.first(where: \.isDefault) ?? subtitles.first
+  }
+
+  private func loadSubtitleIfNeeded(language: String) async throws {
+    guard subtitleCueCache[language] == nil else { return }
+    guard let subtitle = subtitles.first(where: { $0.language == language }), let url = subtitle.url else {
+      throw VideoPlayerServiceError.invalidRequest
+    }
+
+    isSubtitleLoading = true
+    defer { isSubtitleLoading = false }
+    subtitleCueCache[language] = try await service.loadSubtitleCues(from: url)
+  }
+
+  private func updateCurrentSubtitle(for time: Double) {
+    guard
+      isSubtitlesEnabled,
+      let selectedSubtitleLanguage,
+      let cues = subtitleCueCache[selectedSubtitleLanguage]
+    else {
+      currentSubtitleText = nil
+      return
+    }
+
+    currentSubtitleText = cues.first { cue in
+      cue.startTime <= time && time < cue.endTime
+    }?.text
   }
 
   private func handleSelectQuality(_ label: String) async {
@@ -436,6 +565,7 @@ final class VideoPlayerViewModel {
     }
 
     currentTime = time
+    updateCurrentSubtitle(for: time)
     isSeeking = true
     let target = CMTime(seconds: time, preferredTimescale: 600)
     await player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
@@ -461,6 +591,7 @@ final class VideoPlayerViewModel {
       Task { @MainActor [weak self] in
         guard let self, !self.isSeeking else { return }
         self.currentTime = time.seconds
+        self.updateCurrentSubtitle(for: time.seconds)
       }
     }
 

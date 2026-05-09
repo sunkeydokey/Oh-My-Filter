@@ -2,6 +2,7 @@ import Foundation
 
 nonisolated protocol VideoPlayerServicing: Sendable {
   func loadStream(videoId: String) async throws -> VideoStream
+  func loadSubtitleCues(from url: URL) async throws -> [VideoSubtitleCue]
   func toggleLike(videoId: String, status: Bool) async throws -> Bool
 }
 

@@ -23,6 +23,7 @@ struct VideoPlayerView: View {
         coreMetadata
         actionRow
         expandableDescription
+        subtitleSection
         qualitySection
       }
       .padding(.horizontal, 20)
@@ -181,6 +182,8 @@ struct VideoPlayerView: View {
           Task { await viewModel.send(.tapPlayerArea) }
         }
 
+      subtitleOverlay(bottomPadding: viewModel.isControlsVisible ? 76 : 16)
+
       // Controls (재생 중엔 isControlsVisible에 따라 숨김)
       if viewModel.isControlsVisible {
         playerControls(isPlaying: isPlaying)
@@ -204,8 +207,21 @@ struct VideoPlayerView: View {
 
   private func playerControls(isPlaying: Bool, isFullScreen: Bool) -> some View {
     ZStack(alignment: .topLeading) {
-      // Top-right: mute + fullscreen
+      // Top-right: subtitles + mute + fullscreen
       HStack(spacing: 10) {
+        if viewModel.subtitles.isEmpty == false {
+          Button {
+            Task { await viewModel.send(.toggleSubtitles) }
+          } label: {
+            Image(systemName: viewModel.isSubtitlesEnabled ? "captions.bubble.fill" : "captions.bubble")
+              .font(.system(size: 14))
+              .foregroundStyle(ColorToken.grayScale30.color)
+              .frame(width: 44, height: 44)
+              .contentShape(Rectangle())
+          }
+          .disabled(viewModel.isSubtitleLoading)
+        }
+
         Button {
           Task { await viewModel.send(.toggleMute) }
         } label: {
@@ -334,6 +350,8 @@ struct VideoPlayerView: View {
           Task { await viewModel.send(.tapPlayerArea) }
         }
 
+      subtitleOverlay(bottomPadding: viewModel.isControlsVisible ? 92 : 28)
+
       if viewModel.isControlsVisible {
         playerControls(isPlaying: isPlaying, isFullScreen: true)
           .transition(.opacity)
@@ -371,10 +389,10 @@ struct VideoPlayerView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
   }
 
-  // MARK: - Action Row (Like only)
+  // MARK: - Action Row
 
   private var actionRow: some View {
-    HStack {
+    HStack(spacing: 10) {
       Button {
         Task { await viewModel.send(.toggleLike) }
       } label: {
@@ -398,7 +416,56 @@ struct VideoPlayerView: View {
           }
         }
       }
+
+      Button {
+        Task { await viewModel.send(.toggleSubtitles) }
+      } label: {
+        HStack(spacing: 8) {
+          Image(systemName: viewModel.isSubtitlesEnabled ? "captions.bubble.fill" : "captions.bubble")
+            .font(.system(size: 15))
+            .foregroundStyle(subtitleActionForegroundColor)
+          Text(subtitleActionTitle)
+            .font(TypographyToken.pretendardBody3.font)
+            .foregroundStyle(subtitleActionForegroundColor)
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 42)
+        .frame(maxWidth: .infinity)
+        .background(subtitleActionBackgroundColor)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+          if viewModel.isSubtitlesEnabled {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+              .strokeBorder(ColorToken.brandDeepSprout.color, lineWidth: 1)
+          }
+        }
+      }
+      .disabled(viewModel.subtitles.isEmpty || viewModel.isSubtitleLoading)
     }
+  }
+
+  private var subtitleActionTitle: String {
+    if viewModel.subtitles.isEmpty {
+      return "자막 없음"
+    }
+    if viewModel.isSubtitleLoading {
+      return "자막 로딩"
+    }
+    return viewModel.isSubtitlesEnabled ? "자막 켬" : "자막 끔"
+  }
+
+  private var subtitleActionForegroundColor: Color {
+    if viewModel.isSubtitlesEnabled {
+      return ColorToken.grayScale45.color
+    }
+    return ColorToken.grayScale60.color
+  }
+
+  private var subtitleActionBackgroundColor: Color {
+    if viewModel.isSubtitlesEnabled {
+      return ColorToken.mainAccent.color
+    }
+    return ColorToken.brandBlackSprout.color
   }
 
   // MARK: - Expandable Description
@@ -436,6 +503,107 @@ struct VideoPlayerView: View {
   }
 
   // MARK: - Quality Section
+
+  @ViewBuilder
+  private var subtitleSection: some View {
+    if viewModel.subtitles.isEmpty == false {
+      if viewModel.isSubtitleMenuVisible {
+        subtitleMenu
+      } else {
+        subtitleSelectorRow
+      }
+    }
+  }
+
+  private var subtitleSelectorRow: some View {
+    let canChange = viewModel.subtitles.count > 1
+    let selectedName = viewModel.subtitles.first { $0.language == viewModel.selectedSubtitleLanguage }?.name
+      ?? "자막"
+
+    return HStack(spacing: 10) {
+      Button {
+        Task { await viewModel.send(.toggleSubtitles) }
+      } label: {
+        Image(systemName: viewModel.isSubtitlesEnabled ? "captions.bubble.fill" : "captions.bubble")
+          .font(.system(size: 15))
+          .foregroundStyle(viewModel.isSubtitlesEnabled ? ColorToken.grayScale45.color : ColorToken.grayScale60.color)
+          .frame(width: 44, height: 44)
+          .background(viewModel.isSubtitlesEnabled ? ColorToken.mainAccent.color : ColorToken.brandBlackSprout.color)
+          .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+      }
+      .disabled(viewModel.isSubtitleLoading)
+
+      Button {
+        guard canChange else { return }
+        Task { await viewModel.send(.toggleSubtitleMenu) }
+      } label: {
+        HStack {
+          Text(viewModel.isSubtitleLoading ? "자막 불러오는 중" : selectedName)
+            .font(TypographyToken.pretendardBody2.font)
+            .foregroundStyle(ColorToken.grayScale60.color)
+
+          Spacer()
+
+          if canChange {
+            Image(systemName: "chevron.right")
+              .font(.system(size: 13))
+              .foregroundStyle(ColorToken.grayScale75.color)
+          }
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 44)
+        .frame(maxWidth: .infinity)
+        .background(Self.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+          RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .strokeBorder(Self.cardStroke, lineWidth: 1)
+        }
+      }
+      .disabled(!canChange)
+    }
+  }
+
+  private var subtitleMenu: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text("자막 선택")
+        .font(TypographyToken.pretendardBody1.font)
+        .foregroundStyle(ColorToken.grayScale30.color)
+
+      ForEach(viewModel.subtitles, id: \.language) { subtitle in
+        let isSelected = subtitle.language == viewModel.selectedSubtitleLanguage
+
+        Button {
+          Task { await viewModel.send(.selectSubtitle(subtitle.language)) }
+        } label: {
+          HStack {
+            Text(subtitle.name)
+              .font(TypographyToken.pretendardBody2.font)
+              .foregroundStyle(isSelected ? ColorToken.grayScale45.color : ColorToken.grayScale60.color)
+            Spacer()
+            if isSelected {
+              Image(systemName: "checkmark")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(ColorToken.grayScale45.color)
+            }
+          }
+          .padding(.horizontal, 12)
+          .frame(height: 36)
+          .frame(maxWidth: .infinity)
+          .background(isSelected ? ColorToken.mainAccent.color : ColorToken.brandBlackSprout.color)
+          .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+      }
+    }
+    .padding(14)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Self.cardBackground)
+    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    .overlay {
+      RoundedRectangle(cornerRadius: 8, style: .continuous)
+        .strokeBorder(Self.cardStroke, lineWidth: 1)
+    }
+  }
 
   @ViewBuilder
   private var qualitySection: some View {
@@ -551,6 +719,20 @@ struct VideoPlayerView: View {
     let display = DateFormatter()
     display.dateFormat = "yyyy.MM.dd"
     return display.string(from: date)
+  }
+
+  @ViewBuilder
+  private func subtitleOverlay(bottomPadding: CGFloat) -> some View {
+    if let text = viewModel.currentSubtitleText {
+      VStack {
+        Spacer()
+        SubtitleOverlayView(text: text)
+          .padding(.horizontal, 18)
+          .padding(.bottom, bottomPadding)
+      }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .allowsHitTesting(false)
+    }
   }
 
   @MainActor

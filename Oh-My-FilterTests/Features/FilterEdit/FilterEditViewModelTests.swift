@@ -174,6 +174,15 @@ private struct MockEditImageFilterRenderer: ImageFilterRendering {
     await storage.record(filterValues)
     return TestImageFactory.makeCGImage()
   }
+
+  func renderComparisonPreview(
+    originalImageData: Data,
+    maxPixelSize: Int,
+    filterValues: FilterValues
+  ) async throws -> RenderedFilterImages {
+    await storage.record(filterValues)
+    return .sample
+  }
 }
 
 private actor MockEditImageFilterRendererStorage {
