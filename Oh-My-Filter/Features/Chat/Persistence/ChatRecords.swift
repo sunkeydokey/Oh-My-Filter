@@ -51,17 +51,20 @@ final class ChatRoomRecord {
   var updatedAt: Date
   var participantSummary: String
   var lastLocalSeenAt: Date?
+  var lastMessageData: Data?
 
   init(
     roomID: String,
     updatedAt: Date,
     participantSummary: String,
-    lastLocalSeenAt: Date? = nil
+    lastLocalSeenAt: Date? = nil,
+    lastMessageData: Data? = nil
   ) {
     self.roomID = roomID
     self.updatedAt = updatedAt
     self.participantSummary = participantSummary
     self.lastLocalSeenAt = lastLocalSeenAt
+    self.lastMessageData = lastMessageData
   }
 }
 
@@ -126,5 +129,54 @@ enum ChatRecordCoding {
 
     values.append(current)
     return values
+  }
+}
+
+nonisolated struct ChatStoredMessageSnapshot: Codable {
+  let id: String
+  let roomID: String
+  let content: String
+  let createdAt: Date
+  let updatedAt: Date
+  let senderID: String
+  let senderNick: String
+  let senderName: String?
+  let senderIntroduction: String?
+  let senderProfileImage: String?
+  let senderHashTags: [String]
+  let files: [String]
+
+  init(message: ChatMessage) {
+    id = message.id
+    roomID = message.roomID
+    content = message.content
+    createdAt = message.createdAt
+    updatedAt = message.updatedAt
+    senderID = message.sender.id
+    senderNick = message.sender.nick
+    senderName = message.sender.name
+    senderIntroduction = message.sender.introduction
+    senderProfileImage = message.sender.profileImage
+    senderHashTags = message.sender.hashTags
+    files = message.files
+  }
+
+  var domain: ChatMessage {
+    ChatMessage(
+      id: id,
+      roomID: roomID,
+      content: content,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      sender: ChatUser(
+        id: senderID,
+        nick: senderNick,
+        name: senderName,
+        introduction: senderIntroduction,
+        profileImage: senderProfileImage,
+        hashTags: senderHashTags
+      ),
+      files: files
+    )
   }
 }

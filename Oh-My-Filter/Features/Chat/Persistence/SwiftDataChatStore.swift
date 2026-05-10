@@ -5,6 +5,8 @@ import SwiftData
 final class SwiftDataChatStore: ChatLocalStoring {
   private let context: ModelContext
   private let retainedContainer: ModelContainer?
+  private let messageSnapshotEncoder = JSONEncoder()
+  private let messageSnapshotDecoder = JSONDecoder()
 
   init(context: ModelContext) {
     self.context = context
@@ -24,11 +26,13 @@ final class SwiftDataChatStore: ChatLocalStoring {
 
     return try context.fetch(descriptor).map { record in
       let messages = try fetchMessages(roomID: record.roomID)
+      let localLastMessage = messages.last
+      let roomListLastMessage = lastMessage(from: record.lastMessageData)
       return ChatRoom(
         id: record.roomID,
         updatedAt: record.updatedAt,
         participants: users(from: record.participantSummary),
-        lastMessage: messages.last,
+        lastMessage: newestMessage(localLastMessage, roomListLastMessage),
         lastSeenAt: record.lastLocalSeenAt
       )
     }
@@ -55,6 +59,7 @@ final class SwiftDataChatStore: ChatLocalStoring {
     if let record = try roomRecord(roomID: room.id) {
       record.updatedAt = room.updatedAt
       record.participantSummary = participantSummary(from: room.participants)
+      record.lastMessageData = lastMessageData(from: room.lastMessage)
       if let lastSeenAt = room.lastSeenAt {
         record.lastLocalSeenAt = lastSeenAt
       }
@@ -64,14 +69,12 @@ final class SwiftDataChatStore: ChatLocalStoring {
           roomID: room.id,
           updatedAt: room.updatedAt,
           participantSummary: participantSummary(from: room.participants),
-          lastLocalSeenAt: room.lastSeenAt
+          lastLocalSeenAt: room.lastSeenAt,
+          lastMessageData: lastMessageData(from: room.lastMessage)
         )
       )
     }
 
-    if let lastMessage = room.lastMessage {
-      try upsertMessage(lastMessage)
-    }
     try context.save()
   }
 
@@ -115,12 +118,14 @@ final class SwiftDataChatStore: ChatLocalStoring {
 
     if let room = try roomRecord(roomID: message.roomID) {
       room.updatedAt = max(room.updatedAt, message.updatedAt)
+      room.lastMessageData = lastMessageData(from: newestMessage(lastMessage(from: room.lastMessageData), message))
     } else {
       context.insert(
         ChatRoomRecord(
           roomID: message.roomID,
           updatedAt: message.updatedAt,
-          participantSummary: participantSummary(from: [message.sender])
+          participantSummary: participantSummary(from: [message.sender]),
+          lastMessageData: lastMessageData(from: message)
         )
       )
     }
@@ -157,6 +162,29 @@ final class SwiftDataChatStore: ChatLocalStoring {
     var descriptor = FetchDescriptor<ChatRoomRecord>()
     descriptor.includePendingChanges = true
     return try context.fetch(descriptor).first { $0.roomID == roomID }
+  }
+
+  private func lastMessageData(from message: ChatMessage?) -> Data? {
+    guard let message else { return nil }
+    return try? messageSnapshotEncoder.encode(ChatStoredMessageSnapshot(message: message))
+  }
+
+  private func lastMessage(from data: Data?) -> ChatMessage? {
+    guard let data else { return nil }
+    return try? messageSnapshotDecoder.decode(ChatStoredMessageSnapshot.self, from: data).domain
+  }
+
+  private func newestMessage(_ first: ChatMessage?, _ second: ChatMessage?) -> ChatMessage? {
+    switch (first, second) {
+    case let (first?, second?):
+      first.createdAt >= second.createdAt ? first : second
+    case let (first?, nil):
+      first
+    case let (nil, second?):
+      second
+    case (nil, nil):
+      nil
+    }
   }
 
   private func participantSummary(from users: [ChatUser]) -> String {
