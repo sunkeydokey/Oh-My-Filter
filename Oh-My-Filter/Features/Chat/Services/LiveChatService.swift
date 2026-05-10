@@ -1,14 +1,10 @@
 import Foundation
 
-nonisolated struct CurrentUserProfileResponseDTO: Decodable, Sendable {
-  let userId: String
-  let nick: String?
-}
-
 nonisolated struct LiveChatService: ChatServicing {
   private let networkManager: any AuthenticatedNetworkManaging
   private let decoder: JSONDecoder
   private let imageUploadUseCase: any ImageUploadUseCase
+  private let userSessionStore: any UserSessionStoring
 
   @MainActor
   init() {
@@ -18,32 +14,21 @@ nonisolated struct LiveChatService: ChatServicing {
   init(
     networkManager: any AuthenticatedNetworkManaging,
     decoder: JSONDecoder = LiveChatService.makeDecoder(),
-    imageUploadUseCase: any ImageUploadUseCase = LiveImageUploadUseCase()
+    imageUploadUseCase: any ImageUploadUseCase = LiveImageUploadUseCase(),
+    userSessionStore: any UserSessionStoring = AppUserSessionStore()
   ) {
     self.networkManager = networkManager
     self.decoder = decoder
     self.imageUploadUseCase = imageUploadUseCase
+    self.userSessionStore = userSessionStore
   }
 
   func loadCurrentUserID() async throws -> String {
-    do {
-      let response = try await networkManager.request(UserApiRouter.getOwnProfile)
-      guard (200..<300).contains(response.statusCode) else {
-        throw ChatServiceError.serverError
-      }
-      let profile = try decoder.decode(CurrentUserProfileResponseDTO.self, from: response.data)
-      print("profile: ", profile)
-      guard profile.userId.isEmpty == false else {
-        throw ChatServiceError.emptyCurrentUser
-      }
-      return profile.userId
-    } catch let error as ChatServiceError {
-      throw error
-    } catch is DecodingError {
-      throw ChatServiceError.decoding
-    } catch {
-      throw ChatServiceError.transport
+    guard let currentUserID = userSessionStore.currentUserID(),
+          currentUserID.isEmpty == false else {
+      throw ChatServiceError.emptyCurrentUser
     }
+    return currentUserID
   }
 
   func loadRooms() async throws -> [ChatRoom] {

@@ -5,8 +5,10 @@ struct FilterDetailLoadedView: View {
   let previewState: FilterComparisonPreviewState
   let isPaymentProcessing: Bool
   let isMine: Bool
+  let currentUserID: String?
   let expandedReplyCommentIDs: Set<String>
   let replyingToCommentID: String?
+  let editingCommentTarget: CommentEditTarget?
   let commentText: String
   let action: () -> Void
   let onApply: () -> Void
@@ -15,7 +17,12 @@ struct FilterDetailLoadedView: View {
   let onSubmitComment: () -> Void
   let onReply: (String) -> Void
   let onCancelReply: () -> Void
+  let onCancelCommentEdit: () -> Void
   let onToggleReplies: (String) -> Void
+  let onEditComment: (String) -> Void
+  let onDeleteComment: (String) -> Void
+  let onEditReply: (String, String) -> Void
+  let onDeleteReply: (String, String) -> Void
 
   var body: some View {
     ScrollView {
@@ -87,14 +94,21 @@ struct FilterDetailLoadedView: View {
 
         SharedCommentSectionView(
           comments: detail.comments,
+          currentUserID: currentUserID,
           expandedReplyCommentIDs: expandedReplyCommentIDs,
           replyingToCommentID: replyingToCommentID,
+          editingCommentTarget: editingCommentTarget,
           commentText: commentText,
           onTextChanged: onCommentTextChanged,
           onSubmit: onSubmitComment,
           onReply: onReply,
           onCancelReply: onCancelReply,
-          onToggleReplies: onToggleReplies
+          onCancelEdit: onCancelCommentEdit,
+          onToggleReplies: onToggleReplies,
+          onEditComment: onEditComment,
+          onDeleteComment: onDeleteComment,
+          onEditReply: onEditReply,
+          onDeleteReply: onDeleteReply
         )
       }
       .padding(.horizontal, 20)

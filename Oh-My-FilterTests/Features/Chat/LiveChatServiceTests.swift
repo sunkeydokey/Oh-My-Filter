@@ -3,15 +3,17 @@ import Testing
 @testable import Oh_My_Filter
 
 struct LiveChatServiceTests {
-  @Test("current user load decodes own profile")
+  @Test("current user load reads session store")
   func currentUserLoad() async throws {
     let manager = MockChatNetworkManager()
-    let service = LiveChatService(networkManager: manager)
+    let service = LiveChatService(
+      networkManager: manager,
+      userSessionStore: MockUserSessionStore(currentUserID: "user-current")
+    )
 
-    await manager.enqueueResponse(NetworkResponse(data: Self.currentUserData, statusCode: 200))
     let userID = try await service.loadCurrentUserID()
 
-    #expect(await manager.capturedURLs == ["http://filter.sesac.kr:42598/v1/users/me/profile"])
+    #expect(await manager.capturedURLs.isEmpty)
     #expect(userID == "user-current")
   }
 
@@ -118,6 +120,26 @@ struct LiveChatServiceTests {
   }
 }
 
+private struct MockUserSessionStore: UserSessionStoring {
+  var currentUserIDValue: String?
+
+  init(currentUserID: String?) {
+    self.currentUserIDValue = currentUserID
+  }
+
+  func currentUserID() -> String? {
+    currentUserIDValue
+  }
+
+  func localDataOwnerUserID() -> String? {
+    currentUserIDValue
+  }
+
+  func saveAuthenticatedUserID(_ userID: String) {}
+
+  func clearCurrentUserID() {}
+}
+
 private actor MockChatNetworkManager: AuthenticatedNetworkManaging {
   private var queuedResults: [Result<NetworkResponse, Error>] = []
   private(set) var capturedURLs: [String] = []
@@ -195,15 +217,6 @@ private struct StubImageUploadUseCase: ImageUploadUseCase {
 }
 
 private extension LiveChatServiceTests {
-  static let currentUserData = Data(
-    """
-    {
-      "user_id": "user-current",
-      "nick": "새싹"
-    }
-    """.utf8
-  )
-
   static let roomListData = Data(
     """
     {

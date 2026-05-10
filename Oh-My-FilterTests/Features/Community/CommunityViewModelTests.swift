@@ -215,6 +215,12 @@ private actor ControlledCommunityUseCase: CommunityFeedUseCase {
     CommunityReply(id: "reply-1", content: content, createdAt: "2024-07-21T14:00:00.000Z", creator: .creator)
   }
 
+  func updateComment(postID: String, commentID: String, content: String) async throws -> CommunityReply {
+    CommunityReply(id: commentID, content: content, createdAt: "2024-07-21T14:00:00.000Z", creator: .creator)
+  }
+
+  func deleteComment(postID: String, commentID: String) async throws {}
+
   func resumeNextPosts(with page: CommunityPostPage) {
     postContinuations.removeFirst().resume(returning: page)
   }
@@ -297,6 +303,12 @@ private actor QueueCommunityUseCase: CommunityFeedUseCase {
   func createComment(postID: String, parentCommentID: String?, content: String) async throws -> CommunityReply {
     CommunityReply(id: "reply-1", content: content, createdAt: "2024-07-21T14:00:00.000Z", creator: .creator)
   }
+
+  func updateComment(postID: String, commentID: String, content: String) async throws -> CommunityReply {
+    CommunityReply(id: commentID, content: content, createdAt: "2024-07-21T14:00:00.000Z", creator: .creator)
+  }
+
+  func deleteComment(postID: String, commentID: String) async throws {}
 }
 
 private extension CommunityCreator {

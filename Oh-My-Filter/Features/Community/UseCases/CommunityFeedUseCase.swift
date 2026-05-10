@@ -11,5 +11,7 @@ nonisolated protocol CommunityFeedUseCase: Sendable {
   func deletePost(postID: String) async throws
   func toggleLike(postID: String, status: Bool) async throws -> Bool
   func createComment(postID: String, parentCommentID: String?, content: String) async throws -> CommunityReply
+  func updateComment(postID: String, commentID: String, content: String) async throws -> CommunityReply
+  func deleteComment(postID: String, commentID: String) async throws
   func loadVideos(nextCursor: String?, limit: Int) async throws -> CommunityVideoPage
 }

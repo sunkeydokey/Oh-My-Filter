@@ -2,14 +2,21 @@ import SwiftUI
 
 struct SharedCommentSectionView: View {
   let comments: [Comment]
+  let currentUserID: String?
   let expandedReplyCommentIDs: Set<String>
   let replyingToCommentID: String?
+  let editingCommentTarget: CommentEditTarget?
   let commentText: String
   let onTextChanged: (String) -> Void
   let onSubmit: () -> Void
   let onReply: (String) -> Void
   let onCancelReply: () -> Void
+  let onCancelEdit: () -> Void
   let onToggleReplies: (String) -> Void
+  let onEditComment: (String) -> Void
+  let onDeleteComment: (String) -> Void
+  let onEditReply: (String, String) -> Void
+  let onDeleteReply: (String, String) -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -24,9 +31,14 @@ struct SharedCommentSectionView: View {
           ForEach(comments) { comment in
             SharedCommentRowView(
               comment: comment,
+              currentUserID: currentUserID,
               isExpanded: expandedReplyCommentIDs.contains(comment.id),
               onReply: { onReply(comment.id) },
-              onToggleReplies: { onToggleReplies(comment.id) }
+              onToggleReplies: { onToggleReplies(comment.id) },
+              onEdit: { onEditComment(comment.id) },
+              onDelete: { onDeleteComment(comment.id) },
+              onEditReply: { replyID in onEditReply(comment.id, replyID) },
+              onDeleteReply: { replyID in onDeleteReply(comment.id, replyID) }
             )
           }
         }
@@ -35,9 +47,11 @@ struct SharedCommentSectionView: View {
       SharedCommentComposerView(
         text: commentText,
         replyingToCommentID: replyingToCommentID,
+        isEditing: editingCommentTarget != nil,
         onTextChanged: onTextChanged,
         onSubmit: onSubmit,
-        onCancelReply: onCancelReply
+        onCancelReply: onCancelReply,
+        onCancelEdit: onCancelEdit
       )
     }
   }
@@ -45,9 +59,14 @@ struct SharedCommentSectionView: View {
 
 private struct SharedCommentRowView: View {
   let comment: Comment
+  let currentUserID: String?
   let isExpanded: Bool
   let onReply: () -> Void
   let onToggleReplies: () -> Void
+  let onEdit: () -> Void
+  let onDelete: () -> Void
+  let onEditReply: (String) -> Void
+  let onDeleteReply: (String) -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -68,7 +87,10 @@ private struct SharedCommentRowView: View {
           SharedCommentActionRowView(
             timestamp: comment.createdAt.commentDisplayDate,
             replyTitle: "답글 달기",
-            onReply: onReply
+            showsOwnerActions: comment.creator.id == currentUserID,
+            onReply: onReply,
+            onEdit: onEdit,
+            onDelete: onDelete
           )
         }
       }
@@ -77,8 +99,11 @@ private struct SharedCommentRowView: View {
       if comment.replies.isEmpty == false {
         SharedReplyGroupView(
           replies: comment.replies,
+          currentUserID: currentUserID,
           isExpanded: isExpanded,
-          onToggle: onToggleReplies
+          onToggle: onToggleReplies,
+          onEdit: onEditReply,
+          onDelete: onDeleteReply
         )
       }
 
@@ -90,8 +115,11 @@ private struct SharedCommentRowView: View {
 
 private struct SharedReplyGroupView: View {
   let replies: [CommentReply]
+  let currentUserID: String?
   let isExpanded: Bool
   let onToggle: () -> Void
+  let onEdit: (String) -> Void
+  let onDelete: (String) -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -102,7 +130,12 @@ private struct SharedReplyGroupView: View {
 
       if isExpanded {
         ForEach(replies) { reply in
-          SharedReplyRowView(reply: reply)
+          SharedReplyRowView(
+            reply: reply,
+            showsOwnerActions: reply.creator.id == currentUserID,
+            onEdit: { onEdit(reply.id) },
+            onDelete: { onDelete(reply.id) }
+          )
         }
       }
     }
@@ -113,6 +146,9 @@ private struct SharedReplyGroupView: View {
 
 private struct SharedReplyRowView: View {
   let reply: CommentReply
+  let showsOwnerActions: Bool
+  let onEdit: () -> Void
+  let onDelete: () -> Void
 
   var body: some View {
     HStack(alignment: .top, spacing: 8) {
@@ -127,6 +163,12 @@ private struct SharedReplyRowView: View {
           .font(TypographyToken.pretendardCaption1.font)
           .foregroundStyle(ColorToken.grayScale45.color)
           .fixedSize(horizontal: false, vertical: true)
+
+        SharedCommentOwnerActionMenu(
+          showsOwnerActions: showsOwnerActions,
+          onEdit: onEdit,
+          onDelete: onDelete
+        )
       }
     }
   }
@@ -135,7 +177,10 @@ private struct SharedReplyRowView: View {
 private struct SharedCommentActionRowView: View {
   let timestamp: String
   let replyTitle: String
+  let showsOwnerActions: Bool
   let onReply: () -> Void
+  let onEdit: () -> Void
+  let onDelete: () -> Void
 
   var body: some View {
     HStack(spacing: 12) {
@@ -147,6 +192,33 @@ private struct SharedCommentActionRowView: View {
         .font(TypographyToken.pretendardCaption2.font.weight(.bold))
         .foregroundStyle(ColorToken.grayScale60.color)
         .buttonStyle(.plain)
+
+      SharedCommentOwnerActionMenu(
+        showsOwnerActions: showsOwnerActions,
+        onEdit: onEdit,
+        onDelete: onDelete
+      )
+    }
+  }
+}
+
+private struct SharedCommentOwnerActionMenu: View {
+  let showsOwnerActions: Bool
+  let onEdit: () -> Void
+  let onDelete: () -> Void
+
+  var body: some View {
+    if showsOwnerActions {
+      Menu {
+        Button("수정", action: onEdit)
+        Button("삭제", role: .destructive, action: onDelete)
+      } label: {
+        Image(systemName: "ellipsis")
+          .font(.system(size: 13, weight: .semibold))
+          .frame(width: 24, height: 18)
+          .foregroundStyle(ColorToken.grayScale60.color)
+      }
+      .buttonStyle(.plain)
     }
   }
 }
@@ -154,13 +226,26 @@ private struct SharedCommentActionRowView: View {
 private struct SharedCommentComposerView: View {
   let text: String
   let replyingToCommentID: String?
+  let isEditing: Bool
   let onTextChanged: (String) -> Void
   let onSubmit: () -> Void
   let onCancelReply: () -> Void
+  let onCancelEdit: () -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
-      if replyingToCommentID != nil {
+      if isEditing {
+        HStack(spacing: 8) {
+          Text("수정")
+            .font(TypographyToken.pretendardCaption2.font.weight(.bold))
+            .foregroundStyle(ColorToken.mainAccent.color)
+
+          Button("취소", action: onCancelEdit)
+            .font(TypographyToken.pretendardCaption2.font.weight(.bold))
+            .foregroundStyle(ColorToken.grayScale60.color)
+            .buttonStyle(.plain)
+        }
+      } else if replyingToCommentID != nil {
         HStack(spacing: 8) {
           Text("답글")
             .font(TypographyToken.pretendardCaption2.font.weight(.bold))

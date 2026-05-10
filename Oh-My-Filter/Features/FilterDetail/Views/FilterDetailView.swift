@@ -3,6 +3,7 @@ import PhotosUI
 import SwiftUI
 
 struct FilterDetailView: View {
+  @Environment(\.dismiss) private var dismiss
   @State private var viewModel: FilterDetailViewModel
   @State private var didLoad = false
   @State private var pickerItems: [PhotosPickerItem] = []
@@ -22,7 +23,25 @@ struct FilterDetailView: View {
         .background(ColorToken.brandBlackSprout.color.ignoresSafeArea())
         .screenCaptureProtected(!viewModel.state.isOwned)
 
-      if let alert = viewModel.state.alert {
+      if viewModel.state.showsDeleteFilterConfirmation {
+        CustomAlertView(
+          title: "필터 삭제",
+          message: "필터를 삭제할까요?",
+          cancelTitle: "취소",
+          confirmTitle: "삭제",
+          onCancel: dismissDeleteConfirmation,
+          onConfirm: confirmDelete
+        )
+      } else if viewModel.state.pendingDeleteCommentTarget != nil {
+        CustomAlertView(
+          title: "댓글 삭제",
+          message: "댓글을 삭제할까요?",
+          cancelTitle: "취소",
+          confirmTitle: "삭제",
+          onCancel: dismissDeleteCommentConfirmation,
+          onConfirm: confirmDeleteComment
+        )
+      } else if let alert = viewModel.state.alert {
         CustomAlertView(
           title: alert.title,
           message: alert.message,
@@ -39,11 +58,15 @@ struct FilterDetailView: View {
     .toolbar {
       if viewModel.state.isMine {
         ToolbarItem(placement: .topBarTrailing) {
-          Button("수정") {
-            edit()
+          Menu {
+            Button("수정", action: edit)
+            Button("삭제", role: .destructive, action: deleteFilter)
+          } label: {
+            Image(systemName: "ellipsis")
+              .font(.system(size: 20, weight: .semibold))
+              .frame(width: 44, height: 44)
+              .foregroundStyle(ColorToken.grayScale45.color)
           }
-          .font(TypographyToken.pretendardBody3.font)
-          .foregroundStyle(ColorToken.mainAccent.color)
         }
       }
     }
@@ -56,6 +79,11 @@ struct FilterDetailView: View {
       guard case let .update(draft)? = route else { return }
       navigate(.filterUpdate(draft))
       Task { await viewModel.send(.routeHandled) }
+    }
+    .onChange(of: viewModel.state.shouldDismiss) { _, shouldDismiss in
+      guard shouldDismiss else { return }
+      dismiss()
+      Task { await viewModel.send(.dismissHandled) }
     }
     .onChange(of: pickerItems) { _, items in
       guard items.isEmpty == false else { return }
@@ -162,8 +190,10 @@ struct FilterDetailView: View {
         ),
         isPaymentProcessing: viewModel.state.isPaymentProcessing,
         isMine: viewModel.state.isMine,
+        currentUserID: viewModel.state.currentUserID,
         expandedReplyCommentIDs: viewModel.state.expandedReplyCommentIDs,
         replyingToCommentID: viewModel.state.replyingToCommentID,
+        editingCommentTarget: viewModel.state.editingCommentTarget,
         commentText: viewModel.state.commentText,
         action: downloadAction,
         onApply: applyAction,
@@ -172,7 +202,12 @@ struct FilterDetailView: View {
         onSubmitComment: submitComment,
         onReply: reply,
         onCancelReply: cancelReply,
-        onToggleReplies: toggleReplies
+        onCancelCommentEdit: cancelCommentEdit,
+        onToggleReplies: toggleReplies,
+        onEditComment: editComment,
+        onDeleteComment: deleteComment,
+        onEditReply: editReply,
+        onDeleteReply: deleteReply
       )
       .overlay {
         ProgressView()
@@ -184,8 +219,10 @@ struct FilterDetailView: View {
         previewState: previewState,
         isPaymentProcessing: viewModel.state.isPaymentProcessing,
         isMine: viewModel.state.isMine,
+        currentUserID: viewModel.state.currentUserID,
         expandedReplyCommentIDs: viewModel.state.expandedReplyCommentIDs,
         replyingToCommentID: viewModel.state.replyingToCommentID,
+        editingCommentTarget: viewModel.state.editingCommentTarget,
         commentText: viewModel.state.commentText,
         action: downloadAction,
         onApply: applyAction,
@@ -194,7 +231,12 @@ struct FilterDetailView: View {
         onSubmitComment: submitComment,
         onReply: reply,
         onCancelReply: cancelReply,
-        onToggleReplies: toggleReplies
+        onCancelCommentEdit: cancelCommentEdit,
+        onToggleReplies: toggleReplies,
+        onEditComment: editComment,
+        onDeleteComment: deleteComment,
+        onEditReply: editReply,
+        onDeleteReply: deleteReply
       )
     case let .failed(message, previous: nil):
       FilterDetailErrorView(message: message, retryAction: retry)
@@ -207,8 +249,10 @@ struct FilterDetailView: View {
         ),
         isPaymentProcessing: viewModel.state.isPaymentProcessing,
         isMine: viewModel.state.isMine,
+        currentUserID: viewModel.state.currentUserID,
         expandedReplyCommentIDs: viewModel.state.expandedReplyCommentIDs,
         replyingToCommentID: viewModel.state.replyingToCommentID,
+        editingCommentTarget: viewModel.state.editingCommentTarget,
         commentText: viewModel.state.commentText,
         action: downloadAction,
         onApply: applyAction,
@@ -217,7 +261,12 @@ struct FilterDetailView: View {
         onSubmitComment: submitComment,
         onReply: reply,
         onCancelReply: cancelReply,
-        onToggleReplies: toggleReplies
+        onCancelCommentEdit: cancelCommentEdit,
+        onToggleReplies: toggleReplies,
+        onEditComment: editComment,
+        onDeleteComment: deleteComment,
+        onEditReply: editReply,
+        onDeleteReply: deleteReply
       )
       .overlay(alignment: .top) {
         Text(message)
@@ -279,12 +328,36 @@ struct FilterDetailView: View {
     Task { await viewModel.send(.cancelReply) }
   }
 
+  private func cancelCommentEdit() {
+    Task { await viewModel.send(.cancelCommentEdit) }
+  }
+
   private func toggleReplies(commentID: String) {
     Task { await viewModel.send(.toggleReplies(commentID: commentID)) }
   }
 
+  private func editComment(commentID: String) {
+    Task { await viewModel.send(.editCommentTapped(commentID: commentID)) }
+  }
+
+  private func deleteComment(commentID: String) {
+    Task { await viewModel.send(.deleteCommentTapped(commentID: commentID)) }
+  }
+
+  private func editReply(parentCommentID: String, replyID: String) {
+    Task { await viewModel.send(.editReplyTapped(parentCommentID: parentCommentID, replyID: replyID)) }
+  }
+
+  private func deleteReply(parentCommentID: String, replyID: String) {
+    Task { await viewModel.send(.deleteReplyTapped(parentCommentID: parentCommentID, replyID: replyID)) }
+  }
+
   private func edit() {
     Task { await viewModel.send(.tapEdit) }
+  }
+
+  private func deleteFilter() {
+    Task { await viewModel.send(.tapDelete) }
   }
 
   private func dismissAlert() {
@@ -293,5 +366,21 @@ struct FilterDetailView: View {
 
   private func confirmAlert() {
     Task { await viewModel.send(.confirmAlert) }
+  }
+
+  private func dismissDeleteConfirmation() {
+    Task { await viewModel.send(.dismissDeleteConfirmation) }
+  }
+
+  private func confirmDelete() {
+    Task { await viewModel.send(.deleteConfirmed) }
+  }
+
+  private func dismissDeleteCommentConfirmation() {
+    Task { await viewModel.send(.dismissDeleteCommentConfirmation) }
+  }
+
+  private func confirmDeleteComment() {
+    Task { await viewModel.send(.deleteCommentConfirmed) }
   }
 }

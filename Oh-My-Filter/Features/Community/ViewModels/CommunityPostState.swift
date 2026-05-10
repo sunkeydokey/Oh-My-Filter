@@ -25,6 +25,8 @@ nonisolated struct CommunityPostState: Equatable, Sendable {
   var expandedReplyCommentIDs: Set<String> = []
   var commentText = ""
   var replyingToCommentID: String?
+  var editingCommentTarget: CommentEditTarget?
+  var pendingDeleteCommentTarget: CommentEditTarget?
   var route: CommunityRoute?
   var shouldDismiss = false
   var showsDiscardConfirmation = false
@@ -64,10 +66,12 @@ nonisolated struct CommunityPostState: Equatable, Sendable {
     }
   }
 
-  var isOwner: Bool {
+  var isMine: Bool {
     guard let currentUserID, let post else { return false }
     return post.creator.id == currentUserID
   }
+
+  var isOwner: Bool { isMine }
 
   var isDirty: Bool {
     draft != originalDraft || selectedImages.isEmpty == false

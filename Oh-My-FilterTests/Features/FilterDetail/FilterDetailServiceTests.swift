@@ -55,15 +55,17 @@ struct FilterDetailServiceTests {
     #expect(comment.creator.nick == "sesac")
   }
 
-  @Test("current user id loads from own profile endpoint")
-  func currentUserIDLoadsFromOwnProfileEndpoint() async throws {
+  @Test("current user id loads from user defaults session store")
+  func currentUserIDLoadsFromSessionStore() async throws {
     let manager = MockFilterDetailNetworkManager()
-    let service = LiveFilterDetailService(networkManager: manager)
+    let service = LiveFilterDetailService(
+      networkManager: manager,
+      userSessionStore: MockUserSessionStore(currentUserID: "user-1")
+    )
 
-    await manager.enqueueResponse(NetworkResponse(data: Self.ownProfileData, statusCode: 200))
     let currentUserID = try await service.loadCurrentUserID()
 
-    #expect(await manager.capturedURLs == ["http://filter.sesac.kr:42598/v1/users/me/profile"])
+    #expect(await manager.capturedURLs.isEmpty)
     #expect(currentUserID == "user-1")
   }
 
@@ -117,6 +119,26 @@ struct FilterDetailServiceTests {
       Issue.record("Unexpected error: \(error)")
     }
   }
+}
+
+private struct MockUserSessionStore: UserSessionStoring {
+  var currentUserIDValue: String?
+
+  init(currentUserID: String?) {
+    self.currentUserIDValue = currentUserID
+  }
+
+  func currentUserID() -> String? {
+    currentUserIDValue
+  }
+
+  func localDataOwnerUserID() -> String? {
+    currentUserIDValue
+  }
+
+  func saveAuthenticatedUserID(_ userID: String) {}
+
+  func clearCurrentUserID() {}
 }
 
 private actor MockFilterDetailNetworkManager: AuthenticatedNetworkManaging {
@@ -256,15 +278,6 @@ private extension FilterDetailServiceTests {
         "nick": "sesac",
         "hashTags": []
       }
-    }
-    """.utf8
-  )
-
-  static let ownProfileData = Data(
-    """
-    {
-      "user_id": "user-1",
-      "nick": "sesac"
     }
     """.utf8
   )

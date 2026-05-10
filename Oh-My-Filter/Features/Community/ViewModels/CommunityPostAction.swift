@@ -16,10 +16,18 @@ nonisolated enum CommunityPostAction: Sendable {
   case editTapped
   case deleteTapped
   case deleteConfirmed
+  case dismissDeleteConfirmation
   case commentTextChanged(String)
   case submitComment
   case replyTapped(commentID: String)
   case cancelReply
+  case editCommentTapped(commentID: String)
+  case editReplyTapped(parentCommentID: String, replyID: String)
+  case cancelCommentEdit
+  case deleteCommentTapped(commentID: String)
+  case deleteReplyTapped(parentCommentID: String, replyID: String)
+  case deleteCommentConfirmed
+  case dismissDeleteCommentConfirmation
   case toggleReplies(commentID: String)
   case routeHandled
   case dismissHandled

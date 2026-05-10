@@ -9,9 +9,13 @@ nonisolated struct FilterDetailState: Sendable {
   var expandedReplyCommentIDs: Set<String> = []
   var commentText = ""
   var replyingToCommentID: String?
+  var editingCommentTarget: CommentEditTarget?
+  var pendingDeleteCommentTarget: CommentEditTarget?
   var currentUserID: String?
   var route: FilterDetailRoute?
   var applyPhotoPhase: ApplyPhotoPhase = .idle
+  var shouldDismiss = false
+  var showsDeleteFilterConfirmation = false
 
   var detail: FilterDetail? {
     switch phase {
