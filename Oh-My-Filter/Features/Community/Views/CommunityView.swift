@@ -26,9 +26,22 @@ struct CommunityView: View {
       .padding(.vertical, 18)
     }
     .scrollIndicators(.hidden)
+    .refreshable {
+      await viewModel.send(.refresh)
+    }
     .background(ColorToken.grayScale100.color.ignoresSafeArea())
     .task {
       await viewModel.send(.task)
+    }
+    .onAppear {
+      Task {
+        await viewModel.send(.viewAppeared)
+      }
+    }
+    .onDisappear {
+      Task {
+        await viewModel.send(.disappeared)
+      }
     }
     .onChange(of: viewModel.state.route) { _, route in
       guard let route else { return }
