@@ -135,6 +135,7 @@ struct VideoPlayerView: View {
           .padding(.horizontal, 14)
           .frame(height: 34)
           .background(ColorToken.mainAccent.color)
+          .buttonHitArea(RoundedRectangle(cornerRadius: 14, style: .continuous))
           .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
       }
     }

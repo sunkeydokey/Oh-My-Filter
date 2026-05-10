@@ -55,6 +55,7 @@ struct ProfileEditView: View {
         .frame(maxWidth: .infinity)
         .frame(height: 50)
         .background(viewModel.state.canSave ? ColorToken.mainAccent.color : ColorToken.grayScale90.color, in: .rect(cornerRadius: 22, style: .continuous))
+        .buttonHitArea(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
         .background(ColorToken.grayScale100.color)

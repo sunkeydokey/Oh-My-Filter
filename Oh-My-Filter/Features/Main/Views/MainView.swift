@@ -213,8 +213,9 @@ private struct MainTodayFilterCTAButton: View {
       .foregroundStyle(ColorToken.grayScale100.color)
       .padding(.horizontal, 12)
       .padding(.vertical, 8)
+      .background(ColorToken.mainAccent.color, in: Capsule())
+      .buttonHitArea(Capsule())
     }
-    .background(ColorToken.mainAccent.color, in: Capsule())
     .frame(height: 36)
     .accessibilityLabel("사용")
     .onTapGesture {
@@ -599,13 +600,16 @@ private struct MainRedesignedRetryCardView: View {
         .font(.custom(TypographyToken.pretendardBody3.fontName, size: 12, relativeTo: .caption))
         .foregroundStyle(ColorToken.grayScale60.color)
 
-      Button("다시 시도", action: retryAction)
-        .font(.custom(TypographyToken.pretendardTitle1.fontName, size: 12, relativeTo: .caption))
-        .fontWeight(.bold)
-        .foregroundStyle(ColorToken.grayScale100.color)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(ColorToken.mainAccent.color, in: Capsule())
+      Button(action: retryAction) {
+        Text("다시 시도")
+          .font(.custom(TypographyToken.pretendardTitle1.fontName, size: 12, relativeTo: .caption))
+          .fontWeight(.bold)
+          .foregroundStyle(ColorToken.grayScale100.color)
+          .padding(.horizontal, 12)
+          .padding(.vertical, 8)
+          .background(ColorToken.mainAccent.color, in: Capsule())
+          .buttonHitArea(Capsule())
+      }
     }
     .padding(14)
     .frame(maxWidth: .infinity, alignment: .leading)

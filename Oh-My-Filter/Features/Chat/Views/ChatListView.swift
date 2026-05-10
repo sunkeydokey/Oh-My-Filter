@@ -240,6 +240,7 @@ private struct ChatFilterChip: View {
           Capsule()
             .stroke(ColorToken.grayScale90.color.opacity(isSelected ? 0 : 0.5), lineWidth: 1)
         }
+        .buttonHitArea(Capsule())
     }
     .buttonStyle(.plain)
   }

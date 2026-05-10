@@ -93,6 +93,7 @@ struct ProfileActionRow: View {
       }
       .padding(10)
       .background(ColorToken.grayScale90.color.opacity(0.44), in: .rect(cornerRadius: 18, style: .continuous))
+      .buttonHitArea(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
     .buttonStyle(.plain)
   }

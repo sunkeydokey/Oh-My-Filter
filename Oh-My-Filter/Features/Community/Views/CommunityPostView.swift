@@ -480,6 +480,7 @@ struct CommunityPostView: View {
           viewModel.state.canSubmit ? ColorToken.mainAccent.color : ColorToken.grayScale90.color,
           in: RoundedRectangle(cornerRadius: 18, style: .continuous)
         )
+        .buttonHitArea(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
     .buttonStyle(.plain)
     .disabled(viewModel.state.canSubmit == false)
@@ -733,6 +734,7 @@ private struct CommunityPostActionButton: View {
       .padding(.horizontal, 14)
       .frame(height: 42)
       .background(isPrimary ? ColorToken.mainAccent.color : ColorToken.brandBlackSprout.color, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+      .buttonHitArea(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
     .buttonStyle(.plain)
   }
@@ -777,12 +779,15 @@ private struct CommunityPostErrorView: View {
         .font(TypographyToken.pretendardBody2.font)
         .foregroundStyle(ColorToken.grayScale45.color)
 
-      Button("다시 시도", action: retry)
-        .font(TypographyToken.pretendardBody2.font.weight(.bold))
-        .foregroundStyle(ColorToken.grayScale15.color)
-        .padding(.horizontal, 16)
-        .frame(height: 42)
-        .background(ColorToken.mainAccent.color, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+      Button(action: retry) {
+        Text("다시 시도")
+          .font(TypographyToken.pretendardBody2.font.weight(.bold))
+          .foregroundStyle(ColorToken.grayScale15.color)
+          .padding(.horizontal, 16)
+          .frame(height: 42)
+          .background(ColorToken.mainAccent.color, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+          .buttonHitArea(RoundedRectangle(cornerRadius: 14, style: .continuous))
+      }
 
       Spacer()
     }

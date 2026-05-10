@@ -31,25 +31,28 @@ struct AuthSocialLoginButton: View {
   }
 
   var body: some View {
-    Button(title, systemImage: systemImage) {
+    Button {
       Task {
         await action?()
       }
+    } label: {
+      Label(title, systemImage: systemImage)
+        .font(font)
+        .foregroundStyle(foregroundColor)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(fillColor)
+        .overlay {
+          if let borderColor {
+            RoundedRectangle(cornerRadius: CornerRadiusToken.section.value)
+              .stroke(borderColor, lineWidth: 1)
+          }
+        }
+        .buttonHitArea(RoundedRectangle(cornerRadius: CornerRadiusToken.section.value))
+        .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
+        .modifier(AuthSocialLoginButtonEmphasisModifier(isEmphasized: emphasized))
     }
     .buttonStyle(.plain)
-    .font(font)
-    .foregroundStyle(foregroundColor)
-    .frame(maxWidth: .infinity)
-    .padding(.vertical, 12)
-    .background(fillColor)
-    .overlay {
-      if let borderColor {
-        RoundedRectangle(cornerRadius: CornerRadiusToken.section.value)
-          .stroke(borderColor, lineWidth: 1)
-      }
-    }
-    .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
-    .modifier(AuthSocialLoginButtonEmphasisModifier(isEmphasized: emphasized))
   }
 }
 

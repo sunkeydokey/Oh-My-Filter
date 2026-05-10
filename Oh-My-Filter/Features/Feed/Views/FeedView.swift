@@ -131,6 +131,7 @@ struct FeedView: View {
               Capsule()
                 .stroke(ColorToken.grayScale90.color.opacity(viewModel.state.sort == sort ? 0 : 0.6), lineWidth: 1)
             }
+            .buttonHitArea(Capsule())
         }
         .buttonStyle(.plain)
       }
@@ -389,12 +390,15 @@ private struct FeedErrorView: View {
         .font(TypographyToken.pretendardBody2.font)
         .foregroundStyle(ColorToken.grayScale45.color)
 
-      Button("다시 시도", action: retry)
-        .font(TypographyToken.pretendardBody2.font)
-        .foregroundStyle(ColorToken.brandBlackSprout.color)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(ColorToken.mainAccent.color, in: Capsule())
+      Button(action: retry) {
+        Text("다시 시도")
+          .font(TypographyToken.pretendardBody2.font)
+          .foregroundStyle(ColorToken.brandBlackSprout.color)
+          .padding(.horizontal, 16)
+          .padding(.vertical, 10)
+          .background(ColorToken.mainAccent.color, in: Capsule())
+          .buttonHitArea(Capsule())
+      }
     }
     .frame(maxWidth: .infinity)
     .padding(.vertical, 36)

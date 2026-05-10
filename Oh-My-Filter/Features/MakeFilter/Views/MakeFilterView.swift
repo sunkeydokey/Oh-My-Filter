@@ -92,6 +92,7 @@ struct MakeFilterView: View {
       .frame(maxWidth: .infinity)
       .frame(height: 52)
       .background(submitButtonBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+      .buttonHitArea(RoundedRectangle(cornerRadius: 8, style: .continuous))
       .padding(.horizontal, 20)
       .padding(.top, 12)
       .padding(.bottom, 8)
@@ -150,6 +151,7 @@ struct MakeFilterView: View {
                   viewModel.state.category == category ? ColorToken.sesacFilterDeepTurquoise.color : ColorToken.brandDeepSprout.color,
                   in: Capsule()
                 )
+                .buttonHitArea(Capsule())
             }
             .buttonStyle(.plain)
           }

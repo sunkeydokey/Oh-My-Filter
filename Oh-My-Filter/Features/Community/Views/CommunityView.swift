@@ -116,6 +116,7 @@ struct CommunityView: View {
               .padding(.horizontal, 16)
               .frame(height: 34)
               .background(tabFill(for: tab), in: Capsule())
+              .buttonHitArea(Capsule())
           }
           .buttonStyle(.plain)
         }
@@ -450,12 +451,15 @@ private struct CommunityErrorView: View {
         .font(TypographyToken.pretendardBody2.font)
         .foregroundStyle(ColorToken.grayScale45.color)
 
-      Button("다시 시도", action: retry)
-        .font(TypographyToken.pretendardBody2.font)
-        .foregroundStyle(ColorToken.grayScale0.color)
-        .padding(.horizontal, 16)
-        .frame(height: 40)
-        .background(ColorToken.mainAccent.color, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+      Button(action: retry) {
+        Text("다시 시도")
+          .font(TypographyToken.pretendardBody2.font)
+          .foregroundStyle(ColorToken.grayScale0.color)
+          .padding(.horizontal, 16)
+          .frame(height: 40)
+          .background(ColorToken.mainAccent.color, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+          .buttonHitArea(RoundedRectangle(cornerRadius: 8, style: .continuous))
+      }
     }
     .frame(maxWidth: .infinity)
     .padding(.vertical, 60)

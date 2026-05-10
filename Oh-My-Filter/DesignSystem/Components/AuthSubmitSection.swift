@@ -37,10 +37,11 @@ struct AuthSubmitSection: View {
           .foregroundStyle(ColorToken.grayScale0.color)
           .frame(maxWidth: .infinity)
           .padding(.vertical, 15)
+          .background(isEnabled ? ColorToken.mainAccent.color : ColorToken.grayScale75.color)
+          .buttonHitArea(RoundedRectangle(cornerRadius: CornerRadiusToken.section.value))
+          .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
       }
       .buttonStyle(.plain)
-      .background(isEnabled ? ColorToken.mainAccent.color : ColorToken.grayScale75.color)
-      .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
       .disabled(isEnabled == false)
 
       if isSubmitting {

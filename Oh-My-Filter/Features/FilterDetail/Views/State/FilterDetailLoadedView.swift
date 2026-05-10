@@ -32,40 +32,46 @@ struct FilterDetailLoadedView: View {
           isLocked: false
         )
 
-        Button("적용해보기") {
+        Button {
           if isMine || detail.isDownloaded {
             onApply()
           } else {
             onPurchaseRequired()
           }
+        } label: {
+          Text("적용해보기")
+            .font(TypographyToken.pretendardBody1.font)
+            .bold()
+            .foregroundStyle(ColorToken.mainAccent.color)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+              RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(ColorToken.mainAccent.color, lineWidth: 1.5)
+            )
+            .buttonHitArea(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
-        .font(TypographyToken.pretendardBody1.font)
-        .bold()
-        .foregroundStyle(ColorToken.mainAccent.color)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(
-          RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .stroke(ColorToken.mainAccent.color, lineWidth: 1.5)
-        )
 
-        Button(buttonTitle) {
+        Button {
           if isMine || detail.isDownloaded {
             action()
           } else {
             onPurchaseRequired()
           }
+        } label: {
+          Text(buttonTitle)
+            .font(TypographyToken.pretendardBody1.font)
+            .bold()
+            .foregroundStyle(isPaymentProcessing ? ColorToken.grayScale0.color : ColorToken.grayScale60.color)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+              isPaymentProcessing ? ColorToken.grayScale75.color : ColorToken.mainAccent.color,
+              in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+            )
+            .buttonHitArea(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .disabled(isPaymentProcessing)
-        .font(TypographyToken.pretendardBody1.font)
-        .bold()
-        .foregroundStyle(isPaymentProcessing ? ColorToken.grayScale0.color : ColorToken.grayScale60.color)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(
-          isPaymentProcessing ? ColorToken.grayScale75.color : ColorToken.mainAccent.color,
-          in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-        )
 
         Divider()
           .overlay(ColorToken.grayScale90.color)
