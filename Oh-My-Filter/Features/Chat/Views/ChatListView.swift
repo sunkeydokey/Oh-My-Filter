@@ -30,6 +30,12 @@ struct ChatListView: View {
       }
       await viewModel?.send(.task)
     }
+    .onAppear {
+      Task { await viewModel?.send(.viewAppeared) }
+    }
+    .onDisappear {
+      Task { await viewModel?.send(.disappeared) }
+    }
     .task(id: pendingRoomID) {
       guard let pendingRoomID else { return }
       if viewModel == nil {
@@ -113,6 +119,9 @@ private struct ChatListContentView: View {
     .background(ColorToken.brandBlackSprout.color)
     .navigationBarTitleDisplayMode(.inline)
     .toolbar(.hidden, for: .navigationBar)
+    .onReceive(NotificationCenter.default.publisher(for: .pushNotificationReceived)) { _ in
+      Task { await viewModel.send(.autoRefresh) }
+    }
   }
 
   private var header: some View {

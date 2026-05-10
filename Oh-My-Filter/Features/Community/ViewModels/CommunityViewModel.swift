@@ -339,25 +339,19 @@ final class CommunityViewModel {
       for post in posts.posts.reversed() {
         upsert(post, in: &state.posts, insertIfMissing: true)
       }
-      if let newCursor = posts.nextCursor {
-        state.postsNextCursor = newCursor
-      }
+      state.postsNextCursor = posts.nextCursor
 
       for video in videos.videos.reversed() {
         upsertVideo(video, in: &state.videos)
       }
-      if let newCursor = videos.nextCursor {
-        state.videosNextCursor = newCursor
-      }
+      state.videosNextCursor = videos.nextCursor
 
       if state.selectedTab == .liked, state.likedPosts.isEmpty == false {
         let likedPage = try await useCase.loadLikedPosts(nextCursor: nil, limit: Self.pageSize)
         for post in likedPage.posts.reversed() {
           upsert(post, in: &state.likedPosts, insertIfMissing: true)
         }
-        if let newCursor = likedPage.nextCursor {
-          state.likedPostsNextCursor = newCursor
-        }
+        state.likedPostsNextCursor = likedPage.nextCursor
       }
 
       updatePhaseForVisibleContent()

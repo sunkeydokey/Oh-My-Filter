@@ -1,6 +1,10 @@
 import Foundation
 import Observation
 
+extension Notification.Name {
+  static let pushNotificationReceived = Notification.Name("com.oh-my-filter.pushNotificationReceived")
+}
+
 nonisolated enum PushNotificationRouteParser {
   static func route(from userInfo: [AnyHashable: Any]) -> AppAuthenticatedRoute? {
     guard let roomID = roomID(from: userInfo) else { return nil }
