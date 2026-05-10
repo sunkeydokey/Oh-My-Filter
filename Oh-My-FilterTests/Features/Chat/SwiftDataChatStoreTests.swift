@@ -43,6 +43,23 @@ struct SwiftDataChatStoreTests {
     #expect(try store.fetchRooms().map(\.id) == ["new", "old"])
   }
 
+  @Test("room list last message is not used as local message cursor")
+  func roomListLastMessageDoesNotSeedMessageCursor() throws {
+    let store = try makeStore()
+    let lastMessage = try ChatMessage.message(id: "latest", content: "latest")
+    try store.upsertRoom(.room(
+      id: "room-1",
+      updatedAt: lastMessage.updatedAt,
+      lastMessage: lastMessage
+    ))
+
+    let room = try #require(store.fetchRooms().first)
+
+    #expect(room.lastMessage?.id == "latest")
+    #expect(try store.fetchMessages(roomID: "room-1").isEmpty)
+    #expect(try store.newestMessageDate(roomID: "room-1") == nil)
+  }
+
   private func makeStore() throws -> SwiftDataChatStore {
     let configuration = ModelConfiguration("ChatStoreTests-\(UUID().uuidString)", isStoredInMemoryOnly: true)
     let container = try ModelContainer(
@@ -75,6 +92,21 @@ private extension ChatRoom {
       updatedAt: updatedAt,
       participants: [ChatUser(id: "user-1", nick: "sesac", name: nil, introduction: nil, profileImage: nil, hashTags: [])],
       lastMessage: nil,
+      lastSeenAt: lastSeenAt
+    )
+  }
+
+  static func room(
+    id: String,
+    updatedAt: Date,
+    lastMessage: ChatMessage,
+    lastSeenAt: Date? = nil
+  ) -> ChatRoom {
+    ChatRoom(
+      id: id,
+      updatedAt: updatedAt,
+      participants: [ChatUser(id: "user-1", nick: "sesac", name: nil, introduction: nil, profileImage: nil, hashTags: [])],
+      lastMessage: lastMessage,
       lastSeenAt: lastSeenAt
     )
   }

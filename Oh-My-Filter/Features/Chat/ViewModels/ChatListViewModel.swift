@@ -9,6 +9,7 @@ final class ChatListViewModel {
   private let service: any ChatServicing
   private let store: any ChatLocalStoring
   private var searchTask: Task<Void, Never>?
+  private var pendingRoomID: String?
 
   init(
     service: any ChatServicing,
@@ -27,6 +28,8 @@ final class ChatListViewModel {
       debounceSearch(for: searchText)
     case let .searchResultTapped(user):
       await createRoom(with: user)
+    case let .openRoom(roomID):
+      await openRoom(roomID: roomID)
     case .selectedRoomCleared:
       state.selectedRoom = nil
     case let .filterChanged(filter):
@@ -57,6 +60,7 @@ final class ChatListViewModel {
 
       state.currentUserID = currentUserID
       state.rooms = try store.fetchRooms()
+      selectPendingRoomIfAvailable()
       state.isLoading = false
     } catch is CancellationError {
       state.isLoading = false
@@ -124,6 +128,27 @@ final class ChatListViewModel {
       state.creatingRoomUserID = nil
       state.searchErrorMessage = Self.message(for: error)
     }
+  }
+
+  private func openRoom(roomID: String) async {
+    pendingRoomID = roomID
+    if selectPendingRoomIfAvailable() {
+      return
+    }
+
+    await loadRooms()
+  }
+
+  @discardableResult
+  private func selectPendingRoomIfAvailable() -> Bool {
+    guard let pendingRoomID else { return false }
+    guard let room = state.rooms.first(where: { $0.id == pendingRoomID }) else {
+      return false
+    }
+
+    state.selectedRoom = room
+    self.pendingRoomID = nil
+    return true
   }
 
   private func handleSearchFailure(_ error: Error) {

@@ -34,14 +34,17 @@ struct OhMyFilterApp: App {
 
   var body: some Scene {
     WindowGroup {
-      ContentView(coordinator: coordinator)
+      ContentView(
+        coordinator: coordinator,
+        pushRoutingStore: PushNotificationRoutingStore.shared
+      )
         .preferredColorScheme(.dark)
         .modelContainer(modelContainer)
         .onOpenURL { url in
           if url.scheme == SDK.Payment.appScheme {
             Iamport.shared.receivedURL(url)
           } else {
-            AuthController.handleOpenUrl(url: url)
+            _ = AuthController.handleOpenUrl(url: url)
           }
         }
     }

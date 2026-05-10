@@ -113,6 +113,9 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
   ) {
     let userInfo = response.notification.request.content.userInfo
     print("Push tapped: \(userInfo)")
-    completionHandler()
+    Task { @MainActor in
+      PushNotificationRoutingStore.shared.receive(userInfo: userInfo)
+      completionHandler()
+    }
   }
 }
