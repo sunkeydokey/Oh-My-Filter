@@ -7,7 +7,6 @@ import SwiftUI
 struct MakeFilterView: View {
   @State private var viewModel: FilterMakeViewModel
   @State private var pickerItem: PhotosPickerItem?
-  @FocusState private var isInputFocused: Bool
   private let onSubmitSucceeded: (FilterDetail) -> Void
 
   init(
@@ -56,9 +55,6 @@ struct MakeFilterView: View {
       .padding(.vertical, 24)
     }
     .scrollIndicators(.hidden)
-    .onTapGesture {
-      isInputFocused = false
-    }
     .background(ColorToken.brandBlackSprout.color.ignoresSafeArea())
     .mulgyeolNavigationTitle("MAKE")
     .safeAreaInset(edge: .bottom) {
@@ -120,7 +116,6 @@ struct MakeFilterView: View {
         .font(TypographyToken.pretendardBody3.font)
         .foregroundStyle(ColorToken.grayScale0.color)
         .tint(ColorToken.mainAccent.color)
-        .focused($isInputFocused)
         .padding(.horizontal, 12)
         .frame(height: 42)
         .background(ColorToken.brandBlackSprout.color, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -262,7 +257,6 @@ struct MakeFilterView: View {
         .font(TypographyToken.pretendardBody3.font)
         .foregroundStyle(ColorToken.grayScale0.color)
         .tint(ColorToken.mainAccent.color)
-        .focused($isInputFocused)
 
         Text("원")
           .font(TypographyToken.pretendardBody3.font)

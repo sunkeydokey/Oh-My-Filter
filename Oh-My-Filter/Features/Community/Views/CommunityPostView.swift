@@ -134,9 +134,6 @@ struct CommunityPostView: View {
     }
     .scrollIndicators(.hidden)
     .scrollDismissesKeyboard(.interactively)
-    .onTapGesture {
-      focusedField = nil
-    }
     .safeAreaInset(edge: .bottom) {
       if viewModel.state.isDetail == false {
         stickyPrimaryAction

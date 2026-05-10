@@ -126,9 +126,6 @@ struct ChatView: View {
       onImageTapped: { files, index in
         isPresentingImageViewer = true
         imagePreview = ChatImagePreview(files: files, initialIndex: index)
-      },
-      onTap: {
-        isComposerFocused = false
       }
     )
     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -216,13 +213,11 @@ private struct ChatMessagesScrollView: UIViewRepresentable {
   let messages: [ChatMessage]
   let currentUserID: String
   let onImageTapped: ([String], Int) -> Void
-  let onTap: () -> Void
 
   func makeCoordinator() -> Coordinator {
     Coordinator(
       currentMessageCount: messages.count,
-      onImageTapped: onImageTapped,
-      onTap: onTap
+      onImageTapped: onImageTapped
     )
   }
 
@@ -250,10 +245,6 @@ private struct ChatMessagesScrollView: UIViewRepresentable {
       ).height ?? 0
       return height
     }
-    let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
-    tapGesture.cancelsTouchesInView = false
-    scrollView.addGestureRecognizer(tapGesture)
-
     context.coordinator.hostingController = hostingController
     context.coordinator.scrollView = scrollView
     context.coordinator.requestScrollToBottom(animated: false)
@@ -262,7 +253,6 @@ private struct ChatMessagesScrollView: UIViewRepresentable {
 
   func updateUIView(_ scrollView: ChatPreservingScrollView, context: Context) {
     context.coordinator.onImageTapped = onImageTapped
-    context.coordinator.onTap = onTap
     context.coordinator.hostingController?.rootView = AnyView(content(context: context))
     context.coordinator.hostingController?.view.invalidateIntrinsicContentSize()
     scrollView.setNeedsLayout()
@@ -291,27 +281,20 @@ private struct ChatMessagesScrollView: UIViewRepresentable {
     .padding(.vertical, 4)
     .frame(maxWidth: .infinity)
     .fixedSize(horizontal: false, vertical: true)
-    .contentShape(.rect)
-    .onTapGesture {
-      context.coordinator.onTap()
-    }
   }
 
   final class Coordinator: NSObject, UIScrollViewDelegate {
     var currentMessageCount: Int
     var onImageTapped: ([String], Int) -> Void
-    var onTap: () -> Void
     var hostingController: UIHostingController<AnyView>?
     weak var scrollView: ChatPreservingScrollView?
 
     init(
       currentMessageCount: Int,
-      onImageTapped: @escaping ([String], Int) -> Void,
-      onTap: @escaping () -> Void
+      onImageTapped: @escaping ([String], Int) -> Void
     ) {
       self.currentMessageCount = currentMessageCount
       self.onImageTapped = onImageTapped
-      self.onTap = onTap
     }
 
     func requestScrollToBottom(animated: Bool) {
@@ -319,10 +302,6 @@ private struct ChatMessagesScrollView: UIViewRepresentable {
         await Task.yield()
         self?.scrollView?.scrollToBottom(animated: animated)
       }
-    }
-
-    @objc func handleTap() {
-      onTap()
     }
   }
 }
