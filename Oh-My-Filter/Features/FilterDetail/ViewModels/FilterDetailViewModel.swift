@@ -76,9 +76,26 @@ final class FilterDetailViewModel {
     case .submitComment:
       await submitComment()
     case let .replyTapped(commentID):
+      state.editingCommentTarget = nil
+      state.commentText = ""
       state.replyingToCommentID = commentID
     case .cancelReply:
       state.replyingToCommentID = nil
+    case let .editCommentTapped(commentID):
+      startEditingComment(.comment(commentID: commentID))
+    case let .editReplyTapped(parentCommentID, replyID):
+      startEditingComment(.reply(parentCommentID: parentCommentID, replyID: replyID))
+    case .cancelCommentEdit:
+      state.editingCommentTarget = nil
+      state.commentText = ""
+    case let .deleteCommentTapped(commentID):
+      state.pendingDeleteCommentTarget = .comment(commentID: commentID)
+    case let .deleteReplyTapped(parentCommentID, replyID):
+      state.pendingDeleteCommentTarget = .reply(parentCommentID: parentCommentID, replyID: replyID)
+    case .deleteCommentConfirmed:
+      await deleteComment()
+    case .dismissDeleteCommentConfirmation:
+      state.pendingDeleteCommentTarget = nil
     case let .toggleReplies(commentID):
       if state.expandedReplyCommentIDs.contains(commentID) {
         state.expandedReplyCommentIDs.remove(commentID)
@@ -103,8 +120,17 @@ final class FilterDetailViewModel {
       await startPayment()
     case .tapEdit:
       await routeToUpdate()
+    case .tapDelete:
+      guard state.isMine else { return }
+      state.showsDeleteFilterConfirmation = true
+    case .deleteConfirmed:
+      await deleteFilter()
+    case .dismissDeleteConfirmation:
+      state.showsDeleteFilterConfirmation = false
     case .routeHandled:
       state.route = nil
+    case .dismissHandled:
+      state.shouldDismiss = false
     case .dismissAlert:
       state.alert = nil
     case .confirmAlert:
@@ -220,6 +246,11 @@ final class FilterDetailViewModel {
     let content = state.commentText.trimmingCharacters(in: .whitespacesAndNewlines)
     guard content.isEmpty == false else { return }
 
+    if let editingCommentTarget = state.editingCommentTarget {
+      await updateComment(target: editingCommentTarget, content: content)
+      return
+    }
+
     do {
       let created = try await useCase.createComment(
         filterID: filterID,
@@ -235,6 +266,58 @@ final class FilterDetailViewModel {
       }
       state.commentText = ""
       state.replyingToCommentID = nil
+    } catch {
+      state.alert = FilterDetailAlert(
+        title: "댓글",
+        message: Self.fallbackMessage(for: error),
+        cancelTitle: "취소",
+        confirmTitle: "확인"
+      )
+    }
+  }
+
+  private func startEditingComment(_ target: CommentEditTarget) {
+    guard let content = state.detail?.commentContent(for: target) else { return }
+    state.replyingToCommentID = nil
+    state.editingCommentTarget = target
+    state.commentText = content
+  }
+
+  private func updateComment(target: CommentEditTarget, content: String) async {
+    guard case let .loaded(detail, previewState) = state.phase else { return }
+
+    do {
+      let updated = try await useCase.updateComment(
+        filterID: filterID,
+        commentID: target.commentID,
+        content: content
+      )
+      state.phase = .loaded(detail.updating(comment: updated, target: target), previewState)
+      state.editingCommentTarget = nil
+      state.commentText = ""
+    } catch {
+      state.alert = FilterDetailAlert(
+        title: "댓글",
+        message: Self.fallbackMessage(for: error),
+        cancelTitle: "취소",
+        confirmTitle: "확인"
+      )
+    }
+  }
+
+  private func deleteComment() async {
+    guard case let .loaded(detail, previewState) = state.phase,
+          let target = state.pendingDeleteCommentTarget else { return }
+
+    state.pendingDeleteCommentTarget = nil
+
+    do {
+      try await useCase.deleteComment(filterID: filterID, commentID: target.commentID)
+      state.phase = .loaded(detail.removingComment(target), previewState)
+      if state.editingCommentTarget == target {
+        state.editingCommentTarget = nil
+        state.commentText = ""
+      }
     } catch {
       state.alert = FilterDetailAlert(
         title: "댓글",
@@ -324,6 +407,24 @@ final class FilterDetailViewModel {
     }
   }
 
+  private func deleteFilter() async {
+    guard state.isMine, let detail = state.detail else { return }
+
+    state.showsDeleteFilterConfirmation = false
+
+    do {
+      try await useCase.deleteFilter(filterID: detail.id)
+      state.shouldDismiss = true
+    } catch {
+      state.alert = FilterDetailAlert(
+        title: "필터 삭제",
+        message: Self.fallbackMessage(for: error),
+        cancelTitle: "취소",
+        confirmTitle: "확인"
+      )
+    }
+  }
+
   private func updateDraft(from detail: FilterDetail) async throws -> FilterMakeDraft {
     let representativeImageData: Data?
     if let originalImageURL = detail.originalImageURL {
@@ -378,6 +479,19 @@ final class FilterDetailViewModel {
 }
 
 private extension FilterDetail {
+  func commentContent(for target: CommentEditTarget) -> String? {
+    switch target {
+    case let .comment(commentID):
+      comments.first { $0.id == commentID }?.content
+    case let .reply(parentCommentID, replyID):
+      comments
+        .first { $0.id == parentCommentID }?
+        .replies
+        .first { $0.id == replyID }?
+        .content
+    }
+  }
+
   func appending(createdComment: CommentReply, parentCommentID: String?) -> FilterDetail {
     let updatedComments: [Comment]
     if let parentCommentID {
@@ -404,6 +518,86 @@ private extension FilterDetail {
     }
 
     return FilterDetail(
+      id: id,
+      title: title,
+      category: category,
+      introduction: introduction,
+      description: description,
+      originalImageURL: originalImageURL,
+      fallbackFilteredImageURL: fallbackFilteredImageURL,
+      creator: creator,
+      metadata: metadata,
+      filterValues: filterValues,
+      comments: updatedComments,
+      isDownloaded: isDownloaded,
+      isLiked: isLiked,
+      likeCount: likeCount,
+      buyerCount: buyerCount,
+      price: price,
+      hashTags: hashTags,
+      createdAt: createdAt,
+      updatedAt: updatedAt
+    )
+  }
+
+  func updating(comment updated: CommentReply, target: CommentEditTarget) -> FilterDetail {
+    let updatedComments = comments.map { comment in
+      switch target {
+      case let .comment(commentID) where comment.id == commentID:
+        Comment(
+          id: comment.id,
+          content: updated.content,
+          createdAt: updated.createdAt,
+          creator: updated.creator,
+          replies: comment.replies
+        )
+      case let .reply(parentCommentID, replyID) where comment.id == parentCommentID:
+        Comment(
+          id: comment.id,
+          content: comment.content,
+          createdAt: comment.createdAt,
+          creator: comment.creator,
+          replies: comment.replies.map { reply in
+            guard reply.id == replyID else { return reply }
+            return CommentReply(
+              id: reply.id,
+              content: updated.content,
+              createdAt: updated.createdAt,
+              creator: updated.creator
+            )
+          }
+        )
+      default:
+        comment
+      }
+    }
+
+    return replacingComments(updatedComments)
+  }
+
+  func removingComment(_ target: CommentEditTarget) -> FilterDetail {
+    let updatedComments: [Comment]
+    switch target {
+    case let .comment(commentID):
+      updatedComments = comments.filter { $0.id != commentID }
+    case let .reply(parentCommentID, replyID):
+      updatedComments = comments.map { comment in
+        guard comment.id == parentCommentID else { return comment }
+        return Comment(
+          id: comment.id,
+          content: comment.content,
+          createdAt: comment.createdAt,
+          creator: comment.creator,
+          replies: comment.replies.filter { $0.id != replyID }
+        )
+      }
+    }
+
+    return replacingComments(updatedComments)
+  }
+
+  func replacingComments(_ updatedComments: [Comment]) -> FilterDetail {
+    FilterDetail(
       id: id,
       title: title,
       category: category,

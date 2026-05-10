@@ -11,6 +11,8 @@ nonisolated enum CommunityApiRouter: ApiRouter {
   case deletePost(postID: String)
   case like(postID: String)
   case createComment(postID: String)
+  case updateComment(postID: String, commentID: String)
+  case deleteComment(postID: String, commentID: String)
 
   var url: String {
     switch self {
@@ -32,6 +34,8 @@ nonisolated enum CommunityApiRouter: ApiRouter {
       EndPoint.Posts.like(postID: postID)
     case let .createComment(postID):
       EndPoint.Posts.comments(postID: postID)
+    case let .updateComment(postID, commentID), let .deleteComment(postID, commentID):
+      EndPoint.Posts.comment(postID: postID, commentID: commentID)
     }
   }
 
@@ -41,9 +45,9 @@ nonisolated enum CommunityApiRouter: ApiRouter {
       .get
     case .uploadFiles, .createPost, .like, .createComment:
       .post
-    case .updatePost:
+    case .updatePost, .updateComment:
       .put
-    case .deletePost:
+    case .deletePost, .deleteComment:
       .delete
     }
   }

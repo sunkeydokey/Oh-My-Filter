@@ -179,6 +179,21 @@ struct FilterDetailViewModelTests {
     #expect(viewModel.state.commentText.isEmpty)
   }
 
+  @Test("confirming comment deletion calls delete API and clears confirmation")
+  func confirmingCommentDeletionCallsDeleteAPI() async {
+    let useCase = TrackingFilterDetailUseCase(detail: .sampleWithComment)
+    let renderer = MockImageFilterRenderer(result: .success(.sample))
+    let viewModel = FilterDetailViewModel(filterID: "filter-123", useCase: useCase, renderer: renderer)
+
+    await viewModel.send(.task)
+    await viewModel.send(.deleteCommentTapped(commentID: "comment-1"))
+    await viewModel.send(.deleteCommentConfirmed)
+
+    #expect(await useCase.deletedCommentIDs == ["comment-1"])
+    #expect(viewModel.state.pendingDeleteCommentTarget == nil)
+    #expect(viewModel.state.detail?.comments.isEmpty == true)
+  }
+
   @Test("load marks detail mine when current user matches creator")
   func loadMarksDetailMineWhenCurrentUserMatchesCreator() async {
     let useCase = MockFilterDetailUseCase(
@@ -295,6 +310,8 @@ private struct MockFilterDetailUseCase: FilterDetailUseCase {
     try currentUserIDResult.get()
   }
 
+  func deleteFilter(filterID: String) async throws {}
+
   func createComment(filterID: String, parentCommentID: String?, content: String) async throws -> CommentReply {
     CommentReply(
       id: createdComment.id,
@@ -303,6 +320,17 @@ private struct MockFilterDetailUseCase: FilterDetailUseCase {
       creator: createdComment.creator
     )
   }
+
+  func updateComment(filterID: String, commentID: String, content: String) async throws -> CommentReply {
+    CommentReply(
+      id: commentID,
+      content: content,
+      createdAt: createdComment.createdAt,
+      creator: createdComment.creator
+    )
+  }
+
+  func deleteComment(filterID: String, commentID: String) async throws {}
 }
 
 private struct MockAuthenticatedImageDataLoader: AuthenticatedImageDataLoading {
@@ -310,6 +338,37 @@ private struct MockAuthenticatedImageDataLoader: AuthenticatedImageDataLoading {
 
   func loadImageData(from url: URL) async throws -> Data {
     data
+  }
+}
+
+private actor TrackingFilterDetailUseCase: FilterDetailUseCase {
+  let detail: FilterDetail
+  private(set) var deletedCommentIDs: [String] = []
+
+  init(detail: FilterDetail) {
+    self.detail = detail
+  }
+
+  func loadFilterDetail(filterID: String) async throws -> FilterDetail {
+    detail
+  }
+
+  func loadCurrentUserID() async throws -> String {
+    "user-1"
+  }
+
+  func deleteFilter(filterID: String) async throws {}
+
+  func createComment(filterID: String, parentCommentID: String?, content: String) async throws -> CommentReply {
+    CommentReply(id: "reply-1", content: content, createdAt: "2026-02-08T15:55:45.508Z", creator: .commentUser)
+  }
+
+  func updateComment(filterID: String, commentID: String, content: String) async throws -> CommentReply {
+    CommentReply(id: commentID, content: content, createdAt: "2026-02-08T15:55:45.508Z", creator: .commentUser)
+  }
+
+  func deleteComment(filterID: String, commentID: String) async throws {
+    deletedCommentIDs.append(commentID)
   }
 }
 
@@ -388,6 +447,8 @@ private actor SequencedFilterDetailUseCase: FilterDetailUseCase {
     "user-2"
   }
 
+  func deleteFilter(filterID: String) async throws {}
+
   func createComment(filterID: String, parentCommentID: String?, content: String) async throws -> CommentReply {
     CommentReply(
       id: "reply-1",
@@ -396,6 +457,17 @@ private actor SequencedFilterDetailUseCase: FilterDetailUseCase {
       creator: .commentUser
     )
   }
+
+  func updateComment(filterID: String, commentID: String, content: String) async throws -> CommentReply {
+    CommentReply(
+      id: commentID,
+      content: content,
+      createdAt: "2026-02-08T15:55:45.508Z",
+      creator: .commentUser
+    )
+  }
+
+  func deleteComment(filterID: String, commentID: String) async throws {}
 }
 
 private extension CommentUser {

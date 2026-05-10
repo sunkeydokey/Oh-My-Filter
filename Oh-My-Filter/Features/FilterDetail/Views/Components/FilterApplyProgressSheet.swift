@@ -72,18 +72,38 @@ struct FilterApplyProgressSheet: View {
         VStack(spacing: 12) {
           if images.count > 1 {
             HStack(spacing: 12) {
-              Button("현재 사진만 저장", action: onSaveCurrent)
-                .font(TypographyToken.pretendardBody1.font)
-                .bold()
-                .foregroundStyle(ColorToken.mainAccent.color)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(
-                  RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(ColorToken.mainAccent.color, lineWidth: 1.5)
-                )
+              Button(action: onSaveCurrent) {
+                Text("현재 사진만 저장")
+                  .font(TypographyToken.pretendardBody1.font)
+                  .bold()
+                  .foregroundStyle(ColorToken.mainAccent.color)
+                  .frame(maxWidth: .infinity)
+                  .padding(.vertical, 12)
+                  .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                      .stroke(ColorToken.mainAccent.color, lineWidth: 1.5)
+                  )
+                  .buttonHitArea(RoundedRectangle(cornerRadius: 8, style: .continuous))
+              }
 
-              Button("일괄 저장 (\(images.count)장)", action: onSaveAll)
+              Button(action: onSaveAll) {
+                Text("일괄 저장 (\(images.count)장)")
+                  .font(TypographyToken.pretendardBody1.font)
+                  .bold()
+                  .foregroundStyle(ColorToken.grayScale60.color)
+                  .frame(maxWidth: .infinity)
+                  .padding(.vertical, 12)
+                  .background(
+                    ColorToken.mainAccent.color,
+                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                  )
+                  .buttonHitArea(RoundedRectangle(cornerRadius: 8, style: .continuous))
+              }
+            }
+            .padding(.horizontal, 20)
+          } else {
+            Button(action: onSaveCurrent) {
+              Text("저장하기")
                 .font(TypographyToken.pretendardBody1.font)
                 .bold()
                 .foregroundStyle(ColorToken.grayScale60.color)
@@ -93,30 +113,22 @@ struct FilterApplyProgressSheet: View {
                   ColorToken.mainAccent.color,
                   in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                 )
+                .buttonHitArea(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .padding(.horizontal, 20)
-          } else {
-            Button("저장하기", action: onSaveCurrent)
-              .font(TypographyToken.pretendardBody1.font)
-              .bold()
-              .foregroundStyle(ColorToken.grayScale60.color)
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 12)
-              .background(
-                ColorToken.mainAccent.color,
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-              )
-              .padding(.horizontal, 20)
           }
 
-          Button("자랑하기") {
+          Button {
             showBoastSheet = true
+          } label: {
+            Text("자랑하기")
+              .font(TypographyToken.pretendardBody2.font)
+              .bold()
+              .foregroundStyle(ColorToken.mainAccent.color)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 10)
+              .buttonHitArea(Rectangle())
           }
-          .font(TypographyToken.pretendardBody2.font)
-          .bold()
-          .foregroundStyle(ColorToken.mainAccent.color)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 10)
         }
 
       case .saved:
@@ -128,13 +140,16 @@ struct FilterApplyProgressSheet: View {
           .bold()
           .foregroundStyle(ColorToken.grayScale0.color)
 
-        Button("닫기", action: onDismiss)
-          .font(TypographyToken.pretendardBody2.font)
-          .foregroundStyle(ColorToken.grayScale60.color)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 12)
-          .background(ColorToken.brandDeepSprout.color, in: RoundedRectangle(cornerRadius: 8))
-          .padding(.horizontal, 20)
+        Button(action: onDismiss) {
+          Text("닫기")
+            .font(TypographyToken.pretendardBody2.font)
+            .foregroundStyle(ColorToken.grayScale60.color)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(ColorToken.brandDeepSprout.color, in: RoundedRectangle(cornerRadius: 8))
+            .buttonHitArea(RoundedRectangle(cornerRadius: 8))
+        }
+        .padding(.horizontal, 20)
 
       case let .failed(message):
         Image(systemName: "exclamationmark.triangle.fill")
@@ -145,13 +160,16 @@ struct FilterApplyProgressSheet: View {
           .foregroundStyle(ColorToken.grayScale45.color)
           .multilineTextAlignment(.center)
 
-        Button("닫기", action: onDismiss)
-          .font(TypographyToken.pretendardBody2.font)
-          .foregroundStyle(ColorToken.grayScale60.color)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 12)
-          .background(ColorToken.brandDeepSprout.color, in: RoundedRectangle(cornerRadius: 8))
-          .padding(.horizontal, 20)
+        Button(action: onDismiss) {
+          Text("닫기")
+            .font(TypographyToken.pretendardBody2.font)
+            .foregroundStyle(ColorToken.grayScale60.color)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(ColorToken.brandDeepSprout.color, in: RoundedRectangle(cornerRadius: 8))
+            .buttonHitArea(RoundedRectangle(cornerRadius: 8))
+        }
+        .padding(.horizontal, 20)
 
       case .idle, .picking:
         EmptyView()

@@ -49,7 +49,6 @@ struct ChatListView: View {
 private struct ChatListContentView: View {
   @Bindable var viewModel: ChatListViewModel
   @Environment(\.modelContext) private var modelContext
-  @FocusState private var isSearchFocused: Bool
 
   var body: some View {
     ScrollView {
@@ -89,9 +88,6 @@ private struct ChatListContentView: View {
       .padding(.vertical, 18)
     }
     .scrollDismissesKeyboard(.interactively)
-    .onTapGesture {
-      isSearchFocused = false
-    }
     .refreshable {
       await viewModel.send(.refresh)
     }
@@ -144,7 +140,6 @@ private struct ChatListContentView: View {
       ))
       .textInputAutocapitalization(.never)
       .autocorrectionDisabled()
-      .focused($isSearchFocused)
       .font(TypographyToken.pretendardBody3.font)
       .foregroundStyle(ColorToken.grayScale0.color)
     }
@@ -205,7 +200,6 @@ private struct ChatListContentView: View {
           LazyVStack(spacing: 12) {
             ForEach(viewModel.state.searchResults) { user in
               Button {
-                isSearchFocused = false
                 Task { await viewModel.send(.searchResultTapped(user)) }
               } label: {
                 ChatUserSearchRowView(
@@ -240,6 +234,7 @@ private struct ChatFilterChip: View {
           Capsule()
             .stroke(ColorToken.grayScale90.color.opacity(isSelected ? 0 : 0.5), lineWidth: 1)
         }
+        .buttonHitArea(Capsule())
     }
     .buttonStyle(.plain)
   }

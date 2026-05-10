@@ -5,8 +5,10 @@ struct FilterDetailLoadedView: View {
   let previewState: FilterComparisonPreviewState
   let isPaymentProcessing: Bool
   let isMine: Bool
+  let currentUserID: String?
   let expandedReplyCommentIDs: Set<String>
   let replyingToCommentID: String?
+  let editingCommentTarget: CommentEditTarget?
   let commentText: String
   let action: () -> Void
   let onApply: () -> Void
@@ -15,7 +17,12 @@ struct FilterDetailLoadedView: View {
   let onSubmitComment: () -> Void
   let onReply: (String) -> Void
   let onCancelReply: () -> Void
+  let onCancelCommentEdit: () -> Void
   let onToggleReplies: (String) -> Void
+  let onEditComment: (String) -> Void
+  let onDeleteComment: (String) -> Void
+  let onEditReply: (String, String) -> Void
+  let onDeleteReply: (String, String) -> Void
 
   var body: some View {
     ScrollView {
@@ -32,40 +39,46 @@ struct FilterDetailLoadedView: View {
           isLocked: false
         )
 
-        Button("적용해보기") {
+        Button {
           if isMine || detail.isDownloaded {
             onApply()
           } else {
             onPurchaseRequired()
           }
+        } label: {
+          Text("적용해보기")
+            .font(TypographyToken.pretendardBody1.font)
+            .bold()
+            .foregroundStyle(ColorToken.mainAccent.color)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+              RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(ColorToken.mainAccent.color, lineWidth: 1.5)
+            )
+            .buttonHitArea(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
-        .font(TypographyToken.pretendardBody1.font)
-        .bold()
-        .foregroundStyle(ColorToken.mainAccent.color)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(
-          RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .stroke(ColorToken.mainAccent.color, lineWidth: 1.5)
-        )
 
-        Button(buttonTitle) {
+        Button {
           if isMine || detail.isDownloaded {
             action()
           } else {
             onPurchaseRequired()
           }
+        } label: {
+          Text(buttonTitle)
+            .font(TypographyToken.pretendardBody1.font)
+            .bold()
+            .foregroundStyle(isPaymentProcessing ? ColorToken.grayScale0.color : ColorToken.grayScale60.color)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+              isPaymentProcessing ? ColorToken.grayScale75.color : ColorToken.mainAccent.color,
+              in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+            )
+            .buttonHitArea(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .disabled(isPaymentProcessing)
-        .font(TypographyToken.pretendardBody1.font)
-        .bold()
-        .foregroundStyle(isPaymentProcessing ? ColorToken.grayScale0.color : ColorToken.grayScale60.color)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(
-          isPaymentProcessing ? ColorToken.grayScale75.color : ColorToken.mainAccent.color,
-          in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-        )
 
         Divider()
           .overlay(ColorToken.grayScale90.color)
@@ -81,14 +94,21 @@ struct FilterDetailLoadedView: View {
 
         SharedCommentSectionView(
           comments: detail.comments,
+          currentUserID: currentUserID,
           expandedReplyCommentIDs: expandedReplyCommentIDs,
           replyingToCommentID: replyingToCommentID,
+          editingCommentTarget: editingCommentTarget,
           commentText: commentText,
           onTextChanged: onCommentTextChanged,
           onSubmit: onSubmitComment,
           onReply: onReply,
           onCancelReply: onCancelReply,
-          onToggleReplies: onToggleReplies
+          onCancelEdit: onCancelCommentEdit,
+          onToggleReplies: onToggleReplies,
+          onEditComment: onEditComment,
+          onDeleteComment: onDeleteComment,
+          onEditReply: onEditReply,
+          onDeleteReply: onDeleteReply
         )
       }
       .padding(.horizontal, 20)

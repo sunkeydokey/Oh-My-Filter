@@ -28,3 +28,16 @@ nonisolated struct CommentReply: Equatable, Identifiable, Sendable {
   let creator: CommentUser
 }
 
+nonisolated enum CommentEditTarget: Equatable, Sendable {
+  case comment(commentID: String)
+  case reply(parentCommentID: String, replyID: String)
+
+  var commentID: String {
+    switch self {
+    case let .comment(commentID):
+      commentID
+    case let .reply(_, replyID):
+      replyID
+    }
+  }
+}

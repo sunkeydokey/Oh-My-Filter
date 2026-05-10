@@ -4,6 +4,7 @@ import OSLog
 actor LiveCommunityService: CommunityServicing {
   private let networkManager: any AuthenticatedNetworkManaging
   private let sharedCommentService: any SharedCommentServicing
+  private let userSessionStore: any UserSessionStoring
   private let decoder: JSONDecoder
   private let imageUploadUseCase: any ImageUploadUseCase
   private static let defaultLatitude = 37.654215
@@ -17,10 +18,12 @@ actor LiveCommunityService: CommunityServicing {
     networkManager: any AuthenticatedNetworkManaging,
     decoder: JSONDecoder = JSONDecoder(),
     imageUploadUseCase: any ImageUploadUseCase = LiveImageUploadUseCase(),
-    sharedCommentService: (any SharedCommentServicing)? = nil
+    sharedCommentService: (any SharedCommentServicing)? = nil,
+    userSessionStore: any UserSessionStoring = AppUserSessionStore()
   ) {
     self.networkManager = networkManager
     self.sharedCommentService = sharedCommentService ?? LiveSharedCommentService(networkManager: networkManager, decoder: decoder)
+    self.userSessionStore = userSessionStore
     let configuredDecoder = decoder
     configuredDecoder.keyDecodingStrategy = .convertFromSnakeCase
     self.decoder = configuredDecoder
@@ -33,10 +36,11 @@ actor LiveCommunityService: CommunityServicing {
   }
 
   func loadCurrentUserID() async throws -> String {
-    let response = try await request(UserApiRouter.getOwnProfile, parameters: .empty)
-    let profile = try decode(CurrentUserProfileResponseDTO.self, from: response)
-    guard profile.userId.isEmpty == false else { throw CommunityServiceError.invalidResponse }
-    return profile.userId
+    guard let currentUserID = userSessionStore.currentUserID(),
+          currentUserID.isEmpty == false else {
+      throw CommunityServiceError.invalidResponse
+    }
+    return currentUserID
   }
 
   func uploadPostFiles(selections: [PhotoPickerUploadSelection]) async throws -> [String] {
@@ -135,6 +139,35 @@ actor LiveCommunityService: CommunityServicing {
         router: CommunityApiRouter.createComment(postID: postID),
         parentCommentID: parentCommentID,
         content: content
+      )
+    } catch let error as SharedCommentServiceError {
+      throw mappedCommentError(error)
+    }
+  }
+
+  func updateComment(postID: String, commentID: String, content: String) async throws -> CommunityReply {
+    guard postID.isEmpty == false, commentID.isEmpty == false else {
+      throw CommunityServiceError.invalidRequest
+    }
+
+    do {
+      return try await sharedCommentService.updateComment(
+        router: CommunityApiRouter.updateComment(postID: postID, commentID: commentID),
+        content: content
+      )
+    } catch let error as SharedCommentServiceError {
+      throw mappedCommentError(error)
+    }
+  }
+
+  func deleteComment(postID: String, commentID: String) async throws {
+    guard postID.isEmpty == false, commentID.isEmpty == false else {
+      throw CommunityServiceError.invalidRequest
+    }
+
+    do {
+      try await sharedCommentService.deleteComment(
+        router: CommunityApiRouter.deleteComment(postID: postID, commentID: commentID)
       )
     } catch let error as SharedCommentServiceError {
       throw mappedCommentError(error)

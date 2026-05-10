@@ -52,6 +52,14 @@ struct LiveCommunityFeedUseCase: CommunityFeedUseCase {
     try await service.createComment(postID: postID, parentCommentID: parentCommentID, content: content)
   }
 
+  func updateComment(postID: String, commentID: String, content: String) async throws -> CommunityReply {
+    try await service.updateComment(postID: postID, commentID: commentID, content: content)
+  }
+
+  func deleteComment(postID: String, commentID: String) async throws {
+    try await service.deleteComment(postID: postID, commentID: commentID)
+  }
+
   func loadVideos(nextCursor: String?, limit: Int) async throws -> CommunityVideoPage {
     try await service.loadVideos(nextCursor: nextCursor, limit: limit)
   }

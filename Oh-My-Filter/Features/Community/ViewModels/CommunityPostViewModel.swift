@@ -78,14 +78,33 @@ final class CommunityPostViewModel {
       state.showsDeleteConfirmation = true
     case .deleteConfirmed:
       await deletePost()
+    case .dismissDeleteConfirmation:
+      state.showsDeleteConfirmation = false
     case let .commentTextChanged(text):
       updateCommentText(text)
     case .submitComment:
       await submitComment()
     case let .replyTapped(commentID):
+      state.editingCommentTarget = nil
+      state.commentText = ""
       state.replyingToCommentID = commentID
     case .cancelReply:
       state.replyingToCommentID = nil
+    case let .editCommentTapped(commentID):
+      startEditingComment(.comment(commentID: commentID))
+    case let .editReplyTapped(parentCommentID, replyID):
+      startEditingComment(.reply(parentCommentID: parentCommentID, replyID: replyID))
+    case .cancelCommentEdit:
+      state.editingCommentTarget = nil
+      state.commentText = ""
+    case let .deleteCommentTapped(commentID):
+      state.pendingDeleteCommentTarget = .comment(commentID: commentID)
+    case let .deleteReplyTapped(parentCommentID, replyID):
+      state.pendingDeleteCommentTarget = .reply(parentCommentID: parentCommentID, replyID: replyID)
+    case .deleteCommentConfirmed:
+      await deleteComment()
+    case .dismissDeleteCommentConfirmation:
+      state.pendingDeleteCommentTarget = nil
     case let .toggleReplies(commentID):
       if state.expandedReplyCommentIDs.contains(commentID) {
         state.expandedReplyCommentIDs.remove(commentID)
@@ -207,9 +226,10 @@ final class CommunityPostViewModel {
   private func deletePost() async {
     guard let postID = state.post?.id else { return }
 
+    state.showsDeleteConfirmation = false
+
     do {
       try await useCase.deletePost(postID: postID)
-      state.showsDeleteConfirmation = false
       state.shouldDismiss = true
     } catch {
       state.errorMessage = errorMessage(from: error)
@@ -221,6 +241,11 @@ final class CommunityPostViewModel {
 
     let content = state.commentText.trimmingCharacters(in: .whitespacesAndNewlines)
     guard content.isEmpty == false else { return }
+
+    if let editingCommentTarget = state.editingCommentTarget {
+      await updateComment(target: editingCommentTarget, content: content)
+      return
+    }
 
     do {
       let created = try await useCase.createComment(
@@ -239,6 +264,48 @@ final class CommunityPostViewModel {
     }
   }
 
+  private func startEditingComment(_ target: CommentEditTarget) {
+    guard let content = state.post?.commentContent(for: target) else { return }
+    state.replyingToCommentID = nil
+    state.editingCommentTarget = target
+    state.commentText = content
+  }
+
+  private func updateComment(target: CommentEditTarget, content: String) async {
+    guard let post = state.post else { return }
+
+    do {
+      let updated = try await useCase.updateComment(
+        postID: post.id,
+        commentID: target.commentID,
+        content: content
+      )
+      state.post = post.updating(comment: updated, target: target)
+      state.editingCommentTarget = nil
+      state.commentText = ""
+    } catch {
+      state.errorMessage = errorMessage(from: error)
+    }
+  }
+
+  private func deleteComment() async {
+    guard let post = state.post,
+          let target = state.pendingDeleteCommentTarget else { return }
+
+    state.pendingDeleteCommentTarget = nil
+
+    do {
+      try await useCase.deleteComment(postID: post.id, commentID: target.commentID)
+      state.post = post.removingComment(target)
+      if state.editingCommentTarget == target {
+        state.editingCommentTarget = nil
+        state.commentText = ""
+      }
+    } catch {
+      state.errorMessage = errorMessage(from: error)
+    }
+  }
+
   private func errorMessage(from error: Error) -> String {
     if let serviceError = error as? CommunityServiceError {
       return serviceError.errorDescription ?? "잠시 후 다시 시도해 주세요."
@@ -248,6 +315,19 @@ final class CommunityPostViewModel {
 }
 
 private extension CommunityPost {
+  func commentContent(for target: CommentEditTarget) -> String? {
+    switch target {
+    case let .comment(commentID):
+      comments.first { $0.id == commentID }?.content
+    case let .reply(parentCommentID, replyID):
+      comments
+        .first { $0.id == parentCommentID }?
+        .replies
+        .first { $0.id == replyID }?
+        .content
+    }
+  }
+
   func appending(createdComment: CommunityReply, parentCommentID: String?) -> CommunityPost {
     let updatedComments: [CommunityComment]
     if let parentCommentID {
@@ -274,6 +354,79 @@ private extension CommunityPost {
     }
 
     return CommunityPost(
+      id: id,
+      category: category,
+      title: title,
+      content: content,
+      creator: creator,
+      attachments: attachments,
+      imagePaths: imagePaths,
+      isLiked: isLiked,
+      likeCount: likeCount,
+      comments: updatedComments,
+      createdAt: createdAt,
+      updatedAt: updatedAt
+    )
+  }
+
+  func updating(comment updated: CommunityReply, target: CommentEditTarget) -> CommunityPost {
+    let updatedComments = comments.map { comment in
+      switch target {
+      case let .comment(commentID) where comment.id == commentID:
+        CommunityComment(
+          id: comment.id,
+          content: updated.content,
+          createdAt: updated.createdAt,
+          creator: updated.creator,
+          replies: comment.replies
+        )
+      case let .reply(parentCommentID, replyID) where comment.id == parentCommentID:
+        CommunityComment(
+          id: comment.id,
+          content: comment.content,
+          createdAt: comment.createdAt,
+          creator: comment.creator,
+          replies: comment.replies.map { reply in
+            guard reply.id == replyID else { return reply }
+            return CommunityReply(
+              id: reply.id,
+              content: updated.content,
+              createdAt: updated.createdAt,
+              creator: updated.creator
+            )
+          }
+        )
+      default:
+        comment
+      }
+    }
+
+    return replacingComments(updatedComments)
+  }
+
+  func removingComment(_ target: CommentEditTarget) -> CommunityPost {
+    let updatedComments: [CommunityComment]
+    switch target {
+    case let .comment(commentID):
+      updatedComments = comments.filter { $0.id != commentID }
+    case let .reply(parentCommentID, replyID):
+      updatedComments = comments.map { comment in
+        guard comment.id == parentCommentID else { return comment }
+        return CommunityComment(
+          id: comment.id,
+          content: comment.content,
+          createdAt: comment.createdAt,
+          creator: comment.creator,
+          replies: comment.replies.filter { $0.id != replyID }
+        )
+      }
+    }
+
+    return replacingComments(updatedComments)
+  }
+
+  func replacingComments(_ updatedComments: [CommunityComment]) -> CommunityPost {
+    CommunityPost(
       id: id,
       category: category,
       title: title,

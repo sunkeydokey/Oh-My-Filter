@@ -26,22 +26,28 @@ struct CustomAlertView: View {
           .fixedSize(horizontal: false, vertical: true)
 
         HStack(spacing: 10) {
-          Button(cancelTitle, action: onCancel)
-            .font(TypographyToken.pretendardBody2.font)
-            .foregroundStyle(ColorToken.grayScale60.color)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(ColorToken.brandDeepSprout.color)
-            .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
+          Button(action: onCancel) {
+            Text(cancelTitle)
+              .font(TypographyToken.pretendardBody2.font)
+              .foregroundStyle(ColorToken.grayScale60.color)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 8)
+              .background(ColorToken.brandDeepSprout.color)
+              .buttonHitArea(RoundedRectangle(cornerRadius: CornerRadiusToken.section.value))
+              .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
+          }
 
-          Button(confirmTitle, action: onConfirm)
-            .font(TypographyToken.pretendardBody2.font)
-            .bold()
-            .foregroundStyle(ColorToken.grayScale0.color)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(ColorToken.mainAccent.color)
-            .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
+          Button(action: onConfirm) {
+            Text(confirmTitle)
+              .font(TypographyToken.pretendardBody2.font)
+              .bold()
+              .foregroundStyle(ColorToken.grayScale0.color)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 8)
+              .background(ColorToken.mainAccent.color)
+              .buttonHitArea(RoundedRectangle(cornerRadius: CornerRadiusToken.section.value))
+              .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
+          }
         }
         .buttonStyle(.plain)
       }
@@ -95,15 +101,18 @@ struct CustomAlertSingleButtonView: View {
           .frame(maxWidth: .infinity, alignment: .leading)
           .fixedSize(horizontal: false, vertical: true)
 
-        Button(confirmTitle, action: onConfirm)
-          .font(TypographyToken.pretendardBody2.font)
-          .bold()
-          .foregroundStyle(ColorToken.grayScale0.color)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 8)
-          .background(ColorToken.mainAccent.color)
-          .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
-          .buttonStyle(.plain)
+        Button(action: onConfirm) {
+          Text(confirmTitle)
+            .font(TypographyToken.pretendardBody2.font)
+            .bold()
+            .foregroundStyle(ColorToken.grayScale0.color)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(ColorToken.mainAccent.color)
+            .buttonHitArea(RoundedRectangle(cornerRadius: CornerRadiusToken.section.value))
+            .clipShape(.rect(cornerRadius: CornerRadiusToken.section.value))
+        }
+        .buttonStyle(.plain)
       }
       .padding(.top, 18)
       .padding(.horizontal, 16)

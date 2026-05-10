@@ -4,6 +4,7 @@ import OSLog
 actor LiveFilterDetailService: FilterDetailServicing {
   private let networkManager: any AuthenticatedNetworkManaging
   private let sharedCommentService: any SharedCommentServicing
+  private let userSessionStore: any UserSessionStoring
   private let decoder: JSONDecoder
   private static let logger = Logger(
     subsystem: Bundle.main.bundleIdentifier ?? "Oh-My-Filter",
@@ -13,10 +14,12 @@ actor LiveFilterDetailService: FilterDetailServicing {
   init(
     networkManager: any AuthenticatedNetworkManaging,
     decoder: JSONDecoder = JSONDecoder(),
-    sharedCommentService: (any SharedCommentServicing)? = nil
+    sharedCommentService: (any SharedCommentServicing)? = nil,
+    userSessionStore: any UserSessionStoring = AppUserSessionStore()
   ) {
     self.networkManager = networkManager
     self.sharedCommentService = sharedCommentService ?? LiveSharedCommentService(networkManager: networkManager, decoder: decoder)
+    self.userSessionStore = userSessionStore
     let configuredDecoder = decoder
     configuredDecoder.keyDecodingStrategy = .convertFromSnakeCase
     self.decoder = configuredDecoder
@@ -73,32 +76,56 @@ actor LiveFilterDetailService: FilterDetailServicing {
   }
 
   func loadCurrentUserID() async throws -> String {
+    guard let currentUserID = userSessionStore.currentUserID(),
+          currentUserID.isEmpty == false else {
+      throw FilterDetailServiceError.invalidResponse
+    }
+    return currentUserID
+  }
+
+  func deleteFilter(filterID: String) async throws {
+    guard filterID.isEmpty == false else {
+      throw FilterDetailServiceError.invalidResponse
+    }
+
     let response: NetworkResponse
     do {
-      response = try await networkManager.request(UserApiRouter.getOwnProfile)
+      response = try await networkManager.request(FilterApiRouter.delete(filterID: filterID))
     } catch let error as NetworkError {
       throw mappedNetworkError(error)
     } catch {
-      Self.logger.error("❌ [FilterDetailAPI] own profile failed \(String(describing: error), privacy: .public)")
       throw FilterDetailServiceError.transport
     }
 
-    switch response.statusCode {
-    case 200 ..< 300:
-      do {
-        let profile = try decoder.decode(CurrentUserProfileResponseDTO.self, from: response.data)
-        guard profile.userId.isEmpty == false else {
-          throw FilterDetailServiceError.invalidResponse
-        }
-        return profile.userId
-      } catch let error as FilterDetailServiceError {
-        throw error
-      } catch {
-        Self.logger.error("❌ [FilterDetailAPI] own profile decode failed \(String(describing: error), privacy: .public)")
-        throw FilterDetailServiceError.invalidResponse
-      }
-    default:
-      throw FilterDetailServiceError.serverError
+    try validateEmptyResponse(response)
+  }
+
+  func updateComment(filterID: String, commentID: String, content: String) async throws -> CommentReply {
+    guard filterID.isEmpty == false, commentID.isEmpty == false else {
+      throw FilterDetailServiceError.invalidResponse
+    }
+
+    do {
+      return try await sharedCommentService.updateComment(
+        router: FilterApiRouter.updateComment(filterID: filterID, commentID: commentID),
+        content: content
+      )
+    } catch let error as SharedCommentServiceError {
+      throw mappedCommentError(error)
+    }
+  }
+
+  func deleteComment(filterID: String, commentID: String) async throws {
+    guard filterID.isEmpty == false, commentID.isEmpty == false else {
+      throw FilterDetailServiceError.invalidResponse
+    }
+
+    do {
+      try await sharedCommentService.deleteComment(
+        router: FilterApiRouter.deleteComment(filterID: filterID, commentID: commentID)
+      )
+    } catch let error as SharedCommentServiceError {
+      throw mappedCommentError(error)
     }
   }
 
@@ -119,6 +146,17 @@ actor LiveFilterDetailService: FilterDetailServicing {
       .serverError
     case .transport:
       .transport
+    }
+  }
+
+  private func validateEmptyResponse(_ response: NetworkResponse) throws {
+    switch response.statusCode {
+    case 200 ..< 300:
+      return
+    case 404, 445:
+      throw FilterDetailServiceError.serverError
+    default:
+      throw FilterDetailServiceError.serverError
     }
   }
 }

@@ -62,6 +62,7 @@ struct ContentView: View {
     .onChange(of: pushRoutingStore.pendingRoute) { _, _ in
       consumePendingPushRoute()
     }
+    .keyboardDismissOnTap()
   }
 
   private func consumePendingPushRoute() {

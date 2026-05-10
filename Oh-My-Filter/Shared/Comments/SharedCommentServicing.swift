@@ -6,6 +6,11 @@ nonisolated protocol SharedCommentServicing: Sendable {
     parentCommentID: String?,
     content: String
   ) async throws -> CommentReply
+  func updateComment<Router: ApiRouter>(
+    router: Router,
+    content: String
+  ) async throws -> CommentReply
+  func deleteComment<Router: ApiRouter>(router: Router) async throws
 }
 
 nonisolated enum SharedCommentServiceError: Error, Equatable, LocalizedError, Sendable {
@@ -75,6 +80,40 @@ actor LiveSharedCommentService: SharedCommentServicing {
     return try decode(CommentReplyDTO.self, from: response).toDomain()
   }
 
+  func updateComment<Router: ApiRouter>(
+    router: Router,
+    content: String
+  ) async throws -> CommentReply {
+    guard content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
+      throw SharedCommentServiceError.invalidRequest
+    }
+
+    let body = CommentUpdateRequestDTO(content: content)
+    let response: NetworkResponse
+    do {
+      response = try await networkManager.request(router, body: body, parameters: .empty)
+    } catch let error as NetworkError {
+      throw mappedNetworkError(error)
+    } catch {
+      throw SharedCommentServiceError.transport
+    }
+
+    return try decode(CommentReplyDTO.self, from: response).toDomain()
+  }
+
+  func deleteComment<Router: ApiRouter>(router: Router) async throws {
+    let response: NetworkResponse
+    do {
+      response = try await networkManager.request(router, parameters: .empty)
+    } catch let error as NetworkError {
+      throw mappedNetworkError(error)
+    } catch {
+      throw SharedCommentServiceError.transport
+    }
+
+    try validateEmptyResponse(response)
+  }
+
   private func decode<DTO: Decodable>(_ type: DTO.Type, from response: NetworkResponse) throws -> DTO {
     switch response.statusCode {
     case 200 ..< 300:
@@ -83,6 +122,21 @@ actor LiveSharedCommentService: SharedCommentServicing {
       } catch {
         throw SharedCommentServiceError.invalidResponse
       }
+    case 400:
+      throw SharedCommentServiceError.invalidRequest
+    case 404:
+      throw SharedCommentServiceError.notFound
+    case 445:
+      throw SharedCommentServiceError.permissionDenied
+    default:
+      throw SharedCommentServiceError.serverError
+    }
+  }
+
+  private func validateEmptyResponse(_ response: NetworkResponse) throws {
+    switch response.statusCode {
+    case 200 ..< 300:
+      return
     case 400:
       throw SharedCommentServiceError.invalidRequest
     case 404:

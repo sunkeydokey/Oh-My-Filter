@@ -79,6 +79,10 @@ nonisolated struct CommentRequestDTO: Encodable, Sendable {
   let content: String
 }
 
+nonisolated struct CommentUpdateRequestDTO: Encodable, Sendable {
+  let content: String
+}
+
 extension CommentDTO {
   nonisolated func toDomain() -> Comment {
     Comment(

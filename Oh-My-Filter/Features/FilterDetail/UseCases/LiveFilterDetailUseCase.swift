@@ -20,7 +20,19 @@ nonisolated struct LiveFilterDetailUseCase: FilterDetailUseCase {
     try await service.loadCurrentUserID()
   }
 
+  func deleteFilter(filterID: String) async throws {
+    try await service.deleteFilter(filterID: filterID)
+  }
+
   func createComment(filterID: String, parentCommentID: String?, content: String) async throws -> CommentReply {
     try await service.createComment(filterID: filterID, parentCommentID: parentCommentID, content: content)
+  }
+
+  func updateComment(filterID: String, commentID: String, content: String) async throws -> CommentReply {
+    try await service.updateComment(filterID: filterID, commentID: commentID, content: content)
+  }
+
+  func deleteComment(filterID: String, commentID: String) async throws {
+    try await service.deleteComment(filterID: filterID, commentID: commentID)
   }
 }

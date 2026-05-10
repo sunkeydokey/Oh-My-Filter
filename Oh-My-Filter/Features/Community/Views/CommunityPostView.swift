@@ -14,29 +14,51 @@ struct CommunityPostView: View {
     preloadedImages: [PhotoPickerUploadSelection] = [],
     navigate: @escaping (CommunityRoute) -> Void = { _ in }
   ) {
-    self._viewModel = State(initialValue: CommunityPostViewModel(mode: mode, preloadedImages: preloadedImages))
+    _viewModel = State(initialValue: CommunityPostViewModel(mode: mode, preloadedImages: preloadedImages))
     self.navigate = navigate
   }
 
   var body: some View {
-    Group {
-      switch viewModel.state.phase {
-      case .initial, .loading:
-        CommunityPostLoadingView(title: viewModel.state.navigationTitle)
-      case let .error(message):
-        CommunityPostErrorView(title: viewModel.state.navigationTitle, message: message) {
-          Task {
-            await viewModel.send(.retry)
+    ZStack {
+      Group {
+        switch viewModel.state.phase {
+        case .initial, .loading:
+          CommunityPostLoadingView(title: viewModel.state.navigationTitle)
+        case let .error(message):
+          CommunityPostErrorView(title: viewModel.state.navigationTitle, message: message) {
+            Task {
+              await viewModel.send(.retry)
+            }
           }
-        }
-      case .empty:
-        CommunityPostErrorView(title: viewModel.state.navigationTitle, message: "콘텐츠를 찾을 수 없습니다") {
-          Task {
-            await viewModel.send(.retry)
+        case .empty:
+          CommunityPostErrorView(title: viewModel.state.navigationTitle, message: "콘텐츠를 찾을 수 없습니다") {
+            Task {
+              await viewModel.send(.retry)
+            }
           }
+        case .loaded:
+          loadedContent
         }
-      case .loaded:
-        loadedContent
+      }
+
+      if viewModel.state.showsDeleteConfirmation {
+        CustomAlertView(
+          title: "게시글 삭제",
+          message: "게시글을 삭제할까요?",
+          cancelTitle: "취소",
+          confirmTitle: "삭제",
+          onCancel: dismissDeleteConfirmation,
+          onConfirm: confirmDelete
+        )
+      } else if viewModel.state.pendingDeleteCommentTarget != nil {
+        CustomAlertView(
+          title: "댓글 삭제",
+          message: "댓글을 삭제할까요?",
+          cancelTitle: "취소",
+          confirmTitle: "삭제",
+          onCancel: dismissDeleteCommentConfirmation,
+          onConfirm: confirmDeleteComment
+        )
       }
     }
     .background(ColorToken.grayScale100.color.ignoresSafeArea())
@@ -73,21 +95,6 @@ struct CommunityPostView: View {
         }
       }
       Button("계속 수정", role: .cancel) {}
-    }
-    .confirmationDialog(
-      "게시글을 삭제할까요?",
-      isPresented: Binding(
-        get: { viewModel.state.showsDeleteConfirmation },
-        set: { _ in }
-      ),
-      titleVisibility: .visible
-    ) {
-      Button("삭제", role: .destructive) {
-        Task {
-          await viewModel.send(.deleteConfirmed)
-        }
-      }
-      Button("취소", role: .cancel) {}
     }
     .alert(
       "오류",
@@ -127,9 +134,6 @@ struct CommunityPostView: View {
     }
     .scrollIndicators(.hidden)
     .scrollDismissesKeyboard(.interactively)
-    .onTapGesture {
-      focusedField = nil
-    }
     .safeAreaInset(edge: .bottom) {
       if viewModel.state.isDetail == false {
         stickyPrimaryAction
@@ -166,8 +170,8 @@ struct CommunityPostView: View {
       Spacer()
 
       if viewModel.state.isDetail {
-        Menu {
-          if viewModel.state.isOwner {
+        if viewModel.state.isMine {
+          Menu {
             Button("수정") {
               Task {
                 await viewModel.send(.editTapped)
@@ -178,14 +182,14 @@ struct CommunityPostView: View {
                 await viewModel.send(.deleteTapped)
               }
             }
+          } label: {
+            Image(systemName: "ellipsis")
+              .font(.system(size: 20, weight: .semibold))
+              .frame(width: 44, height: 44)
+              .foregroundStyle(ColorToken.grayScale45.color)
           }
-        } label: {
-          Image(systemName: "ellipsis")
-            .font(.system(size: 20, weight: .semibold))
-            .frame(width: 44, height: 44)
-            .foregroundStyle(ColorToken.grayScale45.color)
+          .disabled(viewModel.state.isMine == false)
         }
-        .disabled(viewModel.state.isOwner == false)
       } else {
         Button(viewModel.state.primaryActionTitle) {
           Task {
@@ -417,7 +421,7 @@ struct CommunityPostView: View {
         isPrimary: false
       ) {}
 
-      if viewModel.state.isOwner {
+      if viewModel.state.isMine {
         CommunityPostActionButton(title: "수정", systemImage: nil, isPrimary: false) {
           Task {
             await viewModel.send(.editTapped)
@@ -436,8 +440,10 @@ struct CommunityPostView: View {
   private var commentSection: some View {
     SharedCommentSectionView(
       comments: viewModel.state.post?.comments ?? [],
+      currentUserID: viewModel.state.currentUserID,
       expandedReplyCommentIDs: viewModel.state.expandedReplyCommentIDs,
       replyingToCommentID: viewModel.state.replyingToCommentID,
+      editingCommentTarget: viewModel.state.editingCommentTarget,
       commentText: viewModel.state.commentText,
       onTextChanged: { text in
         viewModel.updateCommentText(text)
@@ -457,9 +463,34 @@ struct CommunityPostView: View {
           await viewModel.send(.cancelReply)
         }
       },
+      onCancelEdit: {
+        Task {
+          await viewModel.send(.cancelCommentEdit)
+        }
+      },
       onToggleReplies: { commentID in
         Task {
           await viewModel.send(.toggleReplies(commentID: commentID))
+        }
+      },
+      onEditComment: { commentID in
+        Task {
+          await viewModel.send(.editCommentTapped(commentID: commentID))
+        }
+      },
+      onDeleteComment: { commentID in
+        Task {
+          await viewModel.send(.deleteCommentTapped(commentID: commentID))
+        }
+      },
+      onEditReply: { parentCommentID, replyID in
+        Task {
+          await viewModel.send(.editReplyTapped(parentCommentID: parentCommentID, replyID: replyID))
+        }
+      },
+      onDeleteReply: { parentCommentID, replyID in
+        Task {
+          await viewModel.send(.deleteReplyTapped(parentCommentID: parentCommentID, replyID: replyID))
         }
       }
     )
@@ -480,12 +511,29 @@ struct CommunityPostView: View {
           viewModel.state.canSubmit ? ColorToken.mainAccent.color : ColorToken.grayScale90.color,
           in: RoundedRectangle(cornerRadius: 18, style: .continuous)
         )
+        .buttonHitArea(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
     .buttonStyle(.plain)
     .disabled(viewModel.state.canSubmit == false)
     .padding(.horizontal, 20)
     .padding(.vertical, 10)
     .background(ColorToken.grayScale100.color)
+  }
+
+  private func dismissDeleteConfirmation() {
+    Task { await viewModel.send(.dismissDeleteConfirmation) }
+  }
+
+  private func confirmDelete() {
+    Task { await viewModel.send(.deleteConfirmed) }
+  }
+
+  private func dismissDeleteCommentConfirmation() {
+    Task { await viewModel.send(.dismissDeleteCommentConfirmation) }
+  }
+
+  private func confirmDeleteComment() {
+    Task { await viewModel.send(.deleteCommentConfirmed) }
   }
 }
 
@@ -733,6 +781,7 @@ private struct CommunityPostActionButton: View {
       .padding(.horizontal, 14)
       .frame(height: 42)
       .background(isPrimary ? ColorToken.mainAccent.color : ColorToken.brandBlackSprout.color, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+      .buttonHitArea(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
     .buttonStyle(.plain)
   }
@@ -777,12 +826,15 @@ private struct CommunityPostErrorView: View {
         .font(TypographyToken.pretendardBody2.font)
         .foregroundStyle(ColorToken.grayScale45.color)
 
-      Button("다시 시도", action: retry)
-        .font(TypographyToken.pretendardBody2.font.weight(.bold))
-        .foregroundStyle(ColorToken.grayScale15.color)
-        .padding(.horizontal, 16)
-        .frame(height: 42)
-        .background(ColorToken.mainAccent.color, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+      Button(action: retry) {
+        Text("다시 시도")
+          .font(TypographyToken.pretendardBody2.font.weight(.bold))
+          .foregroundStyle(ColorToken.grayScale15.color)
+          .padding(.horizontal, 16)
+          .frame(height: 42)
+          .background(ColorToken.mainAccent.color, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+          .buttonHitArea(RoundedRectangle(cornerRadius: 14, style: .continuous))
+      }
 
       Spacer()
     }

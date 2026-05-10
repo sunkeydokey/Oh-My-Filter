@@ -75,10 +75,25 @@ struct CommunityPostViewModelTests {
     #expect(viewModel.state.expandedReplyCommentIDs.contains("comment-1"))
     #expect(viewModel.state.commentText.isEmpty)
   }
+
+  @Test("confirming comment deletion calls delete API and clears confirmation")
+  func confirmingCommentDeletionCallsDeleteAPI() async {
+    let useCase = StubCommunityPostUseCase(post: .postWithComment)
+    let viewModel = CommunityPostViewModel(mode: .detail(postID: "post-1"), useCase: useCase)
+
+    await viewModel.send(.task)
+    await viewModel.send(.deleteCommentTapped(commentID: "comment-1"))
+    await viewModel.send(.deleteCommentConfirmed)
+
+    #expect(await useCase.deletedCommentRequests == [CommunityCommentDeleteRequest(postID: "post-1", commentID: "comment-1")])
+    #expect(viewModel.state.pendingDeleteCommentTarget == nil)
+    #expect(viewModel.state.post?.comments.isEmpty == true)
+  }
 }
 
 private actor StubCommunityPostUseCase: CommunityFeedUseCase {
   private let post: CommunityPost
+  private(set) var deletedCommentRequests: [CommunityCommentDeleteRequest] = []
 
   init(post: CommunityPost) {
     self.post = post
@@ -122,9 +137,22 @@ private actor StubCommunityPostUseCase: CommunityFeedUseCase {
     CommunityReply(id: "reply-1", content: content, createdAt: "2024-07-21T14:00:00.000Z", creator: .creator)
   }
 
+  func updateComment(postID: String, commentID: String, content: String) async throws -> CommunityReply {
+    CommunityReply(id: commentID, content: content, createdAt: "2024-07-21T14:00:00.000Z", creator: .creator)
+  }
+
+  func deleteComment(postID: String, commentID: String) async throws {
+    deletedCommentRequests.append(CommunityCommentDeleteRequest(postID: postID, commentID: commentID))
+  }
+
   func loadVideos(nextCursor: String?, limit: Int) async throws -> CommunityVideoPage {
     CommunityVideoPage(videos: [], nextCursor: "0")
   }
+}
+
+private struct CommunityCommentDeleteRequest: Equatable {
+  let postID: String
+  let commentID: String
 }
 
 private extension CommunityCreator {
