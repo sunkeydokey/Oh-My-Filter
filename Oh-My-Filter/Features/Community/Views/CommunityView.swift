@@ -3,9 +3,14 @@ import SwiftUI
 
 struct CommunityView: View {
   @State private var viewModel = CommunityViewModel()
+  let mutationStore: CommunityPostMutationStore?
   let navigate: (CommunityRoute) -> Void
 
-  init(navigate: @escaping (CommunityRoute) -> Void = { _ in }) {
+  init(
+    mutationStore: CommunityPostMutationStore? = nil,
+    navigate: @escaping (CommunityRoute) -> Void = { _ in }
+  ) {
+    self.mutationStore = mutationStore
     self.navigate = navigate
   }
 
@@ -30,6 +35,13 @@ struct CommunityView: View {
       navigate(route)
       Task {
         await viewModel.send(.routeHandled)
+      }
+    }
+    .onChange(of: mutationStore?.pendingMutation) { _, mutation in
+      guard let mutation else { return }
+      Task {
+        await viewModel.send(.postMutationReceived(mutation))
+        mutationStore?.markHandled()
       }
     }
   }

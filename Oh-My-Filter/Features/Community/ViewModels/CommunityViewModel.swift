@@ -67,6 +67,8 @@ final class CommunityViewModel {
       updatePhaseForVisibleContent()
     case let .scroll(event):
       await handleScroll(event)
+    case let .postMutationReceived(mutation):
+      applyPostMutation(mutation)
     case .createPostTapped:
       state.route = .postCreate
     case let .postTapped(postID):
@@ -253,6 +255,54 @@ final class CommunityViewModel {
       state.isLoadingMoreLikedPosts = false
       state.paginationErrorMessage = Self.fallbackMessage(for: error)
     }
+  }
+
+  private func applyPostMutation(_ mutation: CommunityPostMutation) {
+    let searchQuery = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    switch mutation {
+    case let .created(post):
+      upsert(post, in: &state.posts, insertIfMissing: true)
+
+      if searchQuery.isEmpty == false, post.title.localizedStandardContains(searchQuery) {
+        upsert(post, in: &state.searchedPosts, insertIfMissing: true)
+      }
+
+      if post.isLiked {
+        upsert(post, in: &state.likedPosts, insertIfMissing: true)
+      }
+    case let .updated(post):
+      upsert(post, in: &state.posts, insertIfMissing: false)
+      if post.isLiked {
+        upsert(post, in: &state.likedPosts, insertIfMissing: false)
+      } else {
+        removePost(post.id, from: &state.likedPosts)
+      }
+
+      if searchQuery.isEmpty == false, post.title.localizedStandardContains(searchQuery) {
+        upsert(post, in: &state.searchedPosts, insertIfMissing: false)
+      } else {
+        removePost(post.id, from: &state.searchedPosts)
+      }
+    case let .deleted(postID):
+      removePost(postID, from: &state.posts)
+      removePost(postID, from: &state.likedPosts)
+      removePost(postID, from: &state.searchedPosts)
+    }
+
+    updatePhaseForVisibleContent()
+  }
+
+  private func upsert(_ post: CommunityPost, in posts: inout [CommunityPost], insertIfMissing: Bool) {
+    if let index = posts.firstIndex(where: { $0.id == post.id }) {
+      posts[index] = post
+    } else if insertIfMissing {
+      posts.insert(post, at: 0)
+    }
+  }
+
+  private func removePost(_ postID: String, from posts: inout [CommunityPost]) {
+    posts.removeAll { $0.id == postID }
   }
 
   private func updatePhaseForVisibleContent() {
