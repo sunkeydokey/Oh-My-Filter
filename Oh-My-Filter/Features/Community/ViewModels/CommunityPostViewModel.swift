@@ -6,20 +6,32 @@ final class CommunityPostViewModel {
   var state: CommunityPostState
 
   private let useCase: any CommunityFeedUseCase
+  private let mutationStore: CommunityPostMutationStore?
 
   init(
     mode: CommunityPostMode,
     preloadedImages: [PhotoPickerUploadSelection] = [],
-    useCase: any CommunityFeedUseCase
+    useCase: any CommunityFeedUseCase,
+    mutationStore: CommunityPostMutationStore? = nil
   ) {
     var initialState = CommunityPostState(mode: mode)
     initialState.selectedImages = preloadedImages
     self.state = initialState
     self.useCase = useCase
+    self.mutationStore = mutationStore
   }
 
-  convenience init(mode: CommunityPostMode, preloadedImages: [PhotoPickerUploadSelection] = []) {
-    self.init(mode: mode, preloadedImages: preloadedImages, useCase: LiveCommunityFeedUseCase())
+  convenience init(
+    mode: CommunityPostMode,
+    preloadedImages: [PhotoPickerUploadSelection] = [],
+    mutationStore: CommunityPostMutationStore? = nil
+  ) {
+    self.init(
+      mode: mode,
+      preloadedImages: preloadedImages,
+      useCase: LiveCommunityFeedUseCase(),
+      mutationStore: mutationStore
+    )
   }
 
   func updateCategory(_ category: String) {
@@ -161,7 +173,8 @@ final class CommunityPostViewModel {
       switch state.mode {
       case .create:
         post = try await useCase.createPost(draft: state.draft, newImages: state.selectedImages)
-        state.route = .postDetail(postID: post.id)
+        updateStateForCreatedPost(post)
+        mutationStore?.publish(.created(post))
       case let .edit(postID):
         post = try await useCase.updatePost(postID: postID, draft: state.draft, newImages: state.selectedImages)
         state.post = post
@@ -173,6 +186,7 @@ final class CommunityPostViewModel {
         )
         state.draft = state.originalDraft
         state.selectedImages = []
+        mutationStore?.publish(.updated(post))
         state.shouldDismiss = true
       case .detail:
         break
@@ -230,10 +244,27 @@ final class CommunityPostViewModel {
 
     do {
       try await useCase.deletePost(postID: postID)
+      mutationStore?.publish(.deleted(postID: postID))
       state.shouldDismiss = true
     } catch {
       state.errorMessage = errorMessage(from: error)
     }
+  }
+
+  private func updateStateForCreatedPost(_ post: CommunityPost) {
+    state.mode = .detail(postID: post.id)
+    state.phase = .loaded
+    state.post = post
+    state.originalDraft = CommunityPostDraft(
+      category: post.category,
+      title: post.title,
+      content: post.content,
+      existingFilePaths: post.imagePaths
+    )
+    state.draft = state.originalDraft
+    state.selectedImages = []
+    state.touchedFields = []
+    state.expandedReplyCommentIDs = Set(post.comments.map(\.id))
   }
 
   private func submitComment() async {

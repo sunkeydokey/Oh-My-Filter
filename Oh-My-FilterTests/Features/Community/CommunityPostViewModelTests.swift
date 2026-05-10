@@ -45,6 +45,28 @@ struct CommunityPostViewModelTests {
     #expect(viewModel.state.touchedFields.contains(.content))
   }
 
+  @Test("create submit updates current view to detail without pushing route")
+  func createSubmitUpdatesCurrentViewToDetail() async {
+    let mutationStore = CommunityPostMutationStore()
+    let viewModel = CommunityPostViewModel(
+      mode: .create,
+      useCase: StubCommunityPostUseCase(post: .postWithComment),
+      mutationStore: mutationStore
+    )
+
+    await viewModel.send(.categoryChanged("보정"))
+    await viewModel.send(.titleChanged("제목"))
+    await viewModel.send(.contentChanged("내용"))
+    await viewModel.send(.submit)
+
+    #expect(viewModel.state.mode == .detail(postID: "post-1"))
+    #expect(viewModel.state.post == .postWithComment)
+    #expect(viewModel.state.route == nil)
+    #expect(viewModel.state.shouldDismiss == false)
+    #expect(viewModel.state.selectedImages.isEmpty)
+    #expect(mutationStore.pendingMutation == .created(.postWithComment))
+  }
+
   @Test("edit load pre-fills draft and detects dirty state")
   func editLoadPrefillsDraft() async {
     let useCase = StubCommunityPostUseCase(post: .postWithComment)
@@ -58,6 +80,41 @@ struct CommunityPostViewModelTests {
 
     await viewModel.send(.titleChanged("새 제목"))
     #expect(viewModel.state.isDirty)
+  }
+
+  @Test("edit submit publishes update and dismisses")
+  func editSubmitPublishesUpdate() async {
+    let mutationStore = CommunityPostMutationStore()
+    let useCase = StubCommunityPostUseCase(post: .postWithComment)
+    let viewModel = CommunityPostViewModel(
+      mode: .edit(postID: "post-1"),
+      useCase: useCase,
+      mutationStore: mutationStore
+    )
+
+    await viewModel.send(.task)
+    await viewModel.send(.titleChanged("새 제목"))
+    await viewModel.send(.submit)
+
+    #expect(mutationStore.pendingMutation == .updated(.postWithComment))
+    #expect(viewModel.state.shouldDismiss)
+  }
+
+  @Test("post deletion publishes delete and dismisses")
+  func postDeletionPublishesDelete() async {
+    let mutationStore = CommunityPostMutationStore()
+    let useCase = StubCommunityPostUseCase(post: .postWithComment)
+    let viewModel = CommunityPostViewModel(
+      mode: .detail(postID: "post-1"),
+      useCase: useCase,
+      mutationStore: mutationStore
+    )
+
+    await viewModel.send(.task)
+    await viewModel.send(.deleteConfirmed)
+
+    #expect(mutationStore.pendingMutation == .deleted(postID: "post-1"))
+    #expect(viewModel.state.shouldDismiss)
   }
 
   @Test("reply submit appends one-depth reply and expands group")

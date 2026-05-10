@@ -8,6 +8,7 @@ nonisolated enum CommunityAction: Sendable {
   case submitSearch
   case clearSearch
   case scroll(CommunityScrollEvent)
+  case postMutationReceived(CommunityPostMutation)
   case createPostTapped
   case postTapped(String)
   case videoTapped(CommunityVideo)

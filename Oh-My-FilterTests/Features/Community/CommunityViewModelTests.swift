@@ -161,6 +161,73 @@ struct CommunityViewModelTests {
     await viewModel.send(.createPostTapped)
     #expect(viewModel.state.route == .postCreate)
   }
+
+  @Test("create mutation prepends post while preserving loaded pages and cursor")
+  func createMutationPrependsPost() async {
+    let viewModel = CommunityViewModel(useCase: QueueCommunityUseCase())
+    viewModel.state.hasLoaded = true
+    viewModel.state.phase = .loaded
+    viewModel.state.posts = [.first, .second]
+    viewModel.state.postsNextCursor = "next-post"
+
+    await viewModel.send(.postMutationReceived(.created(.third)))
+
+    #expect(viewModel.state.posts == [.third, .first, .second])
+    #expect(viewModel.state.postsNextCursor == "next-post")
+    #expect(viewModel.state.phase == .loaded)
+  }
+
+  @Test("update mutation replaces loaded post arrays")
+  func updateMutationReplacesLoadedPostArrays() async {
+    let viewModel = CommunityViewModel(useCase: QueueCommunityUseCase())
+    let updatedFirst = CommunityPost.first.replacing(title: "First updated", isLiked: true)
+    viewModel.state.hasLoaded = true
+    viewModel.state.phase = .loaded
+    viewModel.state.posts = [.first, .second]
+    viewModel.state.likedPosts = [.first]
+    viewModel.state.searchedPosts = [.first]
+    viewModel.state.searchText = "updated"
+
+    await viewModel.send(.postMutationReceived(.updated(updatedFirst)))
+
+    #expect(viewModel.state.posts == [updatedFirst, .second])
+    #expect(viewModel.state.likedPosts == [updatedFirst])
+    #expect(viewModel.state.searchedPosts == [updatedFirst])
+  }
+
+  @Test("delete mutation removes post without resetting pagination")
+  func deleteMutationRemovesPost() async {
+    let viewModel = CommunityViewModel(useCase: QueueCommunityUseCase())
+    viewModel.state.hasLoaded = true
+    viewModel.state.phase = .loaded
+    viewModel.state.posts = [.first, .second, .third]
+    viewModel.state.likedPosts = [.second]
+    viewModel.state.searchedPosts = [.second, .third]
+    viewModel.state.postsNextCursor = "next-post"
+
+    await viewModel.send(.postMutationReceived(.deleted(postID: "post-2")))
+
+    #expect(viewModel.state.posts == [.first, .third])
+    #expect(viewModel.state.likedPosts.isEmpty)
+    #expect(viewModel.state.searchedPosts == [.third])
+    #expect(viewModel.state.postsNextCursor == "next-post")
+  }
+
+  @Test("search active create mutation updates only matching search results")
+  func searchActiveCreateMutationFiltersSearchResults() async {
+    let viewModel = CommunityViewModel(useCase: QueueCommunityUseCase())
+    viewModel.state.hasLoaded = true
+    viewModel.state.phase = .loaded
+    viewModel.state.posts = [.first]
+    viewModel.state.searchedPosts = [.first]
+    viewModel.state.searchText = "Second"
+
+    await viewModel.send(.postMutationReceived(.created(.third)))
+    await viewModel.send(.postMutationReceived(.created(.second)))
+
+    #expect(viewModel.state.posts == [.second, .third, .first])
+    #expect(viewModel.state.searchedPosts == [.second, .first])
+  }
 }
 
 private actor ControlledCommunityUseCase: CommunityFeedUseCase {
@@ -323,6 +390,23 @@ private extension CommunityCreator {
 }
 
 private extension CommunityPost {
+  func replacing(title: String? = nil, isLiked: Bool? = nil) -> CommunityPost {
+    CommunityPost(
+      id: id,
+      category: category,
+      title: title ?? self.title,
+      content: content,
+      creator: creator,
+      attachments: attachments,
+      imagePaths: imagePaths,
+      isLiked: isLiked ?? self.isLiked,
+      likeCount: likeCount,
+      comments: comments,
+      createdAt: createdAt,
+      updatedAt: updatedAt
+    )
+  }
+
   static let first = CommunityPost(
     id: "post-1",
     category: "핫스팟",

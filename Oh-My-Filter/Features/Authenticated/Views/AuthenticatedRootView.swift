@@ -13,6 +13,7 @@ struct AuthenticatedRootView: View {
   @State private var mainPath: [MainRoute] = []
   @State private var feedPath: [MainRoute] = []
   @State private var communityPath: [CommunityRoute] = []
+  @State private var communityPostMutationStore = CommunityPostMutationStore()
   @State private var pendingChatRoomID: String?
   @State private var profilePath: [ProfileRoute] = []
   let pendingRoute: AppAuthenticatedRoute?
@@ -88,21 +89,21 @@ struct AuthenticatedRootView: View {
 
       Tab("커뮤니티", systemImage: "person.3.fill", value: .community) {
         NavigationStack(path: $communityPath) {
-          CommunityView { route in
+          CommunityView(mutationStore: communityPostMutationStore) { route in
             communityPath.append(route)
           }
           .navigationDestination(for: CommunityRoute.self) { route in
             switch route {
             case .postCreate:
-              CommunityPostView(mode: .create) { route in
+              CommunityPostView(mode: .create, mutationStore: communityPostMutationStore) { route in
                 communityPath.append(route)
               }
             case let .postDetail(postID):
-              CommunityPostView(mode: .detail(postID: postID)) { route in
+              CommunityPostView(mode: .detail(postID: postID), mutationStore: communityPostMutationStore) { route in
                 communityPath.append(route)
               }
             case let .postEdit(postID):
-              CommunityPostView(mode: .edit(postID: postID)) { route in
+              CommunityPostView(mode: .edit(postID: postID), mutationStore: communityPostMutationStore) { route in
                 communityPath.append(route)
               }
             case let .videoDetail(video):
