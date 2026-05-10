@@ -10,6 +10,7 @@ final class ChatListViewModel {
   private let store: any ChatLocalStoring
   private var searchTask: Task<Void, Never>?
   private var pendingRoomID: String?
+  private var autoRefreshTask: Task<Void, Never>?
 
   init(
     service: any ChatServicing,
@@ -21,8 +22,19 @@ final class ChatListViewModel {
 
   func send(_ action: ChatListAction) async {
     switch action {
-    case .task, .refresh:
+    case .task:
       await loadRooms()
+    case .refresh:
+      await refetchRooms(silent: false)
+      restartAutoRefresh()
+    case .autoRefresh:
+      await refetchRooms(silent: true)
+    case .disappeared:
+      autoRefreshTask?.cancel()
+      autoRefreshTask = nil
+    case .viewAppeared:
+      guard state.currentUserID.isEmpty == false else { return }
+      restartAutoRefresh()
     case let .searchChanged(searchText):
       state.searchText = searchText
       debounceSearch(for: searchText)
@@ -62,6 +74,7 @@ final class ChatListViewModel {
       state.rooms = try store.fetchRooms()
       selectPendingRoomIfAvailable()
       state.isLoading = false
+      restartAutoRefresh()
     } catch is CancellationError {
       state.isLoading = false
     } catch {
@@ -149,6 +162,44 @@ final class ChatListViewModel {
     state.selectedRoom = room
     self.pendingRoomID = nil
     return true
+  }
+
+  private func refetchRooms(silent: Bool) async {
+    guard state.currentUserID.isEmpty == false else { return }
+
+    do {
+      let remoteRooms = try await service.loadRooms().map { room in
+        ChatRoom(
+          id: room.id,
+          updatedAt: room.updatedAt,
+          participants: room.participants,
+          lastMessage: room.lastMessage,
+          lastSeenAt: try store.lastSeenAt(roomID: room.id)
+        )
+      }
+      try store.upsertRooms(remoteRooms)
+      state.rooms = try store.fetchRooms()
+      selectPendingRoomIfAvailable()
+    } catch is CancellationError {
+    } catch {
+      if silent == false {
+        state.errorMessage = Self.message(for: error)
+      }
+    }
+  }
+
+  private func restartAutoRefresh() {
+    autoRefreshTask?.cancel()
+    autoRefreshTask = Task { [weak self] in
+      while true {
+        do {
+          try await Task.sleep(for: .seconds(15))
+        } catch {
+          return
+        }
+        await self?.send(.autoRefresh)
+      }
+    }
   }
 
   private func handleSearchFailure(_ error: Error) {

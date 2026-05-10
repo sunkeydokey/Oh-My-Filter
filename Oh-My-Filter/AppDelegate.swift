@@ -103,6 +103,8 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     willPresent notification: UNNotification,
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
+    let userInfo = notification.request.content.userInfo
+    NotificationCenter.default.post(name: .pushNotificationReceived, object: nil, userInfo: ["payload": userInfo])
     completionHandler([.banner, .badge, .sound])
   }
 
@@ -113,6 +115,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
   ) {
     let userInfo = response.notification.request.content.userInfo
     print("Push tapped: \(userInfo)")
+    NotificationCenter.default.post(name: .pushNotificationReceived, object: nil, userInfo: ["payload": userInfo])
     Task { @MainActor in
       PushNotificationRoutingStore.shared.receive(userInfo: userInfo)
       completionHandler()

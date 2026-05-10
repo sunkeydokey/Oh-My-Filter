@@ -15,6 +15,7 @@ final class CommunityViewModel {
 
   private let useCase: any CommunityFeedUseCase
   private let tokenRefreshCoordinator: (any TokenRefreshCoordinating)?
+  private var autoRefreshTask: Task<Void, Never>?
 
   init(
     useCase: any CommunityFeedUseCase,
@@ -46,6 +47,17 @@ final class CommunityViewModel {
     case .task:
       guard state.hasLoaded == false else { return }
       await reload()
+    case .refresh:
+      await refetch(silent: false)
+      restartAutoRefresh()
+    case .autoRefresh:
+      await refetch(silent: true)
+    case .disappeared:
+      autoRefreshTask?.cancel()
+      autoRefreshTask = nil
+    case .viewAppeared:
+      guard state.hasLoaded else { return }
+      restartAutoRefresh()
     case .retry:
       await reload()
     case let .selectedTabChanged(tab):
@@ -103,6 +115,7 @@ final class CommunityViewModel {
       state.videosNextCursor = videos.nextCursor
       state.hasLoaded = true
       updatePhaseForVisibleContent()
+      restartAutoRefresh()
     } catch is CancellationError {
       state.phase = .loaded
     } catch {
@@ -301,8 +314,69 @@ final class CommunityViewModel {
     }
   }
 
+  private func upsertVideo(_ video: CommunityVideo, in videos: inout [CommunityVideo]) {
+    if let index = videos.firstIndex(where: { $0.id == video.id }) {
+      videos[index] = video
+    } else {
+      videos.insert(video, at: 0)
+    }
+  }
+
   private func removePost(_ postID: String, from posts: inout [CommunityPost]) {
     posts.removeAll { $0.id == postID }
+  }
+
+  private func refetch(silent: Bool) async {
+    guard state.hasLoaded else { return }
+
+    do {
+      try await tokenRefreshCoordinator?.prepareValidTokenIfNeeded()
+
+      async let postsPage = useCase.loadPosts(nextCursor: nil, limit: Self.pageSize)
+      async let videosPage = useCase.loadVideos(nextCursor: nil, limit: Self.pageSize)
+      let (posts, videos) = try await (postsPage, videosPage)
+
+      for post in posts.posts.reversed() {
+        upsert(post, in: &state.posts, insertIfMissing: true)
+      }
+      state.postsNextCursor = posts.nextCursor
+
+      for video in videos.videos.reversed() {
+        upsertVideo(video, in: &state.videos)
+      }
+      state.videosNextCursor = videos.nextCursor
+
+      if state.selectedTab == .liked, state.likedPosts.isEmpty == false {
+        let likedPage = try await useCase.loadLikedPosts(nextCursor: nil, limit: Self.pageSize)
+        for post in likedPage.posts.reversed() {
+          upsert(post, in: &state.likedPosts, insertIfMissing: true)
+        }
+        state.likedPostsNextCursor = likedPage.nextCursor
+      }
+
+      updatePhaseForVisibleContent()
+    } catch is CancellationError {
+    } catch {
+      if silent == false {
+        state.errorMessage = Self.fallbackMessage(for: error)
+        state.phase = .error(message: state.errorMessage ?? "")
+      }
+      Self.logger.error("❌ [CommunityViewModel] refetch failed silent=\(silent) error=\(String(describing: error), privacy: .public)")
+    }
+  }
+
+  private func restartAutoRefresh() {
+    autoRefreshTask?.cancel()
+    autoRefreshTask = Task { [weak self] in
+      while true {
+        do {
+          try await Task.sleep(for: .seconds(15))
+        } catch {
+          return
+        }
+        await self?.send(.autoRefresh)
+      }
+    }
   }
 
   private func updatePhaseForVisibleContent() {

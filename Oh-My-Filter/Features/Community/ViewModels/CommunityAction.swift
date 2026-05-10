@@ -2,6 +2,10 @@ import Foundation
 
 nonisolated enum CommunityAction: Sendable {
   case task
+  case refresh
+  case autoRefresh
+  case disappeared
+  case viewAppeared
   case retry
   case selectedTabChanged(CommunityTab)
   case searchTextChanged(String)
