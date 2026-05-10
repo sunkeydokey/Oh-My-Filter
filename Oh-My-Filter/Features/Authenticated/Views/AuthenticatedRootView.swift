@@ -13,10 +13,19 @@ struct AuthenticatedRootView: View {
   @State private var mainPath: [MainRoute] = []
   @State private var feedPath: [MainRoute] = []
   @State private var communityPath: [CommunityRoute] = []
+  @State private var pendingChatRoomID: String?
   @State private var profilePath: [ProfileRoute] = []
+  let pendingRoute: AppAuthenticatedRoute?
+  let onRouteHandled: (AppAuthenticatedRoute) -> Void
   let onLogout: () -> Void
 
-  init(onLogout: @escaping () -> Void = {}) {
+  init(
+    pendingRoute: AppAuthenticatedRoute? = nil,
+    onRouteHandled: @escaping (AppAuthenticatedRoute) -> Void = { _ in },
+    onLogout: @escaping () -> Void = {}
+  ) {
+    self.pendingRoute = pendingRoute
+    self.onRouteHandled = onRouteHandled
     self.onLogout = onLogout
   }
 
@@ -105,7 +114,7 @@ struct AuthenticatedRootView: View {
 
       Tab("채팅", systemImage: "message.circle.fill", value: .chat) {
         NavigationStack {
-          ChatListView()
+          ChatListView(pendingRoomID: $pendingChatRoomID)
         }
       }
 
@@ -136,6 +145,24 @@ struct AuthenticatedRootView: View {
     .toolbarBackground(ColorToken.brandBlackSprout.color, for: .tabBar)
     .toolbarBackground(.visible, for: .tabBar)
     .toolbarColorScheme(.dark, for: .tabBar)
+    .onAppear {
+      handlePendingRoute(pendingRoute)
+    }
+    .onChange(of: pendingRoute) { _, route in
+      handlePendingRoute(route)
+    }
+  }
+
+  private func handlePendingRoute(_ route: AppAuthenticatedRoute?) {
+    guard let route else { return }
+
+    switch route {
+    case let .chatRoom(roomID):
+      selectedTab = .chat
+      pendingChatRoomID = roomID
+    }
+
+    onRouteHandled(route)
   }
 }
 

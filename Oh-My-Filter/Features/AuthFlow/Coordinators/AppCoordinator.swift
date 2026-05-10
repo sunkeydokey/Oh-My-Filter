@@ -6,6 +6,7 @@ import Observation
 final class AppCoordinator {
   var scene: AppScene = .launching
   var authPath: [AuthRoute] = []
+  var pendingAuthenticatedRoute: AppAuthenticatedRoute?
 
   var loginViewModel: LoginViewModel?
   var signupViewModel: SignupViewModel?
@@ -92,6 +93,15 @@ final class AppCoordinator {
     loginViewModel = nil
     signupViewModel = nil
     scene = .authenticated
+  }
+
+  func markAuthenticatedRouteHandled(_ route: AppAuthenticatedRoute) {
+    guard pendingAuthenticatedRoute == route else { return }
+    pendingAuthenticatedRoute = nil
+  }
+
+  func receiveAuthenticatedRoute(_ route: AppAuthenticatedRoute) {
+    pendingAuthenticatedRoute = route
   }
 
   func finishAuthentication(session: LoginSession) {

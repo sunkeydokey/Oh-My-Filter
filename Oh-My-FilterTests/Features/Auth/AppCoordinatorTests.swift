@@ -216,6 +216,24 @@ struct AppCoordinatorTests {
     #expect(resetter.resetCount == 1)
   }
 
+  @Test("coordinator consumes pending push route")
+  func receivesPendingPushRoute() {
+    let coordinator = makeCoordinator()
+    coordinator.receiveAuthenticatedRoute(.chatRoom(roomID: "room-1"))
+
+    #expect(coordinator.pendingAuthenticatedRoute == .chatRoom(roomID: "room-1"))
+  }
+
+  @Test("mark authenticated route handled clears matching route")
+  func markAuthenticatedRouteHandledClearsMatchingRoute() {
+    let coordinator = makeCoordinator()
+    coordinator.receiveAuthenticatedRoute(.chatRoom(roomID: "room-1"))
+
+    coordinator.markAuthenticatedRouteHandled(.chatRoom(roomID: "room-1"))
+
+    #expect(coordinator.pendingAuthenticatedRoute == nil)
+  }
+
   private func makeCoordinator(
     loginService: MockLoginService = MockLoginService(),
     authSessionRefresher: MockAuthSessionRefresher = MockAuthSessionRefresher(),

@@ -4,6 +4,11 @@ import SwiftUI
 struct ChatListView: View {
   @Environment(\.modelContext) private var modelContext
   @State private var viewModel: ChatListViewModel?
+  @Binding private var pendingRoomID: String?
+
+  init(pendingRoomID: Binding<String?> = .constant(nil)) {
+    _pendingRoomID = pendingRoomID
+  }
 
   var body: some View {
     Group {
@@ -24,6 +29,19 @@ struct ChatListView: View {
         )
       }
       await viewModel?.send(.task)
+    }
+    .task(id: pendingRoomID) {
+      guard let pendingRoomID else { return }
+      if viewModel == nil {
+        viewModel = ChatListViewModel(
+          service: LiveChatService(),
+          store: SwiftDataChatStore(context: modelContext)
+        )
+      }
+      await viewModel?.send(.openRoom(pendingRoomID))
+      if viewModel?.state.selectedRoom?.id == pendingRoomID {
+        self.pendingRoomID = nil
+      }
     }
   }
 }
