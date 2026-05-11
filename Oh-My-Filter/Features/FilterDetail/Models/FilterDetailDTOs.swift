@@ -71,6 +71,14 @@ nonisolated struct FilterResponseDTO: Decodable, Sendable {
   }
 }
 
+nonisolated struct FilterLikeRequestDTO: Encodable, Sendable {
+  let like_status: Bool
+}
+
+nonisolated struct FilterLikeResponseDTO: Decodable, Sendable {
+  let likeStatus: Bool
+}
+
 typealias FilterDetailUserDTO = CommentUserDTO
 
 nonisolated struct PhotoMetadataDTO: Decodable, Sendable {

@@ -195,6 +195,7 @@ struct FilterDetailView: View {
         replyingToCommentID: viewModel.state.replyingToCommentID,
         editingCommentTarget: viewModel.state.editingCommentTarget,
         commentText: viewModel.state.commentText,
+        onToggleLike: toggleLike,
         action: downloadAction,
         onApply: applyAction,
         onPurchaseRequired: purchaseRequiredAction,
@@ -224,6 +225,7 @@ struct FilterDetailView: View {
         replyingToCommentID: viewModel.state.replyingToCommentID,
         editingCommentTarget: viewModel.state.editingCommentTarget,
         commentText: viewModel.state.commentText,
+        onToggleLike: toggleLike,
         action: downloadAction,
         onApply: applyAction,
         onPurchaseRequired: purchaseRequiredAction,
@@ -254,6 +256,7 @@ struct FilterDetailView: View {
         replyingToCommentID: viewModel.state.replyingToCommentID,
         editingCommentTarget: viewModel.state.editingCommentTarget,
         commentText: viewModel.state.commentText,
+        onToggleLike: toggleLike,
         action: downloadAction,
         onApply: applyAction,
         onPurchaseRequired: purchaseRequiredAction,
@@ -286,6 +289,10 @@ struct FilterDetailView: View {
 
   private func downloadAction() {
     Task { await viewModel.send(.tapDownload) }
+  }
+
+  private func toggleLike() {
+    Task { await viewModel.send(.likeTapped) }
   }
 
   private func applyAction() {

@@ -146,14 +146,65 @@ struct CommunityPostViewModelTests {
     #expect(viewModel.state.pendingDeleteCommentTarget == nil)
     #expect(viewModel.state.post?.comments.isEmpty == true)
   }
+
+  @Test("like tap applies optimistic update and debounces final status")
+  func likeTapOptimisticallyUpdatesAndDebounces() async throws {
+    let service = StubCommunityPostService(post: .postWithComment)
+    let viewModel = CommunityPostViewModel(
+      mode: .detail(postID: "post-1"),
+      service: service,
+      likeDebounceDuration: .milliseconds(20)
+    )
+
+    await viewModel.send(.task)
+    await viewModel.send(.likeTapped)
+
+    #expect(viewModel.state.post?.isLiked == true)
+    #expect(viewModel.state.post?.likeCount == 4)
+    #expect(await service.likeStatuses.isEmpty)
+
+    await viewModel.send(.likeTapped)
+
+    #expect(viewModel.state.post?.isLiked == false)
+    #expect(viewModel.state.post?.likeCount == 3)
+
+    try await Task.sleep(for: .milliseconds(80))
+    #expect(await service.likeStatuses == [false])
+  }
+
+  @Test("like debounce failure rolls back to pre-burst state")
+  func likeDebounceFailureRollsBack() async throws {
+    let service = StubCommunityPostService(
+      post: .postWithComment,
+      likeResults: [.failure(CommunityServiceError.serverError)]
+    )
+    let viewModel = CommunityPostViewModel(
+      mode: .detail(postID: "post-1"),
+      service: service,
+      likeDebounceDuration: .milliseconds(20)
+    )
+
+    await viewModel.send(.task)
+    await viewModel.send(.likeTapped)
+
+    #expect(viewModel.state.post?.isLiked == true)
+    #expect(viewModel.state.post?.likeCount == 4)
+
+    try await Task.sleep(for: .milliseconds(80))
+    #expect(viewModel.state.post?.isLiked == false)
+    #expect(viewModel.state.post?.likeCount == 3)
+  }
 }
 
 private actor StubCommunityPostService: CommunityServicing {
   private let post: CommunityPost
   private(set) var deletedCommentRequests: [CommunityCommentDeleteRequest] = []
+  private(set) var likeStatuses: [Bool] = []
+  private var likeResults: [Result<Bool, Error>]
 
-  init(post: CommunityPost) {
+  init(post: CommunityPost, likeResults: [Result<Bool, Error>] = []) {
     self.post = post
+    self.likeResults = likeResults
   }
 
   func loadCurrentUserID() async throws -> String {
@@ -191,7 +242,11 @@ private actor StubCommunityPostService: CommunityServicing {
   func deletePost(postID: String) async throws {}
 
   func toggleLike(postID: String, status: Bool) async throws -> Bool {
-    status
+    likeStatuses.append(status)
+    guard likeResults.isEmpty == false else {
+      return status
+    }
+    return try likeResults.removeFirst().get()
   }
 
   func createComment(postID: String, parentCommentID: String?, content: String) async throws -> CommunityReply {

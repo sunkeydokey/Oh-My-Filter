@@ -7,18 +7,22 @@ final class CommunityPostViewModel {
 
   private let service: any CommunityServicing
   private let mutationStore: CommunityPostMutationStore?
+  private let likeCommitter: DebouncedBooleanCommitter
+  private var pendingLikeRollback: (isLiked: Bool, likeCount: Int)?
 
   init(
     mode: CommunityPostMode,
     preloadedImages: [PhotoPickerUploadSelection] = [],
     service: any CommunityServicing,
-    mutationStore: CommunityPostMutationStore? = nil
+    mutationStore: CommunityPostMutationStore? = nil,
+    likeDebounceDuration: Duration = .milliseconds(300)
   ) {
     var initialState = CommunityPostState(mode: mode)
     initialState.selectedImages = preloadedImages
     self.state = initialState
     self.service = service
     self.mutationStore = mutationStore
+    self.likeCommitter = DebouncedBooleanCommitter(duration: likeDebounceDuration)
   }
 
   convenience init(
@@ -81,7 +85,7 @@ final class CommunityPostViewModel {
       state.showsDiscardConfirmation = false
       state.shouldDismiss = true
     case .likeTapped:
-      await toggleLike()
+      toggleLike()
     case .editTapped:
       if let postID = state.post?.id {
         state.route = .postEdit(postID: postID)
@@ -133,6 +137,8 @@ final class CommunityPostViewModel {
   private func loadIfNeeded() async {
     guard state.phase == .initial else { return }
 
+    likeCommitter.cancel()
+    pendingLikeRollback = nil
     state.phase = .loading
     do {
       async let currentUserID = try? service.loadCurrentUserID()
@@ -206,35 +212,51 @@ final class CommunityPostViewModel {
     state.shouldDismiss = true
   }
 
-  private func toggleLike() async {
+  private func toggleLike() {
     guard let post = state.post else { return }
 
-    let targetStatus = post.isLiked == false
-    let optimisticPost = CommunityPost(
-      id: post.id,
-      category: post.category,
-      title: post.title,
-      content: post.content,
-      creator: post.creator,
-      attachments: post.attachments,
-      imagePaths: post.imagePaths,
-      isLiked: targetStatus,
-      likeCount: max(0, post.likeCount + (targetStatus ? 1 : -1)),
-      comments: post.comments,
-      createdAt: post.createdAt,
-      updatedAt: post.updatedAt
-    )
-    state.post = optimisticPost
-
-    do {
-      let confirmedStatus = try await service.toggleLike(postID: post.id, status: targetStatus)
-      if confirmedStatus != targetStatus {
-        state.post = post
-      }
-    } catch {
-      state.post = post
-      state.errorMessage = errorMessage(from: error)
+    if pendingLikeRollback == nil {
+      pendingLikeRollback = (post.isLiked, post.likeCount)
     }
+
+    let targetStatus = post.isLiked == false
+    state.post = post.replacingLike(
+      isLiked: targetStatus,
+      likeCount: max(0, post.likeCount + (targetStatus ? 1 : -1))
+    )
+
+    let postID = post.id
+    likeCommitter.schedule(
+      status: targetStatus,
+      operation: { [service] status in
+        try await service.toggleLike(postID: postID, status: status)
+      },
+      completion: { [weak self] result, requestedStatus in
+        guard let self else { return }
+        switch result {
+        case let .success(confirmedStatus) where confirmedStatus == requestedStatus:
+          pendingLikeRollback = nil
+        case let .failure(error):
+          rollbackLike()
+          state.errorMessage = errorMessage(from: error)
+        default:
+          rollbackLike()
+        }
+      }
+    )
+  }
+
+  private func rollbackLike() {
+    guard let pendingLikeRollback,
+          let post = state.post else {
+      return
+    }
+
+    state.post = post.replacingLike(
+      isLiked: pendingLikeRollback.isLiked,
+      likeCount: pendingLikeRollback.likeCount
+    )
+    self.pendingLikeRollback = nil
   }
 
   private func deletePost() async {
@@ -468,6 +490,23 @@ private extension CommunityPost {
       isLiked: isLiked,
       likeCount: likeCount,
       comments: updatedComments,
+      createdAt: createdAt,
+      updatedAt: updatedAt
+    )
+  }
+
+  func replacingLike(isLiked: Bool, likeCount: Int) -> CommunityPost {
+    CommunityPost(
+      id: id,
+      category: category,
+      title: title,
+      content: content,
+      creator: creator,
+      attachments: attachments,
+      imagePaths: imagePaths,
+      isLiked: isLiked,
+      likeCount: likeCount,
+      comments: comments,
       createdAt: createdAt,
       updatedAt: updatedAt
     )

@@ -5,6 +5,7 @@ nonisolated enum FilterApiRouter: ApiRouter {
   case create
   case uploadFiles
   case detail(filterID: String)
+  case like(filterID: String)
   case update(filterID: String)
   case delete(filterID: String)
   case createComment(filterID: String)
@@ -19,6 +20,8 @@ nonisolated enum FilterApiRouter: ApiRouter {
       EndPoint.Filters.files
     case let .detail(filterID):
       EndPoint.Filters.detail(filterID: filterID)
+    case let .like(filterID):
+      EndPoint.Filters.like(filterID: filterID)
     case let .update(filterID), let .delete(filterID):
       EndPoint.Filters.detail(filterID: filterID)
     case let .createComment(filterID):
@@ -32,7 +35,7 @@ nonisolated enum FilterApiRouter: ApiRouter {
     switch self {
     case .list, .detail:
       .get
-    case .create, .uploadFiles, .createComment:
+    case .create, .uploadFiles, .like, .createComment:
       .post
     case .update, .updateComment:
       .put
@@ -45,7 +48,7 @@ nonisolated enum FilterApiRouter: ApiRouter {
     switch self {
     case .uploadFiles:
       .multipart
-    case .list, .create, .detail, .update, .delete, .createComment, .updateComment, .deleteComment:
+    case .list, .create, .detail, .like, .update, .delete, .createComment, .updateComment, .deleteComment:
       .json
     }
   }
