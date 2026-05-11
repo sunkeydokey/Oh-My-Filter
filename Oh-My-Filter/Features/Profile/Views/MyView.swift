@@ -18,6 +18,13 @@ struct MyView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 14) {
+        CustomRootNavigationHeader(
+          title: "MY",
+          trailingIcon: "gearshape",
+          trailingAction: { navigate(.edit) }
+        )
+        .accessibilityLabel("프로필 편집")
+
         profileSummary
         ProfileSectionTitle(title: "계정")
         actionsCard
@@ -31,17 +38,7 @@ struct MyView: View {
     }
     .scrollIndicators(.hidden)
     .background(ColorToken.grayScale100.color.ignoresSafeArea())
-    .navigationTitle("MY")
-    .toolbar {
-      ToolbarItem(placement: .topBarTrailing) {
-        Button {
-          navigate(.edit)
-        } label: {
-          Image(systemName: "gearshape")
-        }
-        .accessibilityLabel("프로필 편집")
-      }
-    }
+    .toolbar(.hidden, for: .navigationBar)
     .task {
       await viewModel.send(.task)
     }

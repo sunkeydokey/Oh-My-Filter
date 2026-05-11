@@ -6,6 +6,7 @@ import UIKit
 struct FilterEditView: View {
   @State private var viewModel: FilterEditViewModel
   @Binding private var filterParameterValues: [FilterEditParameter: Double]
+  @Environment(\.dismiss) private var dismiss
   let onFilterParameterValuesChange: ([FilterEditParameter: Double]) -> Void
 
   init(
@@ -23,16 +24,14 @@ struct FilterEditView: View {
   }
 
   var body: some View {
-    VStack(spacing: 0) {
-      preview
+    ZStack(alignment: .top) {
+      VStack(spacing: 0) {
+        preview
 
-      editControls
-    }
-    .background(ColorToken.brandBlackSprout.color.ignoresSafeArea())
-    .mulgyeolNavigationTitle("EDIT")
-    .toolbar(.hidden, for: .tabBar)
-    .toolbar {
-      ToolbarItem(placement: .topBarTrailing) {
+        editControls
+      }
+
+      CustomStackNavigationHeader(title: "EDIT", onBack: { dismiss() }) {
         Button {
         } label: {
           Image(systemName: "square.split.2x1")
@@ -41,9 +40,23 @@ struct FilterEditView: View {
             .frame(width: 40, height: 40)
             .background(ColorToken.grayScale90.color.opacity(0.5), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
+        .buttonStyle(.plain)
         .accessibilityLabel("비교")
       }
+      .padding(.horizontal, 20)
+      .background(
+        LinearGradient(
+          colors: [ColorToken.brandBlackSprout.color, ColorToken.brandBlackSprout.color.opacity(0)],
+          startPoint: .top,
+          endPoint: .bottom
+        )
+        .ignoresSafeArea()
+      )
     }
+    .background(ColorToken.brandBlackSprout.color.ignoresSafeArea())
+    .toolbar(.hidden, for: .navigationBar)
+    .toolbar(.hidden, for: .tabBar)
+    .swipeBackEnabled()
     .onChange(of: filterParameterValues) { _, values in
       viewModel.renderPreview(with: values)
     }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ReceiptView: View {
   @State private var viewModel: ReceiptViewModel
+  @Environment(\.dismiss) private var dismiss
 
   init(viewModel: ReceiptViewModel? = nil) {
     _viewModel = State(initialValue: viewModel ?? ReceiptViewModel())
@@ -10,6 +11,20 @@ struct ReceiptView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 14) {
+        CustomStackNavigationHeader(title: "주문 내역", onBack: { dismiss() }) {
+          Button {
+            Task {
+              await viewModel.send(.retry)
+            }
+          } label: {
+            Image(systemName: "arrow.clockwise")
+              .font(.system(size: 20, weight: .semibold))
+              .foregroundStyle(ColorToken.grayScale45.color)
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel("주문 내역 새로고침")
+        }
+
         summaryCard
         ProfileSectionTitle(title: "리스트")
 
@@ -33,19 +48,8 @@ struct ReceiptView: View {
     }
     .scrollIndicators(.hidden)
     .background(ColorToken.grayScale100.color.ignoresSafeArea())
-    .navigationTitle("주문 내역")
-    .toolbar {
-      ToolbarItem(placement: .topBarTrailing) {
-        Button {
-          Task {
-            await viewModel.send(.retry)
-          }
-        } label: {
-          Image(systemName: "arrow.clockwise")
-        }
-        .accessibilityLabel("주문 내역 새로고침")
-      }
-    }
+    .toolbar(.hidden, for: .navigationBar)
+    .swipeBackEnabled()
     .task {
       await viewModel.send(.task)
     }

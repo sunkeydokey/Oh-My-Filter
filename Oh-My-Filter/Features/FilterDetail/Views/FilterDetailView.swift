@@ -22,6 +22,27 @@ struct FilterDetailView: View {
       content
         .background(ColorToken.brandBlackSprout.color.ignoresSafeArea())
         .screenCaptureProtected(!viewModel.state.isOwned)
+        .safeAreaInset(edge: .top) {
+          CustomStackNavigationHeader(
+            title: viewModel.state.detail?.title ?? "",
+            onBack: { dismiss() }
+          ) {
+            if viewModel.state.isMine {
+              Menu {
+                Button("수정", action: edit)
+                Button("삭제", role: .destructive, action: deleteFilter)
+              } label: {
+                Image(systemName: "ellipsis")
+                  .font(.system(size: 20, weight: .semibold))
+                  .foregroundStyle(ColorToken.grayScale45.color)
+              }
+            } else {
+              Color.clear
+            }
+          }
+          .padding(.horizontal, 20)
+          .background(ColorToken.brandBlackSprout.color)
+        }
 
       if viewModel.state.showsDeleteFilterConfirmation {
         CustomAlertView(
@@ -52,24 +73,8 @@ struct FilterDetailView: View {
         )
       }
     }
-    .mulgyeolNavigationTitle(viewModel.state.detail?.title ?? "")
-    .toolbarBackground(ColorToken.brandBlackSprout.color, for: .navigationBar)
-    .toolbarBackground(.visible, for: .navigationBar)
-    .toolbar {
-      if viewModel.state.isMine {
-        ToolbarItem(placement: .topBarTrailing) {
-          Menu {
-            Button("수정", action: edit)
-            Button("삭제", role: .destructive, action: deleteFilter)
-          } label: {
-            Image(systemName: "ellipsis")
-              .font(.system(size: 20, weight: .semibold))
-              .frame(width: 44, height: 44)
-              .foregroundStyle(ColorToken.grayScale45.color)
-          }
-        }
-      }
-    }
+    .toolbar(.hidden, for: .navigationBar)
+    .swipeBackEnabled()
     .task {
       guard didLoad == false else { return }
       didLoad = true

@@ -12,6 +12,15 @@ struct ProfileEditView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 14) {
+        CustomStackNavigationHeader(title: "프로필 편집", onBack: { dismiss() }) {
+          Button("저장") {
+            viewModel.send(.saveTapped)
+          }
+          .font(TypographyToken.pretendardBody2.font.weight(.bold))
+          .foregroundStyle(viewModel.state.canSave ? ColorToken.mainAccent.color : ColorToken.grayScale60.color)
+          .disabled(viewModel.state.canSave == false)
+        }
+
         avatarCard
         ProfileSectionTitle(title: "정보 수정")
         formCard
@@ -30,15 +39,8 @@ struct ProfileEditView: View {
     }
     .scrollIndicators(.hidden)
     .background(ColorToken.grayScale100.color.ignoresSafeArea())
-    .navigationTitle("프로필 편집")
-    .toolbar {
-      ToolbarItem(placement: .topBarTrailing) {
-        Button("저장") {
-          viewModel.send(.saveTapped)
-        }
-        .disabled(viewModel.state.canSave == false)
-      }
-    }
+    .toolbar(.hidden, for: .navigationBar)
+    .swipeBackEnabled()
     .safeAreaInset(edge: .bottom) {
       Button {
         viewModel.send(.saveTapped)

@@ -30,7 +30,13 @@ struct FilterImageComparisonView: View {
         .gesture(
           DragGesture(minimumDistance: 0)
             .onChanged { value in
-              splitRatio = min(max(value.location.x / max(proxy.size.width, 1), 0.08), 0.92)
+              let w = max(proxy.size.width, 1)
+              let x = value.location.x
+              // After 라벨이 끝에 붙기 전(splitX > 64)엔 64 미만으로 못 가게
+              // Before 라벨이 끝에 붙기 전(splitX < w - 64)엔 w - 64 초과로 못 가게
+              let minX = splitRatio > 64 / w ? 64.0 : 0.0
+              let maxX = splitRatio < (w - 64) / w ? w - 64 : w
+              splitRatio = min(max(x / w, minX / w), maxX / w)
             }
         )
       }

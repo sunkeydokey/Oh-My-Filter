@@ -12,28 +12,23 @@ struct FeedView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 28) {
+        CustomRootNavigationHeader(
+          title: "FEED",
+          trailingIcon: IconToken.add.symbolName,
+          trailingAction: { navigate(.filterMake) }
+        )
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .accessibilityLabel("필터 만들기")
+
         topRankingSection
         feedSection
       }
-      .padding(.vertical, 20)
+      .padding(.bottom, 20)
     }
     .scrollIndicators(.hidden)
     .background(ColorToken.brandBlackSprout.color.ignoresSafeArea())
-    .mulgyeolNavigationTitle("FEED")
-    .toolbar {
-      ToolbarItem(placement: .topBarTrailing) {
-        Button {
-          navigate(.filterMake)
-        } label: {
-          Image(systemName: IconToken.add.symbolName)
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(ColorToken.brandBlackSprout.color)
-            .frame(width: 40, height: 40)
-            .background(ColorToken.grayScale0.color, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        }
-        .accessibilityLabel("필터 만들기")
-      }
-    }
+    .toolbar(.hidden, for: .navigationBar)
     .task {
       await viewModel.send(.task)
     }
