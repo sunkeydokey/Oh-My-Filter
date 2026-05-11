@@ -7,6 +7,7 @@ import SwiftUI
 struct MakeFilterView: View {
   @State private var viewModel: FilterMakeViewModel
   @State private var pickerItem: PhotosPickerItem?
+  @Environment(\.dismiss) private var dismiss
   private let onSubmitSucceeded: (FilterDetail) -> Void
 
   init(
@@ -21,6 +22,10 @@ struct MakeFilterView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 22) {
+        CustomStackNavigationHeader(title: "MAKE", onBack: { dismiss() }) {
+          Color.clear
+        }
+
         inputSection(
           title: "필터명",
           placeholder: "필터 이름을 입력해주세요.",
@@ -56,7 +61,8 @@ struct MakeFilterView: View {
     }
     .scrollIndicators(.hidden)
     .background(ColorToken.brandBlackSprout.color.ignoresSafeArea())
-    .mulgyeolNavigationTitle("MAKE")
+    .toolbar(.hidden, for: .navigationBar)
+    .swipeBackEnabled()
     .safeAreaInset(edge: .bottom) {
       submitButton
     }
@@ -225,20 +231,22 @@ struct MakeFilterView: View {
     Group {
       if let comparisonPreviewState = viewModel.state.comparisonPreviewState {
         FilterImageComparisonView(previewState: comparisonPreviewState)
+          .padding(.bottom, 8)
       } else {
         Image(decorative: image, scale: 1)
           .resizable()
           .scaledToFill()
           .frame(maxWidth: .infinity)
           .aspectRatio(1, contentMode: .fit)
+          .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+          .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+              .stroke(ColorToken.brandDeepSprout.color, lineWidth: 2)
+          }
+          .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+          .padding(.bottom, 8)
       }
     }
-    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    .overlay {
-      RoundedRectangle(cornerRadius: 12, style: .continuous)
-        .stroke(ColorToken.brandDeepSprout.color, lineWidth: 2)
-    }
-    .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
   }
 
   private var priceSection: some View {

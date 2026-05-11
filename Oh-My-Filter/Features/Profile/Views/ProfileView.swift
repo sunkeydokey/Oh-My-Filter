@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
   @State private var viewModel: ProfileViewModel
+  @Environment(\.dismiss) private var dismiss
   let onEdit: () -> Void
 
   init(
@@ -15,6 +16,16 @@ struct ProfileView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 14) {
+        CustomStackNavigationHeader(title: "Profile", onBack: { dismiss() }) {
+          Button(action: onEdit) {
+            Image(systemName: "pencil")
+              .font(.system(size: 20, weight: .semibold))
+              .foregroundStyle(ColorToken.grayScale45.color)
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel("수정")
+        }
+
         profileCard
         ProfileSectionTitle(title: "기본 정보")
         infoCard
@@ -31,16 +42,8 @@ struct ProfileView: View {
     }
     .scrollIndicators(.hidden)
     .background(ColorToken.grayScale100.color.ignoresSafeArea())
-    .navigationTitle("Profile")
-    .toolbar {
-      ToolbarItem(placement: .topBarTrailing) {
-        Button {
-          onEdit()
-        } label: {
-          Label("수정", systemImage: "pencil")
-        }
-      }
-    }
+    .toolbar(.hidden, for: .navigationBar)
+    .swipeBackEnabled()
     .task {
       await viewModel.send(.task)
     }
