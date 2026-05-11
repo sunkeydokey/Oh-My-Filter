@@ -15,24 +15,21 @@ final class FilterDetailViewModel {
   var state = FilterDetailState()
 
   private let filterID: String
-  private let useCase: any FilterDetailUseCase
-  private let orderCreateUseCase: any OrderCreateUseCase
-  private let paymentValidationUseCase: any PaymentValidationUseCase
+  private let service: any FilterDetailServicing
+  private let purchaseUseCase: any FilterPurchaseUseCase
   private let renderer: any ImageFilterRendering
   private let imageDataLoader: any AuthenticatedImageDataLoading
 
   init(
     filterID: String,
-    useCase: any FilterDetailUseCase,
-    orderCreateUseCase: (any OrderCreateUseCase)? = nil,
-    paymentValidationUseCase: (any PaymentValidationUseCase)? = nil,
+    service: any FilterDetailServicing,
+    purchaseUseCase: (any FilterPurchaseUseCase)? = nil,
     renderer: any ImageFilterRendering,
     imageDataLoader: any AuthenticatedImageDataLoading = LiveAuthenticatedImageDataLoader()
   ) {
     self.filterID = filterID
-    self.useCase = useCase
-    self.orderCreateUseCase = orderCreateUseCase ?? LiveOrderCreateUseCase()
-    self.paymentValidationUseCase = paymentValidationUseCase ?? LivePaymentValidationUseCase()
+    self.service = service
+    self.purchaseUseCase = purchaseUseCase ?? LiveFilterPurchaseUseCase()
     self.renderer = renderer
     self.imageDataLoader = imageDataLoader
   }
@@ -44,9 +41,8 @@ final class FilterDetailViewModel {
   ) {
     self.init(
       filterID: filterID,
-      useCase: LiveFilterDetailUseCase(service: service),
-      orderCreateUseCase: LiveOrderCreateUseCase(),
-      paymentValidationUseCase: LivePaymentValidationUseCase(),
+      service: service,
+      purchaseUseCase: LiveFilterPurchaseUseCase(),
       renderer: renderer
     )
   }
@@ -54,9 +50,8 @@ final class FilterDetailViewModel {
   convenience init(filterID: String) {
     self.init(
       filterID: filterID,
-      useCase: LiveFilterDetailUseCase(),
-      orderCreateUseCase: LiveOrderCreateUseCase(),
-      paymentValidationUseCase: LivePaymentValidationUseCase(),
+      service: LiveFilterDetailService(),
+      purchaseUseCase: LiveFilterPurchaseUseCase(),
       renderer: CoreImageFilterRenderer()
     )
   }
@@ -143,8 +138,8 @@ final class FilterDetailViewModel {
     state.phase = .loading(previous: previous)
 
     do {
-      async let detailResponse = useCase.loadFilterDetail(filterID: filterID)
-      async let currentUserIDResponse = useCase.loadCurrentUserID()
+      async let detailResponse = service.loadFilterDetail(filterID: filterID)
+      async let currentUserIDResponse = service.loadCurrentUserID()
       let detail = try await detailResponse
       state.currentUserID = try? await currentUserIDResponse
       state.expandedReplyCommentIDs = Set(detail.comments.map(\.id))
@@ -191,14 +186,7 @@ final class FilterDetailViewModel {
 
     state.isPaymentProcessing = true
     do {
-      let order = try await orderCreateUseCase.createOrder(
-        filterID: detail.id,
-        totalPrice: detail.price
-      )
-      state.paymentRequest = PortonePaymentRequest(
-        detail: detail,
-        merchantUID: order.orderCode
-      )
+      state.paymentRequest = try await purchaseUseCase.makePaymentRequest(for: detail)
       state.isPaymentProcessing = false
     } catch is CancellationError {
       state.isPaymentProcessing = false
@@ -216,19 +204,9 @@ final class FilterDetailViewModel {
       return
     }
 
-    guard response.success else {
-      showPaymentAlert(message: response.errorMessage ?? "결제가 완료되지 않았습니다.")
-      return
-    }
-
-    guard let impUID = response.impUID, impUID.isEmpty == false else {
-      showPaymentAlert(message: "결제 승인 정보를 확인할 수 없습니다.")
-      return
-    }
-
     state.isPaymentProcessing = true
     do {
-      try await paymentValidationUseCase.validatePayment(impUID: impUID)
+      try await purchaseUseCase.validatePaymentResponse(response)
       await load()
       state.isPaymentProcessing = false
     } catch is CancellationError {
@@ -252,7 +230,7 @@ final class FilterDetailViewModel {
     }
 
     do {
-      let created = try await useCase.createComment(
+      let created = try await service.createComment(
         filterID: filterID,
         parentCommentID: state.replyingToCommentID,
         content: content
@@ -287,7 +265,7 @@ final class FilterDetailViewModel {
     guard case let .loaded(detail, previewState) = state.phase else { return }
 
     do {
-      let updated = try await useCase.updateComment(
+      let updated = try await service.updateComment(
         filterID: filterID,
         commentID: target.commentID,
         content: content
@@ -312,7 +290,7 @@ final class FilterDetailViewModel {
     state.pendingDeleteCommentTarget = nil
 
     do {
-      try await useCase.deleteComment(filterID: filterID, commentID: target.commentID)
+      try await service.deleteComment(filterID: filterID, commentID: target.commentID)
       state.phase = .loaded(detail.removingComment(target), previewState)
       if state.editingCommentTarget == target {
         state.editingCommentTarget = nil
@@ -413,7 +391,7 @@ final class FilterDetailViewModel {
     state.showsDeleteFilterConfirmation = false
 
     do {
-      try await useCase.deleteFilter(filterID: detail.id)
+      try await service.deleteFilter(filterID: detail.id)
       state.shouldDismiss = true
     } catch {
       state.alert = FilterDetailAlert(
@@ -466,6 +444,11 @@ final class FilterDetailViewModel {
   private static func paymentMessage(for error: Error) -> String {
     if let orderError = error as? OrderServiceError,
        let message = orderError.errorDescription {
+      return message
+    }
+
+    if let purchaseError = error as? FilterPurchaseError,
+       let message = purchaseError.errorDescription {
       return message
     }
 

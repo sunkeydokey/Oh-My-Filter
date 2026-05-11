@@ -12,30 +12,20 @@ final class MainViewModel {
 
   var state = MainState()
 
-  private let useCase: any MainHomeUseCase
+  private let service: any MainServicing
   private let tokenRefreshCoordinator: (any TokenRefreshCoordinating)?
 
   init(
-    useCase: any MainHomeUseCase,
-    tokenRefreshCoordinator: (any TokenRefreshCoordinating)? = nil
-  ) {
-    self.useCase = useCase
-    self.tokenRefreshCoordinator = tokenRefreshCoordinator
-  }
-
-  convenience init(
     service: any MainServicing,
     tokenRefreshCoordinator: (any TokenRefreshCoordinating)? = nil
   ) {
-    self.init(
-      useCase: LiveMainHomeUseCase(service: service),
-      tokenRefreshCoordinator: tokenRefreshCoordinator
-    )
+    self.service = service
+    self.tokenRefreshCoordinator = tokenRefreshCoordinator
   }
 
   convenience init() {
     self.init(
-      useCase: LiveMainHomeUseCase(),
+      service: LiveMainService(),
       tokenRefreshCoordinator: AppTokenRefreshCoordinator.shared
     )
   }
@@ -97,7 +87,7 @@ final class MainViewModel {
     let previous = state.todayFilter.value
     state.todayFilter = .loading(previous: previous)
     do {
-      let todayFilter = try await useCase.loadTodayFilter()
+      let todayFilter = try await service.loadTodayFilter()
       state.todayFilter = .loaded(todayFilter)
     } catch is CancellationError {
       state.todayFilter = previous.map { .loaded($0) } ?? .idle
@@ -112,7 +102,7 @@ final class MainViewModel {
     let previous = state.mainBanners.value
     state.mainBanners = .loading(previous: previous)
     do {
-      let mainBanners = try await useCase.loadMainBanners()
+      let mainBanners = try await service.loadMainBanners()
       state.mainBanners = .loaded(mainBanners)
     } catch is CancellationError {
       state.mainBanners = previous.map { .loaded($0) } ?? .idle
@@ -127,7 +117,7 @@ final class MainViewModel {
     let previous = state.hotTrendFilters.value
     state.hotTrendFilters = .loading(previous: previous)
     do {
-      let hotTrendFilters = try await useCase.loadHotTrendFilters()
+      let hotTrendFilters = try await service.loadHotTrendFilters()
       state.hotTrendFilters = .loaded(hotTrendFilters)
     } catch is CancellationError {
       state.hotTrendFilters = previous.map { .loaded($0) } ?? .idle
@@ -142,7 +132,7 @@ final class MainViewModel {
     let previous = state.todayAuthor.value
     state.todayAuthor = .loading(previous: previous)
     do {
-      let todayAuthor = try await useCase.loadTodayAuthor()
+      let todayAuthor = try await service.loadTodayAuthor()
       state.todayAuthor = .loaded(todayAuthor)
     } catch is CancellationError {
       state.todayAuthor = previous.map { .loaded($0) } ?? .idle

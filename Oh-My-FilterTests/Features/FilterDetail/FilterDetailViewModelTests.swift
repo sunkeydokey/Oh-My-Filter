@@ -7,9 +7,9 @@ import Testing
 struct FilterDetailViewModelTests {
   @Test("initial load success stores rendered preview")
   func initialLoadSuccessStoresRenderedPreview() async throws {
-    let useCase = MockFilterDetailUseCase(result: .success(.sample))
+    let service = MockFilterDetailService(result: .success(.sample))
     let renderer = MockImageFilterRenderer(result: .success(.sample))
-    let viewModel = FilterDetailViewModel(filterID: "filter-123", useCase: useCase, renderer: renderer)
+    let viewModel = FilterDetailViewModel(filterID: "filter-123", service: service, renderer: renderer)
 
     await viewModel.send(.task)
 
@@ -27,9 +27,9 @@ struct FilterDetailViewModelTests {
 
   @Test("load failure stores message")
   func loadFailureStoresMessage() async {
-    let useCase = MockFilterDetailUseCase(result: .failure(FilterDetailServiceError.transport))
+    let service = MockFilterDetailService(result: .failure(FilterDetailServiceError.transport))
     let renderer = MockImageFilterRenderer(result: .success(.sample))
-    let viewModel = FilterDetailViewModel(filterID: "filter-123", useCase: useCase, renderer: renderer)
+    let viewModel = FilterDetailViewModel(filterID: "filter-123", service: service, renderer: renderer)
 
     await viewModel.send(.task)
 
@@ -44,9 +44,9 @@ struct FilterDetailViewModelTests {
 
   @Test("render failure uses fallback URLs")
   func renderFailureUsesFallbackURLs() async {
-    let useCase = MockFilterDetailUseCase(result: .success(.sample))
+    let service = MockFilterDetailService(result: .success(.sample))
     let renderer = MockImageFilterRenderer(result: .failure(ImageFilterRenderingError.renderFailed))
-    let viewModel = FilterDetailViewModel(filterID: "filter-123", useCase: useCase, renderer: renderer)
+    let viewModel = FilterDetailViewModel(filterID: "filter-123", service: service, renderer: renderer)
 
     await viewModel.send(.task)
 
@@ -77,22 +77,20 @@ struct FilterDetailViewModelTests {
 
   @Test("tap download creates order and opens payment request for undownloaded filter")
   func tapDownloadCreatesOrderAndPaymentRequest() async {
-    let useCase = MockFilterDetailUseCase(result: .success(.undownloadedSample))
-    let orderUseCase = MockOrderCreateUseCase(result: .success(.sample))
-    let paymentUseCase = MockPaymentValidationUseCase(result: .success(()))
+    let service = MockFilterDetailService(result: .success(.undownloadedSample))
+    let purchaseUseCase = MockFilterPurchaseUseCase()
     let renderer = MockImageFilterRenderer(result: .success(.sample))
     let viewModel = FilterDetailViewModel(
       filterID: "filter-123",
-      useCase: useCase,
-      orderCreateUseCase: orderUseCase,
-      paymentValidationUseCase: paymentUseCase,
+      service: service,
+      purchaseUseCase: purchaseUseCase,
       renderer: renderer
     )
 
     await viewModel.send(.task)
     await viewModel.send(.tapDownload)
 
-    #expect(await orderUseCase.requests == [OrderCreateRequest(filterId: "filter-123", totalPrice: 2000)])
+    #expect(await purchaseUseCase.requestedDetailIDs == ["filter-123"])
     #expect(viewModel.state.paymentRequest?.merchantUID == "D123456")
     #expect(viewModel.state.paymentRequest?.amount == "2000")
   }
@@ -128,18 +126,16 @@ struct FilterDetailViewModelTests {
 
   @Test("successful payment validates with server and reloads detail")
   func successfulPaymentValidatesAndReloadsDetail() async {
-    let useCase = SequencedFilterDetailUseCase(results: [
+    let service = SequencedFilterDetailService(results: [
       .success(.undownloadedSample),
       .success(.sample),
     ])
-    let orderUseCase = MockOrderCreateUseCase(result: .success(.sample))
-    let paymentUseCase = MockPaymentValidationUseCase(result: .success(()))
+    let purchaseUseCase = MockFilterPurchaseUseCase()
     let renderer = MockImageFilterRenderer(result: .success(.sample))
     let viewModel = FilterDetailViewModel(
       filterID: "filter-123",
-      useCase: useCase,
-      orderCreateUseCase: orderUseCase,
-      paymentValidationUseCase: paymentUseCase,
+      service: service,
+      purchaseUseCase: purchaseUseCase,
       renderer: renderer
     )
 
@@ -147,7 +143,7 @@ struct FilterDetailViewModelTests {
     await viewModel.send(.tapDownload)
     await viewModel.send(.paymentResponseReceived(.success(impUID: "imp-123")))
 
-    #expect(await paymentUseCase.requests == [PaymentValidationRequest(impUid: "imp-123")])
+    #expect(await purchaseUseCase.validatedResponses == [.success(impUID: "imp-123")])
     #expect(viewModel.state.detail?.isDownloaded == true)
   }
 
@@ -165,9 +161,9 @@ struct FilterDetailViewModelTests {
 
   @Test("reply submit appends filter reply and expands group")
   func replySubmitAppendsFilterReply() async {
-    let useCase = MockFilterDetailUseCase(result: .success(.sampleWithComment))
+    let service = MockFilterDetailService(result: .success(.sampleWithComment))
     let renderer = MockImageFilterRenderer(result: .success(.sample))
-    let viewModel = FilterDetailViewModel(filterID: "filter-123", useCase: useCase, renderer: renderer)
+    let viewModel = FilterDetailViewModel(filterID: "filter-123", service: service, renderer: renderer)
 
     await viewModel.send(.task)
     await viewModel.send(.replyTapped(commentID: "comment-1"))
@@ -181,27 +177,27 @@ struct FilterDetailViewModelTests {
 
   @Test("confirming comment deletion calls delete API and clears confirmation")
   func confirmingCommentDeletionCallsDeleteAPI() async {
-    let useCase = TrackingFilterDetailUseCase(detail: .sampleWithComment)
+    let service = TrackingFilterDetailService(detail: .sampleWithComment)
     let renderer = MockImageFilterRenderer(result: .success(.sample))
-    let viewModel = FilterDetailViewModel(filterID: "filter-123", useCase: useCase, renderer: renderer)
+    let viewModel = FilterDetailViewModel(filterID: "filter-123", service: service, renderer: renderer)
 
     await viewModel.send(.task)
     await viewModel.send(.deleteCommentTapped(commentID: "comment-1"))
     await viewModel.send(.deleteCommentConfirmed)
 
-    #expect(await useCase.deletedCommentIDs == ["comment-1"])
+    #expect(await service.deletedCommentIDs == ["comment-1"])
     #expect(viewModel.state.pendingDeleteCommentTarget == nil)
     #expect(viewModel.state.detail?.comments.isEmpty == true)
   }
 
   @Test("load marks detail mine when current user matches creator")
   func loadMarksDetailMineWhenCurrentUserMatchesCreator() async {
-    let useCase = MockFilterDetailUseCase(
+    let service = MockFilterDetailService(
       result: .success(.sample),
       currentUserIDResult: .success("user-1")
     )
     let renderer = MockImageFilterRenderer(result: .success(.sample))
-    let viewModel = FilterDetailViewModel(filterID: "filter-123", useCase: useCase, renderer: renderer)
+    let viewModel = FilterDetailViewModel(filterID: "filter-123", service: service, renderer: renderer)
 
     await viewModel.send(.task)
 
@@ -211,12 +207,12 @@ struct FilterDetailViewModelTests {
 
   @Test("load marks detail not mine when current user differs from creator")
   func loadMarksDetailNotMineWhenCurrentUserDiffersFromCreator() async {
-    let useCase = MockFilterDetailUseCase(
+    let service = MockFilterDetailService(
       result: .success(.sample),
       currentUserIDResult: .success("user-2")
     )
     let renderer = MockImageFilterRenderer(result: .success(.sample))
-    let viewModel = FilterDetailViewModel(filterID: "filter-123", useCase: useCase, renderer: renderer)
+    let viewModel = FilterDetailViewModel(filterID: "filter-123", service: service, renderer: renderer)
 
     await viewModel.send(.task)
 
@@ -226,7 +222,7 @@ struct FilterDetailViewModelTests {
 
   @Test("tap edit routes to update draft for own filter")
   func tapEditRoutesToUpdateDraftForOwnFilter() async {
-    let useCase = MockFilterDetailUseCase(
+    let service = MockFilterDetailService(
       result: .success(.sample),
       currentUserIDResult: .success("user-1")
     )
@@ -234,7 +230,7 @@ struct FilterDetailViewModelTests {
     let imageDataLoader = MockAuthenticatedImageDataLoader(data: Data([0x01, 0x02]))
     let viewModel = FilterDetailViewModel(
       filterID: "filter-123",
-      useCase: useCase,
+      service: service,
       renderer: renderer,
       imageDataLoader: imageDataLoader
     )
@@ -259,12 +255,12 @@ struct FilterDetailViewModelTests {
 
   @Test("tap edit does not route for another user's filter")
   func tapEditDoesNotRouteForOtherUserFilter() async {
-    let useCase = MockFilterDetailUseCase(
+    let service = MockFilterDetailService(
       result: .success(.sample),
       currentUserIDResult: .success("user-2")
     )
     let renderer = MockImageFilterRenderer(result: .success(.sample))
-    let viewModel = FilterDetailViewModel(filterID: "filter-123", useCase: useCase, renderer: renderer)
+    let viewModel = FilterDetailViewModel(filterID: "filter-123", service: service, renderer: renderer)
 
     await viewModel.send(.task)
     await viewModel.send(.tapEdit)
@@ -275,15 +271,13 @@ struct FilterDetailViewModelTests {
   private func paymentReadyViewModel(
     paymentResult: Result<Void, Error> = .success(())
   ) async -> FilterDetailViewModel {
-    let useCase = MockFilterDetailUseCase(result: .success(.undownloadedSample))
-    let orderUseCase = MockOrderCreateUseCase(result: .success(.sample))
-    let paymentUseCase = MockPaymentValidationUseCase(result: paymentResult)
+    let service = MockFilterDetailService(result: .success(.undownloadedSample))
+    let purchaseUseCase = MockFilterPurchaseUseCase(validateResult: paymentResult)
     let renderer = MockImageFilterRenderer(result: .success(.sample))
     let viewModel = FilterDetailViewModel(
       filterID: "filter-123",
-      useCase: useCase,
-      orderCreateUseCase: orderUseCase,
-      paymentValidationUseCase: paymentUseCase,
+      service: service,
+      purchaseUseCase: purchaseUseCase,
       renderer: renderer
     )
     await viewModel.send(.task)
@@ -292,7 +286,7 @@ struct FilterDetailViewModelTests {
   }
 }
 
-private struct MockFilterDetailUseCase: FilterDetailUseCase {
+private struct MockFilterDetailService: FilterDetailServicing {
   let result: Result<FilterDetail, Error>
   var currentUserIDResult: Result<String, Error> = .success("user-2")
   var createdComment = CommentReply(
@@ -341,7 +335,7 @@ private struct MockAuthenticatedImageDataLoader: AuthenticatedImageDataLoading {
   }
 }
 
-private actor TrackingFilterDetailUseCase: FilterDetailUseCase {
+private actor TrackingFilterDetailService: FilterDetailServicing {
   let detail: FilterDetail
   private(set) var deletedCommentIDs: [String] = []
 
@@ -400,35 +394,35 @@ private struct MockImageFilterRenderer: ImageFilterRendering {
   }
 }
 
-private actor MockOrderCreateUseCase: OrderCreateUseCase {
-  let result: Result<CreatedOrder, Error>
-  private(set) var requests: [OrderCreateRequest] = []
+private actor MockFilterPurchaseUseCase: FilterPurchaseUseCase {
+  let validateResult: Result<Void, Error>
+  private(set) var requestedDetailIDs: [String] = []
+  private(set) var validatedResponses: [PortonePaymentResponse] = []
 
-  init(result: Result<CreatedOrder, Error>) {
-    self.result = result
+  init(validateResult: Result<Void, Error> = .success(())) {
+    self.validateResult = validateResult
   }
 
-  func createOrder(filterID: String, totalPrice: Int) async throws -> CreatedOrder {
-    requests.append(OrderCreateRequest(filterId: filterID, totalPrice: totalPrice))
-    return try result.get()
+  func makePaymentRequest(for detail: FilterDetail) async throws -> PortonePaymentRequest {
+    requestedDetailIDs.append(detail.id)
+    return PortonePaymentRequest(detail: detail, merchantUID: "D123456")
+  }
+
+  func validatePaymentResponse(_ response: PortonePaymentResponse) async throws {
+    guard response.success else {
+      throw FilterPurchaseError.paymentFailed(response.errorMessage)
+    }
+
+    guard let impUID = response.impUID, impUID.isEmpty == false else {
+      throw FilterPurchaseError.missingApproval
+    }
+
+    validatedResponses.append(response)
+    try validateResult.get()
   }
 }
 
-private actor MockPaymentValidationUseCase: PaymentValidationUseCase {
-  let result: Result<Void, Error>
-  private(set) var requests: [PaymentValidationRequest] = []
-
-  init(result: Result<Void, Error>) {
-    self.result = result
-  }
-
-  func validatePayment(impUID: String) async throws {
-    requests.append(PaymentValidationRequest(impUid: impUID))
-    try result.get()
-  }
-}
-
-private actor SequencedFilterDetailUseCase: FilterDetailUseCase {
+private actor SequencedFilterDetailService: FilterDetailServicing {
   private var results: [Result<FilterDetail, Error>]
 
   init(results: [Result<FilterDetail, Error>]) {

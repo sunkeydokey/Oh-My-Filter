@@ -17,10 +17,10 @@ nonisolated struct ReceiptState: Equatable, Sendable {
 final class ReceiptViewModel {
   var state = ReceiptState()
 
-  private let useCase: any OrderHistoryUseCase
+  private let service: any OrderHistoryServicing
 
-  init(useCase: (any OrderHistoryUseCase)? = nil) {
-    self.useCase = useCase ?? LiveOrderHistoryUseCase()
+  init(service: (any OrderHistoryServicing)? = nil) {
+    self.service = service ?? LiveOrderHistoryService()
   }
 
   func send(_ action: ReceiptAction) async {
@@ -35,7 +35,7 @@ final class ReceiptViewModel {
     state.message = nil
 
     do {
-      state.orders = try await useCase.loadOrders()
+      state.orders = try await service.loadOrders()
     } catch is CancellationError {
       return
     } catch {

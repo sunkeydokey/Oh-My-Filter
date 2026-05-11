@@ -112,6 +112,87 @@ struct OrderServiceTests {
   }
 }
 
+struct FilterPurchaseUseCaseTests {
+  @Test("make payment request creates order and maps detail to Portone request")
+  func makePaymentRequestCreatesOrder() async throws {
+    let orderService = MockOrderService(result: .success(.sample))
+    let paymentService = MockPaymentService()
+    let useCase = LiveFilterPurchaseUseCase(orderService: orderService, paymentService: paymentService)
+
+    let request = try await useCase.makePaymentRequest(for: .undownloadedFilter)
+
+    #expect(await orderService.requests == [OrderCreateRequest(filterId: "filter-123", totalPrice: 2000)])
+    #expect(request.merchantUID == "D123456")
+    #expect(request.amount == "2000")
+    #expect(request.name == "청록새록")
+  }
+
+  @Test("make payment request rejects already purchased filter")
+  func makePaymentRequestRejectsPurchasedFilter() async {
+    let orderService = MockOrderService(result: .success(.sample))
+    let paymentService = MockPaymentService()
+    let useCase = LiveFilterPurchaseUseCase(orderService: orderService, paymentService: paymentService)
+
+    await #expect(throws: FilterPurchaseError.alreadyPurchased) {
+      try await useCase.makePaymentRequest(for: .downloadedFilter)
+    }
+
+    #expect(await orderService.requests.isEmpty)
+  }
+
+  @Test("successful payment response validates with server")
+  func successfulPaymentResponseValidatesWithServer() async throws {
+    let orderService = MockOrderService(result: .success(.sample))
+    let paymentService = MockPaymentService()
+    let useCase = LiveFilterPurchaseUseCase(orderService: orderService, paymentService: paymentService)
+
+    try await useCase.validatePaymentResponse(.success(impUID: "imp-123"))
+
+    #expect(await paymentService.requests == [PaymentValidationRequest(impUid: "imp-123")])
+  }
+
+  @Test("payment response without imp uid fails before validation")
+  func paymentResponseWithoutImpUIDFailsBeforeValidation() async {
+    let orderService = MockOrderService(result: .success(.sample))
+    let paymentService = MockPaymentService()
+    let useCase = LiveFilterPurchaseUseCase(orderService: orderService, paymentService: paymentService)
+
+    await #expect(throws: FilterPurchaseError.missingApproval) {
+      try await useCase.validatePaymentResponse(.success(impUID: nil))
+    }
+
+    #expect(await paymentService.requests.isEmpty)
+  }
+
+  @Test("failed payment response preserves user message")
+  func failedPaymentResponsePreservesUserMessage() async {
+    let orderService = MockOrderService(result: .success(.sample))
+    let paymentService = MockPaymentService()
+    let useCase = LiveFilterPurchaseUseCase(orderService: orderService, paymentService: paymentService)
+
+    await #expect(throws: FilterPurchaseError.paymentFailed("카드 승인 실패")) {
+      try await useCase.validatePaymentResponse(.failure)
+    }
+
+    #expect(await paymentService.requests.isEmpty)
+  }
+
+  @Test("order and payment service errors propagate")
+  func serviceErrorsPropagate() async {
+    let failingOrderService = MockOrderService(result: .failure(OrderServiceError.transport))
+    let paymentService = MockPaymentService(result: .failure(PaymentServiceError.validationFailed))
+    let useCase = LiveFilterPurchaseUseCase(orderService: failingOrderService, paymentService: paymentService)
+
+    await #expect(throws: OrderServiceError.transport) {
+      try await useCase.makePaymentRequest(for: .undownloadedFilter)
+    }
+
+    await #expect(throws: PaymentServiceError.validationFailed) {
+      try await useCase.validatePaymentResponse(.success(impUID: "imp-123"))
+    }
+  }
+}
+
 private actor MockPaymentNetworkManager: AuthenticatedNetworkManaging {
   private var queuedResults: [Result<NetworkResponse, Error>] = []
 
@@ -147,6 +228,34 @@ private actor MockPaymentNetworkManager: AuthenticatedNetworkManaging {
   }
 }
 
+private actor MockOrderService: OrderServicing {
+  let result: Result<CreatedOrder, Error>
+  private(set) var requests: [OrderCreateRequest] = []
+
+  init(result: Result<CreatedOrder, Error>) {
+    self.result = result
+  }
+
+  func createOrder(request: OrderCreateRequest) async throws -> CreatedOrder {
+    requests.append(request)
+    return try result.get()
+  }
+}
+
+private actor MockPaymentService: PaymentServicing {
+  let result: Result<Void, Error>
+  private(set) var requests: [PaymentValidationRequest] = []
+
+  init(result: Result<Void, Error> = .success(())) {
+    self.result = result
+  }
+
+  func validatePayment(request: PaymentValidationRequest) async throws {
+    requests.append(request)
+    try result.get()
+  }
+}
+
 private extension OrderServiceTests {
   static let orderData = Data(
     """
@@ -160,5 +269,78 @@ private extension OrderServiceTests {
       }
     }
     """.utf8
+  )
+}
+
+private extension CreatedOrder {
+  static let sample = CreatedOrder(
+    orderID: "order-123",
+    orderCode: "D123456",
+    totalPrice: 2000,
+    createdAt: "2025-08-01T15:30:00.000Z",
+    updatedAt: "2025-08-01T15:30:00.000Z"
+  )
+}
+
+private extension FilterDetail {
+  static let undownloadedFilter = filter(isDownloaded: false)
+  static let downloadedFilter = filter(isDownloaded: true)
+
+  static func filter(isDownloaded: Bool) -> FilterDetail {
+    FilterDetail(
+      id: "filter-123",
+      title: "청록새록",
+      category: "풍경",
+      introduction: "맑은 청록빛",
+      description: "설명",
+      originalImageURL: nil,
+      fallbackFilteredImageURL: nil,
+      creator: FilterDetailCreator(
+        id: "user-1",
+        nick: "SESAC YOON",
+        name: "윤새싹",
+        profileImageURL: nil,
+        introduction: nil,
+        hashTags: []
+      ),
+      metadata: FilterDetailMetadata(
+        camera: nil,
+        lens: nil,
+        focalLength: nil,
+        aperture: nil,
+        shutterSpeed: nil,
+        iso: nil
+      ),
+      filterValues: .neutral,
+      comments: [],
+      isDownloaded: isDownloaded,
+      isLiked: false,
+      likeCount: 0,
+      buyerCount: 0,
+      price: 2000,
+      hashTags: [],
+      createdAt: nil,
+      updatedAt: nil
+    )
+  }
+}
+
+private extension PortonePaymentResponse {
+  static func success(impUID: String?) -> PortonePaymentResponse {
+    PortonePaymentResponse(
+      success: true,
+      impUID: impUID,
+      merchantUID: "D123456",
+      errorMessage: nil,
+      errorCode: nil
+    )
+  }
+
+  static let failure = PortonePaymentResponse(
+    success: false,
+    impUID: nil,
+    merchantUID: "D123456",
+    errorMessage: "카드 승인 실패",
+    errorCode: "FAILED"
   )
 }

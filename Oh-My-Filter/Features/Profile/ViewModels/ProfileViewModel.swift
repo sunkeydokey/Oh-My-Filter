@@ -19,14 +19,14 @@ final class ProfileViewModel {
   var state = ProfileState()
 
   private let profileUseCase: any ProfileUseCase
-  private let orderUseCase: any OrderHistoryUseCase
+  private let orderService: any OrderHistoryServicing
 
   init(
     profileUseCase: (any ProfileUseCase)? = nil,
-    orderUseCase: (any OrderHistoryUseCase)? = nil
+    orderService: (any OrderHistoryServicing)? = nil
   ) {
     self.profileUseCase = profileUseCase ?? LiveProfileUseCase()
-    self.orderUseCase = orderUseCase ?? LiveOrderHistoryUseCase()
+    self.orderService = orderService ?? LiveOrderHistoryService()
   }
 
   func send(_ action: ProfileAction) async {
@@ -42,7 +42,7 @@ final class ProfileViewModel {
 
     do {
       async let profile = profileUseCase.loadMyProfile()
-      async let orders = orderUseCase.loadOrders()
+      async let orders = orderService.loadOrders()
       state.profile = try await profile
       let loadedOrders = try await orders
       state.orderCount = loadedOrders.count
