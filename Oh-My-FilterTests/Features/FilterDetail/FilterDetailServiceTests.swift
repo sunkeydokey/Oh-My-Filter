@@ -55,6 +55,19 @@ struct FilterDetailServiceTests {
     #expect(comment.creator.nick == "sesac")
   }
 
+  @Test("filter like request uses filter like endpoint and body")
+  func filterLikeRequestUsesEndpointAndBody() async throws {
+    let manager = MockFilterDetailNetworkManager()
+    let service = LiveFilterDetailService(networkManager: manager)
+
+    await manager.enqueueResponse(NetworkResponse(data: Data(#"{"like_status":true}"#.utf8), statusCode: 200))
+    let status = try await service.toggleLike(filterID: "filter-123", status: true)
+
+    #expect(status == true)
+    #expect(await manager.capturedURLs == ["http://filter.sesac.kr:42598/v1/filters/filter-123/like"])
+    #expect(await manager.capturedLikeStatuses == [true])
+  }
+
   @Test("current user id loads from user defaults session store")
   func currentUserIDLoadsFromSessionStore() async throws {
     let manager = MockFilterDetailNetworkManager()
@@ -144,6 +157,7 @@ private struct MockUserSessionStore: UserSessionStoring {
 private actor MockFilterDetailNetworkManager: AuthenticatedNetworkManaging {
   private var queuedResults: [Result<NetworkResponse, Error>] = []
   private(set) var capturedURLs: [String] = []
+  private(set) var capturedLikeStatuses: [Bool] = []
 
   func enqueueResponse(_ response: NetworkResponse) {
     queuedResults.append(.success(response))
@@ -167,6 +181,9 @@ private actor MockFilterDetailNetworkManager: AuthenticatedNetworkManaging {
     parameters: RequestQuery
   ) async throws -> NetworkResponse {
     capturedURLs.append(router.url)
+    if let body = body as? FilterLikeRequestDTO {
+      capturedLikeStatuses.append(body.like_status)
+    }
     return try nextResult()
   }
 

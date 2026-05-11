@@ -19,19 +19,23 @@ final class FilterDetailViewModel {
   private let purchaseUseCase: any FilterPurchaseUseCase
   private let renderer: any ImageFilterRendering
   private let imageDataLoader: any AuthenticatedImageDataLoading
+  private let likeCommitter: DebouncedBooleanCommitter
+  private var pendingLikeRollback: (isLiked: Bool, likeCount: Int)?
 
   init(
     filterID: String,
     service: any FilterDetailServicing,
     purchaseUseCase: (any FilterPurchaseUseCase)? = nil,
     renderer: any ImageFilterRendering,
-    imageDataLoader: any AuthenticatedImageDataLoading = LiveAuthenticatedImageDataLoader()
+    imageDataLoader: any AuthenticatedImageDataLoading = LiveAuthenticatedImageDataLoader(),
+    likeDebounceDuration: Duration = .milliseconds(300)
   ) {
     self.filterID = filterID
     self.service = service
     self.purchaseUseCase = purchaseUseCase ?? LiveFilterPurchaseUseCase()
     self.renderer = renderer
     self.imageDataLoader = imageDataLoader
+    self.likeCommitter = DebouncedBooleanCommitter(duration: likeDebounceDuration)
   }
 
   convenience init(
@@ -60,6 +64,8 @@ final class FilterDetailViewModel {
     switch action {
     case .task, .retry:
       await load()
+    case .likeTapped:
+      toggleLike()
     case .tapDownload:
       await startPayment()
     case let .paymentResponseReceived(response):
@@ -134,6 +140,8 @@ final class FilterDetailViewModel {
   }
 
   private func load() async {
+    likeCommitter.cancel()
+    pendingLikeRollback = nil
     let previous = state.detail
     state.phase = .loading(previous: previous)
 
@@ -195,6 +203,54 @@ final class FilterDetailViewModel {
       showPaymentAlert(message: Self.paymentMessage(for: error))
       Self.logger.error("❌ [FilterDetailViewModel] order creation failed \(String(describing: error), privacy: .public)")
     }
+  }
+
+  private func toggleLike() {
+    guard case let .loaded(detail, previewState) = state.phase else { return }
+
+    if pendingLikeRollback == nil {
+      pendingLikeRollback = (detail.isLiked, detail.likeCount)
+    }
+
+    let targetStatus = detail.isLiked == false
+    let optimisticDetail = detail.replacingLike(
+      isLiked: targetStatus,
+      likeCount: max(0, detail.likeCount + (targetStatus ? 1 : -1))
+    )
+    state.phase = .loaded(optimisticDetail, previewState)
+
+    let filterID = detail.id
+    likeCommitter.schedule(
+      status: targetStatus,
+      operation: { [service] status in
+        try await service.toggleLike(filterID: filterID, status: status)
+      },
+      completion: { [weak self] result, requestedStatus in
+        guard let self else { return }
+        switch result {
+        case let .success(confirmedStatus) where confirmedStatus == requestedStatus:
+          pendingLikeRollback = nil
+        default:
+          rollbackLike()
+        }
+      }
+    )
+  }
+
+  private func rollbackLike() {
+    guard let pendingLikeRollback,
+          case let .loaded(detail, previewState) = state.phase else {
+      return
+    }
+
+    state.phase = .loaded(
+      detail.replacingLike(
+        isLiked: pendingLikeRollback.isLiked,
+        likeCount: pendingLikeRollback.likeCount
+      ),
+      previewState
+    )
+    self.pendingLikeRollback = nil
   }
 
   private func handlePaymentResponse(_ response: PortonePaymentResponse?) async {
@@ -592,6 +648,30 @@ private extension FilterDetail {
       metadata: metadata,
       filterValues: filterValues,
       comments: updatedComments,
+      isDownloaded: isDownloaded,
+      isLiked: isLiked,
+      likeCount: likeCount,
+      buyerCount: buyerCount,
+      price: price,
+      hashTags: hashTags,
+      createdAt: createdAt,
+      updatedAt: updatedAt
+    )
+  }
+
+  func replacingLike(isLiked: Bool, likeCount: Int) -> FilterDetail {
+    FilterDetail(
+      id: id,
+      title: title,
+      category: category,
+      introduction: introduction,
+      description: description,
+      originalImageURL: originalImageURL,
+      fallbackFilteredImageURL: fallbackFilteredImageURL,
+      creator: creator,
+      metadata: metadata,
+      filterValues: filterValues,
+      comments: comments,
       isDownloaded: isDownloaded,
       isLiked: isLiked,
       likeCount: likeCount,

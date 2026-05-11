@@ -3,6 +3,7 @@ import Foundation
 nonisolated enum FilterDetailAction: Equatable, Sendable {
   case task
   case retry
+  case likeTapped
   case tapDownload
   case tapApply
   case tapPurchaseRequired

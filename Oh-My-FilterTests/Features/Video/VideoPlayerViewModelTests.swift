@@ -87,17 +87,48 @@ struct VideoPlayerViewModelTests {
   }
 
   @Test("toggleLike rolls back on API failure")
-  func toggleLikeRollback() async {
+  func toggleLikeRollback() async throws {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
     await service.enqueueLike(.failure(VideoPlayerServiceError.serverError))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = VideoPlayerViewModel(
+      video: Self.video,
+      service: service,
+      likeDebounceDuration: .milliseconds(20)
+    )
     await viewModel.send(.task)
 
     await viewModel.send(.toggleLike)
 
+    #expect(viewModel.isLiked == true)
+    #expect(viewModel.likeCount == 43)
+
+    try await Task.sleep(for: .milliseconds(80))
     #expect(viewModel.isLiked == false)
     #expect(viewModel.likeCount == 42)
+  }
+
+  @Test("toggleLike debounces final status")
+  func toggleLikeDebouncesFinalStatus() async throws {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    await service.enqueueLike(.success(false))
+    let viewModel = VideoPlayerViewModel(
+      video: Self.video,
+      service: service,
+      likeDebounceDuration: .milliseconds(20)
+    )
+    await viewModel.send(.task)
+
+    await viewModel.send(.toggleLike)
+    await viewModel.send(.toggleLike)
+
+    #expect(viewModel.isLiked == false)
+    #expect(viewModel.likeCount == 42)
+    #expect(await service.likeStatuses.isEmpty)
+
+    try await Task.sleep(for: .milliseconds(80))
+    #expect(await service.likeStatuses == [false])
   }
 
   // MARK: - Description
@@ -400,6 +431,7 @@ private actor MockVideoPlayerService: VideoPlayerServicing {
   private var streamResults: [Result<VideoStream, Error>] = []
   private var likeResults: [Result<Bool, Error>] = []
   private var subtitleResults: [String: Result<[VideoSubtitleCue], Error>] = [:]
+  private(set) var likeStatuses: [Bool] = []
 
   func enqueueStream(_ result: Result<VideoStream, Error>) {
     streamResults.append(result)
@@ -421,6 +453,7 @@ private actor MockVideoPlayerService: VideoPlayerServicing {
   }
 
   func toggleLike(videoId: String, status: Bool) async throws -> Bool {
+    likeStatuses.append(status)
     guard likeResults.isEmpty == false else {
       throw VideoPlayerServiceError.serverError
     }

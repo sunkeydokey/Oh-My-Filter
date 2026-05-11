@@ -268,6 +268,58 @@ struct FilterDetailViewModelTests {
     #expect(viewModel.state.route == nil)
   }
 
+  @Test("like tap applies optimistic update and debounces final status")
+  func likeTapOptimisticallyUpdatesAndDebounces() async throws {
+    let service = TrackingFilterDetailService(detail: .sample)
+    let renderer = MockImageFilterRenderer(result: .success(.sample))
+    let viewModel = FilterDetailViewModel(
+      filterID: "filter-123",
+      service: service,
+      renderer: renderer,
+      likeDebounceDuration: .milliseconds(20)
+    )
+
+    await viewModel.send(.task)
+    await viewModel.send(.likeTapped)
+
+    #expect(viewModel.state.detail?.isLiked == true)
+    #expect(viewModel.state.detail?.likeCount == 1)
+    #expect(await service.likeStatuses.isEmpty)
+
+    await viewModel.send(.likeTapped)
+
+    #expect(viewModel.state.detail?.isLiked == false)
+    #expect(viewModel.state.detail?.likeCount == 0)
+
+    try await Task.sleep(for: .milliseconds(80))
+    #expect(await service.likeStatuses == [false])
+  }
+
+  @Test("like debounce failure rolls back to pre-burst state")
+  func likeDebounceFailureRollsBack() async throws {
+    let service = TrackingFilterDetailService(
+      detail: .sample,
+      likeResults: [.failure(FilterDetailServiceError.serverError)]
+    )
+    let renderer = MockImageFilterRenderer(result: .success(.sample))
+    let viewModel = FilterDetailViewModel(
+      filterID: "filter-123",
+      service: service,
+      renderer: renderer,
+      likeDebounceDuration: .milliseconds(20)
+    )
+
+    await viewModel.send(.task)
+    await viewModel.send(.likeTapped)
+
+    #expect(viewModel.state.detail?.isLiked == true)
+    #expect(viewModel.state.detail?.likeCount == 1)
+
+    try await Task.sleep(for: .milliseconds(80))
+    #expect(viewModel.state.detail?.isLiked == false)
+    #expect(viewModel.state.detail?.likeCount == 0)
+  }
+
   private func paymentReadyViewModel(
     paymentResult: Result<Void, Error> = .success(())
   ) async -> FilterDetailViewModel {
@@ -306,6 +358,10 @@ private struct MockFilterDetailService: FilterDetailServicing {
 
   func deleteFilter(filterID: String) async throws {}
 
+  func toggleLike(filterID: String, status: Bool) async throws -> Bool {
+    status
+  }
+
   func createComment(filterID: String, parentCommentID: String?, content: String) async throws -> CommentReply {
     CommentReply(
       id: createdComment.id,
@@ -338,9 +394,12 @@ private struct MockAuthenticatedImageDataLoader: AuthenticatedImageDataLoading {
 private actor TrackingFilterDetailService: FilterDetailServicing {
   let detail: FilterDetail
   private(set) var deletedCommentIDs: [String] = []
+  private(set) var likeStatuses: [Bool] = []
+  private var likeResults: [Result<Bool, Error>]
 
-  init(detail: FilterDetail) {
+  init(detail: FilterDetail, likeResults: [Result<Bool, Error>] = []) {
     self.detail = detail
+    self.likeResults = likeResults
   }
 
   func loadFilterDetail(filterID: String) async throws -> FilterDetail {
@@ -352,6 +411,14 @@ private actor TrackingFilterDetailService: FilterDetailServicing {
   }
 
   func deleteFilter(filterID: String) async throws {}
+
+  func toggleLike(filterID: String, status: Bool) async throws -> Bool {
+    likeStatuses.append(status)
+    guard likeResults.isEmpty == false else {
+      return status
+    }
+    return try likeResults.removeFirst().get()
+  }
 
   func createComment(filterID: String, parentCommentID: String?, content: String) async throws -> CommentReply {
     CommentReply(id: "reply-1", content: content, createdAt: "2026-02-08T15:55:45.508Z", creator: .commentUser)
@@ -442,6 +509,10 @@ private actor SequencedFilterDetailService: FilterDetailServicing {
   }
 
   func deleteFilter(filterID: String) async throws {}
+
+  func toggleLike(filterID: String, status: Bool) async throws -> Bool {
+    status
+  }
 
   func createComment(filterID: String, parentCommentID: String?, content: String) async throws -> CommentReply {
     CommentReply(

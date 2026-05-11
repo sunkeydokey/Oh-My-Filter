@@ -10,6 +10,7 @@ struct FilterDetailLoadedView: View {
   let replyingToCommentID: String?
   let editingCommentTarget: CommentEditTarget?
   let commentText: String
+  let onToggleLike: () -> Void
   let action: () -> Void
   let onApply: () -> Void
   let onPurchaseRequired: () -> Void
@@ -32,7 +33,7 @@ struct FilterDetailLoadedView: View {
         )
 
         FilterDetailPriceView(detail: detail)
-        FilterDetailStatsView(detail: detail)
+        FilterDetailStatsView(detail: detail, onToggleLike: onToggleLike)
         FilterDetailMetadataView(metadata: detail.metadata)
         FilterDetailValuesView(
           values: detail.filterValues,

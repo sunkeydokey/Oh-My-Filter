@@ -80,6 +80,8 @@ final class VideoPlayerViewModel {
   private var pendingQuality: PendingQualityChange?
   private(set) var pendingQualityLabel: String?
   private var subtitleCueCache: [String: [VideoSubtitleCue]] = [:]
+  private let likeCommitter: DebouncedBooleanCommitter
+  private var pendingLikeRollback: (isLiked: Bool, likeCount: Int)?
 
   private struct PendingQualityChange {
     let label: String
@@ -90,13 +92,18 @@ final class VideoPlayerViewModel {
     var boundaryToken: Any?
   }
 
-  init(video: CommunityVideo, service: any VideoPlayerServicing) {
+  init(
+    video: CommunityVideo,
+    service: any VideoPlayerServicing,
+    likeDebounceDuration: Duration = .milliseconds(300)
+  ) {
     self.video = video
     self.service = service
     self.isLiked = video.isLiked
     self.likeCount = video.likeCount
     self.selectedQuality = video.availableQualities.first ?? ""
     self.duration = video.duration
+    self.likeCommitter = DebouncedBooleanCommitter(duration: likeDebounceDuration)
   }
 
   convenience init(video: CommunityVideo) {
@@ -169,6 +176,8 @@ final class VideoPlayerViewModel {
   }
 
   private func loadStream() async {
+    likeCommitter.cancel()
+    pendingLikeRollback = nil
     playerPhase = .loading
     currentTime = 0
 
@@ -241,21 +250,40 @@ final class VideoPlayerViewModel {
   }
 
   private func handleToggleLike() async {
-    let previousLiked = isLiked
-    let previousCount = likeCount
-
-    isLiked = !previousLiked
-    likeCount = previousLiked ? previousCount - 1 : previousCount + 1
-
-    do {
-      let result = try await service.toggleLike(videoId: video.id, status: isLiked)
-      isLiked = result
-      likeCount = result ? previousCount + 1 : previousCount - 1
-    } catch {
-      isLiked = previousLiked
-      likeCount = previousCount
-      Self.logger.error("❌ [VideoPlayerViewModel] toggleLike failed error=\(String(describing: error), privacy: .public)")
+    if pendingLikeRollback == nil {
+      pendingLikeRollback = (isLiked, likeCount)
     }
+
+    let targetStatus = isLiked == false
+    isLiked = targetStatus
+    likeCount = max(0, likeCount + (targetStatus ? 1 : -1))
+
+    let videoID = video.id
+    likeCommitter.schedule(
+      status: targetStatus,
+      operation: { [service] status in
+        try await service.toggleLike(videoId: videoID, status: status)
+      },
+      completion: { [weak self] result, requestedStatus in
+        guard let self else { return }
+        switch result {
+        case let .success(confirmedStatus) where confirmedStatus == requestedStatus:
+          pendingLikeRollback = nil
+        default:
+          rollbackLike()
+          if case let .failure(error) = result {
+            Self.logger.error("❌ [VideoPlayerViewModel] toggleLike failed error=\(String(describing: error), privacy: .public)")
+          }
+        }
+      }
+    )
+  }
+
+  private func rollbackLike() {
+    guard let pendingLikeRollback else { return }
+    isLiked = pendingLikeRollback.isLiked
+    likeCount = pendingLikeRollback.likeCount
+    self.pendingLikeRollback = nil
   }
 
   private func handleToggleSubtitles() async {

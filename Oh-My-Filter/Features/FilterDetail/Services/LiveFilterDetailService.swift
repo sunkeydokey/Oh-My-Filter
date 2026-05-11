@@ -100,6 +100,16 @@ actor LiveFilterDetailService: FilterDetailServicing {
     try validateEmptyResponse(response)
   }
 
+  func toggleLike(filterID: String, status: Bool) async throws -> Bool {
+    guard filterID.isEmpty == false else {
+      throw FilterDetailServiceError.invalidResponse
+    }
+
+    let body = FilterLikeRequestDTO(like_status: status)
+    let response = try await requestWithBody(FilterApiRouter.like(filterID: filterID), body: body, parameters: .empty)
+    return try decode(FilterLikeResponseDTO.self, from: response).likeStatus
+  }
+
   func updateComment(filterID: String, commentID: String, content: String) async throws -> CommentReply {
     guard filterID.isEmpty == false, commentID.isEmpty == false else {
       throw FilterDetailServiceError.invalidResponse
@@ -146,6 +156,35 @@ actor LiveFilterDetailService: FilterDetailServicing {
       .serverError
     case .transport:
       .transport
+    }
+  }
+
+  private func requestWithBody<Router: ApiRouter, Body: Encodable>(
+    _ router: Router,
+    body: Body,
+    parameters: RequestQuery
+  ) async throws -> NetworkResponse {
+    do {
+      return try await networkManager.request(router, body: body, parameters: parameters)
+    } catch let error as NetworkError {
+      throw mappedNetworkError(error)
+    } catch {
+      throw FilterDetailServiceError.transport
+    }
+  }
+
+  private func decode<DTO: Decodable>(_ type: DTO.Type, from response: NetworkResponse) throws -> DTO {
+    switch response.statusCode {
+    case 200 ..< 300:
+      do {
+        return try decoder.decode(type, from: response.data)
+      } catch {
+        throw FilterDetailServiceError.invalidResponse
+      }
+    case 400:
+      throw FilterDetailServiceError.invalidResponse
+    default:
+      throw FilterDetailServiceError.serverError
     }
   }
 
