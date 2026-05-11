@@ -6,18 +6,18 @@ import Testing
 struct CommunityViewModelTests {
   @Test("task transitions from loading to loaded")
   func taskTransitionsToLoaded() async {
-    let useCase = ControlledCommunityUseCase()
-    let viewModel = CommunityViewModel(useCase: useCase)
+    let service = ControlledCommunityService()
+    let viewModel = CommunityViewModel(service: service)
 
     let task = Task {
       await viewModel.send(.task)
     }
 
-    await useCase.waitForPostRequestCount(1)
+    await service.waitForPostRequestCount(1)
     #expect(viewModel.state.phase == .loading)
 
-    await useCase.resumeNextPosts(with: CommunityPostPage(posts: [.first, .second], nextCursor: "next-post"))
-    await useCase.resumeNextVideos(with: CommunityVideoPage(videos: [.first], nextCursor: "0"))
+    await service.resumeNextPosts(with: CommunityPostPage(posts: [.first, .second], nextCursor: "next-post"))
+    await service.resumeNextVideos(with: CommunityVideoPage(videos: [.first], nextCursor: "0"))
     await task.value
 
     #expect(viewModel.state.phase == .loaded)
@@ -62,26 +62,26 @@ struct CommunityViewModelTests {
 
   @Test("post search calls api and all tab combines searched posts with local video title filter")
   func postSearchCallsAPI() async {
-    let useCase = QueueCommunityUseCase()
-    await useCase.enqueuePosts(.success(CommunityPostPage(posts: [.first], nextCursor: "0")))
-    await useCase.enqueueVideos(.success(CommunityVideoPage(videos: [.first], nextCursor: "0")))
-    await useCase.enqueueSearch(.success([.second]))
-    let viewModel = CommunityViewModel(useCase: useCase)
+    let service = QueueCommunityService()
+    await service.enqueuePosts(.success(CommunityPostPage(posts: [.first], nextCursor: "0")))
+    await service.enqueueVideos(.success(CommunityVideoPage(videos: [.first], nextCursor: "0")))
+    await service.enqueueSearch(.success([.second]))
+    let viewModel = CommunityViewModel(service: service)
 
     await viewModel.send(.task)
     await viewModel.send(.searchTextChanged("Second"))
     await viewModel.send(.submitSearch)
 
-    #expect(await useCase.searchTitles == ["Second"])
+    #expect(await service.searchTitles == ["Second"])
     #expect(viewModel.state.visibleFeedItems == [.post(.second), .videoRail([.first])])
   }
 
   @Test("video search uses local title filtering")
   func videoSearchUsesLocalFiltering() async {
-    let useCase = QueueCommunityUseCase()
-    await useCase.enqueuePosts(.success(CommunityPostPage(posts: [], nextCursor: "0")))
-    await useCase.enqueueVideos(.success(CommunityVideoPage(videos: [.first, .second], nextCursor: "0")))
-    let viewModel = CommunityViewModel(useCase: useCase)
+    let service = QueueCommunityService()
+    await service.enqueuePosts(.success(CommunityPostPage(posts: [], nextCursor: "0")))
+    await service.enqueueVideos(.success(CommunityVideoPage(videos: [.first, .second], nextCursor: "0")))
+    let viewModel = CommunityViewModel(service: service)
 
     await viewModel.send(.task)
     await viewModel.send(.selectedTabChanged(.videos))
@@ -89,47 +89,47 @@ struct CommunityViewModelTests {
     await viewModel.send(.submitSearch)
 
     #expect(viewModel.state.visibleFeedItems == [.video(.second)])
-    #expect(await useCase.searchTitles.isEmpty)
+    #expect(await service.searchTitles.isEmpty)
   }
 
   @Test("video rail scroll appends next cursor page")
   func videoRailScrollAppendsNextCursorPage() async {
-    let useCase = QueueCommunityUseCase()
-    await useCase.enqueuePosts(.success(CommunityPostPage(posts: [], nextCursor: "0")))
-    await useCase.enqueueVideos(.success(CommunityVideoPage(videos: [.first, .second], nextCursor: "next-video")))
-    await useCase.enqueueVideos(.success(CommunityVideoPage(videos: [.third], nextCursor: "0")))
-    let viewModel = CommunityViewModel(useCase: useCase)
+    let service = QueueCommunityService()
+    await service.enqueuePosts(.success(CommunityPostPage(posts: [], nextCursor: "0")))
+    await service.enqueueVideos(.success(CommunityVideoPage(videos: [.first, .second], nextCursor: "next-video")))
+    await service.enqueueVideos(.success(CommunityVideoPage(videos: [.third], nextCursor: "0")))
+    let viewModel = CommunityViewModel(service: service)
 
     await viewModel.send(.task)
     await viewModel.send(.scroll(.videoRailItemAppeared(.second)))
 
-    #expect(await useCase.videoNextCursors == [nil, "next-video"])
+    #expect(await service.videoNextCursors == [nil, "next-video"])
     #expect(viewModel.state.videos == [.first, .second, .third])
     #expect(viewModel.state.videosNextCursor == "0")
   }
 
   @Test("video rail scroll ignores terminal cursor and search")
   func videoRailScrollIgnoresTerminalCursorAndSearch() async {
-    let terminalUseCase = QueueCommunityUseCase()
-    await terminalUseCase.enqueuePosts(.success(CommunityPostPage(posts: [], nextCursor: "0")))
-    await terminalUseCase.enqueueVideos(.success(CommunityVideoPage(videos: [.first], nextCursor: "0")))
-    let terminalViewModel = CommunityViewModel(useCase: terminalUseCase)
+    let terminalService = QueueCommunityService()
+    await terminalService.enqueuePosts(.success(CommunityPostPage(posts: [], nextCursor: "0")))
+    await terminalService.enqueueVideos(.success(CommunityVideoPage(videos: [.first], nextCursor: "0")))
+    let terminalViewModel = CommunityViewModel(service: terminalService)
 
     await terminalViewModel.send(.task)
     await terminalViewModel.send(.scroll(.videoRailItemAppeared(.first)))
 
-    #expect(await terminalUseCase.videoNextCursors == [nil])
+    #expect(await terminalService.videoNextCursors == [nil])
 
-    let searchingUseCase = QueueCommunityUseCase()
-    await searchingUseCase.enqueuePosts(.success(CommunityPostPage(posts: [], nextCursor: "0")))
-    await searchingUseCase.enqueueVideos(.success(CommunityVideoPage(videos: [.first, .second], nextCursor: "next-video")))
-    let searchingViewModel = CommunityViewModel(useCase: searchingUseCase)
+    let searchingService = QueueCommunityService()
+    await searchingService.enqueuePosts(.success(CommunityPostPage(posts: [], nextCursor: "0")))
+    await searchingService.enqueueVideos(.success(CommunityVideoPage(videos: [.first, .second], nextCursor: "next-video")))
+    let searchingViewModel = CommunityViewModel(service: searchingService)
 
     await searchingViewModel.send(.task)
     await searchingViewModel.send(.searchTextChanged("First"))
     await searchingViewModel.send(.scroll(.videoRailItemAppeared(.second)))
 
-    #expect(await searchingUseCase.videoNextCursors == [nil])
+    #expect(await searchingService.videoNextCursors == [nil])
   }
 
   @Test("empty states distinguish search liked and content")
@@ -148,7 +148,7 @@ struct CommunityViewModelTests {
 
   @Test("tap actions emit routes")
   func tapActionsEmitRoutes() async {
-    let viewModel = CommunityViewModel(useCase: QueueCommunityUseCase())
+    let viewModel = CommunityViewModel(service: QueueCommunityService())
 
     await viewModel.send(.postTapped("post-1"))
     #expect(viewModel.state.route == .postDetail(postID: "post-1"))
@@ -164,7 +164,7 @@ struct CommunityViewModelTests {
 
   @Test("create mutation prepends post while preserving loaded pages and cursor")
   func createMutationPrependsPost() async {
-    let viewModel = CommunityViewModel(useCase: QueueCommunityUseCase())
+    let viewModel = CommunityViewModel(service: QueueCommunityService())
     viewModel.state.hasLoaded = true
     viewModel.state.phase = .loaded
     viewModel.state.posts = [.first, .second]
@@ -179,7 +179,7 @@ struct CommunityViewModelTests {
 
   @Test("update mutation replaces loaded post arrays")
   func updateMutationReplacesLoadedPostArrays() async {
-    let viewModel = CommunityViewModel(useCase: QueueCommunityUseCase())
+    let viewModel = CommunityViewModel(service: QueueCommunityService())
     let updatedFirst = CommunityPost.first.replacing(title: "First updated", isLiked: true)
     viewModel.state.hasLoaded = true
     viewModel.state.phase = .loaded
@@ -197,7 +197,7 @@ struct CommunityViewModelTests {
 
   @Test("delete mutation removes post without resetting pagination")
   func deleteMutationRemovesPost() async {
-    let viewModel = CommunityViewModel(useCase: QueueCommunityUseCase())
+    let viewModel = CommunityViewModel(service: QueueCommunityService())
     viewModel.state.hasLoaded = true
     viewModel.state.phase = .loaded
     viewModel.state.posts = [.first, .second, .third]
@@ -215,7 +215,7 @@ struct CommunityViewModelTests {
 
   @Test("search active create mutation updates only matching search results")
   func searchActiveCreateMutationFiltersSearchResults() async {
-    let viewModel = CommunityViewModel(useCase: QueueCommunityUseCase())
+    let viewModel = CommunityViewModel(service: QueueCommunityService())
     viewModel.state.hasLoaded = true
     viewModel.state.phase = .loaded
     viewModel.state.posts = [.first]
@@ -230,7 +230,7 @@ struct CommunityViewModelTests {
   }
 }
 
-private actor ControlledCommunityUseCase: CommunityFeedUseCase {
+private actor ControlledCommunityService: CommunityServicing {
   private var postContinuations: [CheckedContinuation<CommunityPostPage, Error>] = []
   private var videoContinuations: [CheckedContinuation<CommunityVideoPage, Error>] = []
   private(set) var postRequestCount = 0
@@ -243,7 +243,11 @@ private actor ControlledCommunityUseCase: CommunityFeedUseCase {
     .first
   }
 
-  func loadPosts(nextCursor: String?, limit: Int) async throws -> CommunityPostPage {
+  func uploadPostFiles(selections: [PhotoPickerUploadSelection]) async throws -> [String] {
+    []
+  }
+
+  func loadPosts(nextCursor: String?, limit: Int, orderBy: String) async throws -> CommunityPostPage {
     postRequestCount += 1
     return try await withCheckedThrowingContinuation { continuation in
       postContinuations.append(continuation)
@@ -308,7 +312,7 @@ private actor ControlledCommunityUseCase: CommunityFeedUseCase {
   }
 }
 
-private actor QueueCommunityUseCase: CommunityFeedUseCase {
+private actor QueueCommunityService: CommunityServicing {
   private var postResults: [Result<CommunityPostPage, Error>] = []
   private var videoResults: [Result<CommunityVideoPage, Error>] = []
   private var searchResults: [Result<[CommunityPost], Error>] = []
@@ -335,7 +339,11 @@ private actor QueueCommunityUseCase: CommunityFeedUseCase {
     searchResults.append(result)
   }
 
-  func loadPosts(nextCursor: String?, limit: Int) async throws -> CommunityPostPage {
+  func uploadPostFiles(selections: [PhotoPickerUploadSelection]) async throws -> [String] {
+    []
+  }
+
+  func loadPosts(nextCursor: String?, limit: Int, orderBy: String) async throws -> CommunityPostPage {
     try postResults.removeFirst().get()
   }
 

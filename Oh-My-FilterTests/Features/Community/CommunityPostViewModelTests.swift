@@ -30,7 +30,7 @@ struct CommunityPostViewModelTests {
 
   @Test("text input updates synchronously")
   func textInputUpdatesSynchronously() {
-    let viewModel = CommunityPostViewModel(mode: .create, useCase: StubCommunityPostUseCase(post: .postWithComment))
+    let viewModel = CommunityPostViewModel(mode: .create, service: StubCommunityPostService(post: .postWithComment))
 
     viewModel.updateCategory("보정")
     viewModel.updateTitle("제목")
@@ -50,7 +50,7 @@ struct CommunityPostViewModelTests {
     let mutationStore = CommunityPostMutationStore()
     let viewModel = CommunityPostViewModel(
       mode: .create,
-      useCase: StubCommunityPostUseCase(post: .postWithComment),
+      service: StubCommunityPostService(post: .postWithComment),
       mutationStore: mutationStore
     )
 
@@ -69,8 +69,8 @@ struct CommunityPostViewModelTests {
 
   @Test("edit load pre-fills draft and detects dirty state")
   func editLoadPrefillsDraft() async {
-    let useCase = StubCommunityPostUseCase(post: .postWithComment)
-    let viewModel = CommunityPostViewModel(mode: .edit(postID: "post-1"), useCase: useCase)
+    let service = StubCommunityPostService(post: .postWithComment)
+    let viewModel = CommunityPostViewModel(mode: .edit(postID: "post-1"), service: service)
 
     await viewModel.send(.task)
 
@@ -85,10 +85,10 @@ struct CommunityPostViewModelTests {
   @Test("edit submit publishes update and dismisses")
   func editSubmitPublishesUpdate() async {
     let mutationStore = CommunityPostMutationStore()
-    let useCase = StubCommunityPostUseCase(post: .postWithComment)
+    let service = StubCommunityPostService(post: .postWithComment)
     let viewModel = CommunityPostViewModel(
       mode: .edit(postID: "post-1"),
-      useCase: useCase,
+      service: service,
       mutationStore: mutationStore
     )
 
@@ -103,10 +103,10 @@ struct CommunityPostViewModelTests {
   @Test("post deletion publishes delete and dismisses")
   func postDeletionPublishesDelete() async {
     let mutationStore = CommunityPostMutationStore()
-    let useCase = StubCommunityPostUseCase(post: .postWithComment)
+    let service = StubCommunityPostService(post: .postWithComment)
     let viewModel = CommunityPostViewModel(
       mode: .detail(postID: "post-1"),
-      useCase: useCase,
+      service: service,
       mutationStore: mutationStore
     )
 
@@ -119,8 +119,8 @@ struct CommunityPostViewModelTests {
 
   @Test("reply submit appends one-depth reply and expands group")
   func replySubmitAppendsReply() async {
-    let useCase = StubCommunityPostUseCase(post: .postWithComment)
-    let viewModel = CommunityPostViewModel(mode: .detail(postID: "post-1"), useCase: useCase)
+    let service = StubCommunityPostService(post: .postWithComment)
+    let viewModel = CommunityPostViewModel(mode: .detail(postID: "post-1"), service: service)
 
     await viewModel.send(.task)
     await viewModel.send(.replyTapped(commentID: "comment-1"))
@@ -135,20 +135,20 @@ struct CommunityPostViewModelTests {
 
   @Test("confirming comment deletion calls delete API and clears confirmation")
   func confirmingCommentDeletionCallsDeleteAPI() async {
-    let useCase = StubCommunityPostUseCase(post: .postWithComment)
-    let viewModel = CommunityPostViewModel(mode: .detail(postID: "post-1"), useCase: useCase)
+    let service = StubCommunityPostService(post: .postWithComment)
+    let viewModel = CommunityPostViewModel(mode: .detail(postID: "post-1"), service: service)
 
     await viewModel.send(.task)
     await viewModel.send(.deleteCommentTapped(commentID: "comment-1"))
     await viewModel.send(.deleteCommentConfirmed)
 
-    #expect(await useCase.deletedCommentRequests == [CommunityCommentDeleteRequest(postID: "post-1", commentID: "comment-1")])
+    #expect(await service.deletedCommentRequests == [CommunityCommentDeleteRequest(postID: "post-1", commentID: "comment-1")])
     #expect(viewModel.state.pendingDeleteCommentTarget == nil)
     #expect(viewModel.state.post?.comments.isEmpty == true)
   }
 }
 
-private actor StubCommunityPostUseCase: CommunityFeedUseCase {
+private actor StubCommunityPostService: CommunityServicing {
   private let post: CommunityPost
   private(set) var deletedCommentRequests: [CommunityCommentDeleteRequest] = []
 
@@ -164,7 +164,11 @@ private actor StubCommunityPostUseCase: CommunityFeedUseCase {
     post
   }
 
-  func loadPosts(nextCursor: String?, limit: Int) async throws -> CommunityPostPage {
+  func uploadPostFiles(selections: [PhotoPickerUploadSelection]) async throws -> [String] {
+    []
+  }
+
+  func loadPosts(nextCursor: String?, limit: Int, orderBy: String) async throws -> CommunityPostPage {
     CommunityPostPage(posts: [post], nextCursor: "0")
   }
 
