@@ -6,10 +6,6 @@ nonisolated protocol ProfileUseCase: Sendable {
   func uploadProfileImage(selections: [PhotoPickerUploadSelection]) async throws -> String?
 }
 
-nonisolated protocol OrderHistoryUseCase: Sendable {
-  func loadOrders() async throws -> [OrderHistoryItem]
-}
-
 nonisolated struct LiveProfileUseCase: ProfileUseCase {
   private let service: any ProfileServicing
   private let imageUploadUseCase: any ImageUploadUseCase
@@ -53,22 +49,5 @@ nonisolated struct LiveProfileUseCase: ProfileUseCase {
   private func normalizedOptional(_ value: String) -> String? {
     let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
     return normalized.isEmpty ? nil : normalized
-  }
-}
-
-nonisolated struct LiveOrderHistoryUseCase: OrderHistoryUseCase {
-  private let service: any OrderHistoryServicing
-
-  init(service: any OrderHistoryServicing) {
-    self.service = service
-  }
-
-  @MainActor
-  init() {
-    self.init(service: LiveOrderHistoryService())
-  }
-
-  func loadOrders() async throws -> [OrderHistoryItem] {
-    try await service.loadOrders()
   }
 }

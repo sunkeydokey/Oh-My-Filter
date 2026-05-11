@@ -6,6 +6,7 @@ import OSLog
 @Observable
 final class CommunityViewModel {
   private static let pageSize = 10
+  private static let defaultPostOrder = "createdAt"
   private static let logger = Logger(
     subsystem: Bundle.main.bundleIdentifier ?? "Oh-My-Filter",
     category: "CommunityViewModel"
@@ -13,31 +14,21 @@ final class CommunityViewModel {
 
   var state = CommunityState()
 
-  private let useCase: any CommunityFeedUseCase
+  private let service: any CommunityServicing
   private let tokenRefreshCoordinator: (any TokenRefreshCoordinating)?
   private var autoRefreshTask: Task<Void, Never>?
 
   init(
-    useCase: any CommunityFeedUseCase,
-    tokenRefreshCoordinator: (any TokenRefreshCoordinating)? = nil
-  ) {
-    self.useCase = useCase
-    self.tokenRefreshCoordinator = tokenRefreshCoordinator
-  }
-
-  convenience init(
     service: any CommunityServicing,
     tokenRefreshCoordinator: (any TokenRefreshCoordinating)? = nil
   ) {
-    self.init(
-      useCase: LiveCommunityFeedUseCase(service: service),
-      tokenRefreshCoordinator: tokenRefreshCoordinator
-    )
+    self.service = service
+    self.tokenRefreshCoordinator = tokenRefreshCoordinator
   }
 
   convenience init() {
     self.init(
-      useCase: LiveCommunityFeedUseCase(),
+      service: LiveCommunityService(),
       tokenRefreshCoordinator: AppTokenRefreshCoordinator.shared
     )
   }
@@ -106,8 +97,8 @@ final class CommunityViewModel {
 
     do {
       try await tokenRefreshCoordinator?.prepareValidTokenIfNeeded()
-      async let postsPage = useCase.loadPosts(nextCursor: nil, limit: Self.pageSize)
-      async let videosPage = useCase.loadVideos(nextCursor: nil, limit: Self.pageSize)
+      async let postsPage = service.loadPosts(nextCursor: nil, limit: Self.pageSize, orderBy: Self.defaultPostOrder)
+      async let videosPage = service.loadVideos(nextCursor: nil, limit: Self.pageSize)
       let (posts, videos) = try await (postsPage, videosPage)
       state.posts = posts.posts
       state.postsNextCursor = posts.nextCursor
@@ -133,12 +124,12 @@ final class CommunityViewModel {
       switch state.selectedTab {
       case .liked where state.likedPosts.isEmpty && state.likedPostsNextCursor == nil:
         try await tokenRefreshCoordinator?.prepareValidTokenIfNeeded()
-        let page = try await useCase.loadLikedPosts(nextCursor: nil, limit: Self.pageSize)
+        let page = try await service.loadLikedPosts(nextCursor: nil, limit: Self.pageSize)
         state.likedPosts = page.posts
         state.likedPostsNextCursor = page.nextCursor
       case .videos where state.videos.isEmpty && state.videosNextCursor == nil:
         try await tokenRefreshCoordinator?.prepareValidTokenIfNeeded()
-        let page = try await useCase.loadVideos(nextCursor: nil, limit: Self.pageSize)
+        let page = try await service.loadVideos(nextCursor: nil, limit: Self.pageSize)
         state.videos = page.videos
         state.videosNextCursor = page.nextCursor
       default:
@@ -169,7 +160,7 @@ final class CommunityViewModel {
 
     do {
       try await tokenRefreshCoordinator?.prepareValidTokenIfNeeded()
-      state.searchedPosts = try await useCase.searchPosts(title: query)
+      state.searchedPosts = try await service.searchPosts(title: query)
       updatePhaseForVisibleContent()
     } catch is CancellationError {
       state.phase = .loaded
@@ -215,7 +206,7 @@ final class CommunityViewModel {
     state.paginationErrorMessage = nil
 
     do {
-      let page = try await useCase.loadPosts(nextCursor: nextCursor, limit: Self.pageSize)
+      let page = try await service.loadPosts(nextCursor: nextCursor, limit: Self.pageSize, orderBy: Self.defaultPostOrder)
       state.posts.append(contentsOf: page.posts)
       state.postsNextCursor = page.nextCursor
       state.isLoadingMorePosts = false
@@ -237,7 +228,7 @@ final class CommunityViewModel {
     state.paginationErrorMessage = nil
 
     do {
-      let page = try await useCase.loadVideos(nextCursor: nextCursor, limit: Self.pageSize)
+      let page = try await service.loadVideos(nextCursor: nextCursor, limit: Self.pageSize)
       state.videos.append(contentsOf: page.videos)
       state.videosNextCursor = page.nextCursor
       state.isLoadingMoreVideos = false
@@ -259,7 +250,7 @@ final class CommunityViewModel {
     state.paginationErrorMessage = nil
 
     do {
-      let page = try await useCase.loadLikedPosts(nextCursor: nextCursor, limit: Self.pageSize)
+      let page = try await service.loadLikedPosts(nextCursor: nextCursor, limit: Self.pageSize)
       state.likedPosts.append(contentsOf: page.posts)
       state.likedPostsNextCursor = page.nextCursor
       state.isLoadingMoreLikedPosts = false
@@ -332,8 +323,8 @@ final class CommunityViewModel {
     do {
       try await tokenRefreshCoordinator?.prepareValidTokenIfNeeded()
 
-      async let postsPage = useCase.loadPosts(nextCursor: nil, limit: Self.pageSize)
-      async let videosPage = useCase.loadVideos(nextCursor: nil, limit: Self.pageSize)
+      async let postsPage = service.loadPosts(nextCursor: nil, limit: Self.pageSize, orderBy: Self.defaultPostOrder)
+      async let videosPage = service.loadVideos(nextCursor: nil, limit: Self.pageSize)
       let (posts, videos) = try await (postsPage, videosPage)
 
       for post in posts.posts.reversed() {
@@ -347,7 +338,7 @@ final class CommunityViewModel {
       state.videosNextCursor = videos.nextCursor
 
       if state.selectedTab == .liked, state.likedPosts.isEmpty == false {
-        let likedPage = try await useCase.loadLikedPosts(nextCursor: nil, limit: Self.pageSize)
+        let likedPage = try await service.loadLikedPosts(nextCursor: nil, limit: Self.pageSize)
         for post in likedPage.posts.reversed() {
           upsert(post, in: &state.likedPosts, insertIfMissing: true)
         }

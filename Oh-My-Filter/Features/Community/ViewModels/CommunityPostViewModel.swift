@@ -5,19 +5,19 @@ import Foundation
 final class CommunityPostViewModel {
   var state: CommunityPostState
 
-  private let useCase: any CommunityFeedUseCase
+  private let service: any CommunityServicing
   private let mutationStore: CommunityPostMutationStore?
 
   init(
     mode: CommunityPostMode,
     preloadedImages: [PhotoPickerUploadSelection] = [],
-    useCase: any CommunityFeedUseCase,
+    service: any CommunityServicing,
     mutationStore: CommunityPostMutationStore? = nil
   ) {
     var initialState = CommunityPostState(mode: mode)
     initialState.selectedImages = preloadedImages
     self.state = initialState
-    self.useCase = useCase
+    self.service = service
     self.mutationStore = mutationStore
   }
 
@@ -29,7 +29,7 @@ final class CommunityPostViewModel {
     self.init(
       mode: mode,
       preloadedImages: preloadedImages,
-      useCase: LiveCommunityFeedUseCase(),
+      service: LiveCommunityService(),
       mutationStore: mutationStore
     )
   }
@@ -135,7 +135,7 @@ final class CommunityPostViewModel {
 
     state.phase = .loading
     do {
-      async let currentUserID = try? useCase.loadCurrentUserID()
+      async let currentUserID = try? service.loadCurrentUserID()
       let post: CommunityPost
       switch state.mode {
       case .create:
@@ -143,7 +143,7 @@ final class CommunityPostViewModel {
         state.phase = .loaded
         return
       case let .edit(postID), let .detail(postID):
-        post = try await useCase.loadPostDetail(postID: postID)
+        post = try await service.loadPostDetail(postID: postID)
       }
 
       state.currentUserID = await currentUserID
@@ -172,11 +172,11 @@ final class CommunityPostViewModel {
       let post: CommunityPost
       switch state.mode {
       case .create:
-        post = try await useCase.createPost(draft: state.draft, newImages: state.selectedImages)
+        post = try await service.createPost(draft: state.draft, newImages: state.selectedImages)
         updateStateForCreatedPost(post)
         mutationStore?.publish(.created(post))
       case let .edit(postID):
-        post = try await useCase.updatePost(postID: postID, draft: state.draft, newImages: state.selectedImages)
+        post = try await service.updatePost(postID: postID, draft: state.draft, newImages: state.selectedImages)
         state.post = post
         state.originalDraft = CommunityPostDraft(
           category: post.category,
@@ -227,7 +227,7 @@ final class CommunityPostViewModel {
     state.post = optimisticPost
 
     do {
-      let confirmedStatus = try await useCase.toggleLike(postID: post.id, status: targetStatus)
+      let confirmedStatus = try await service.toggleLike(postID: post.id, status: targetStatus)
       if confirmedStatus != targetStatus {
         state.post = post
       }
@@ -243,7 +243,7 @@ final class CommunityPostViewModel {
     state.showsDeleteConfirmation = false
 
     do {
-      try await useCase.deletePost(postID: postID)
+      try await service.deletePost(postID: postID)
       mutationStore?.publish(.deleted(postID: postID))
       state.shouldDismiss = true
     } catch {
@@ -279,7 +279,7 @@ final class CommunityPostViewModel {
     }
 
     do {
-      let created = try await useCase.createComment(
+      let created = try await service.createComment(
         postID: post.id,
         parentCommentID: state.replyingToCommentID,
         content: content
@@ -306,7 +306,7 @@ final class CommunityPostViewModel {
     guard let post = state.post else { return }
 
     do {
-      let updated = try await useCase.updateComment(
+      let updated = try await service.updateComment(
         postID: post.id,
         commentID: target.commentID,
         content: content
@@ -326,7 +326,7 @@ final class CommunityPostViewModel {
     state.pendingDeleteCommentTarget = nil
 
     do {
-      try await useCase.deleteComment(postID: post.id, commentID: target.commentID)
+      try await service.deleteComment(postID: post.id, commentID: target.commentID)
       state.post = post.removingComment(target)
       if state.editingCommentTarget == target {
         state.editingCommentTarget = nil

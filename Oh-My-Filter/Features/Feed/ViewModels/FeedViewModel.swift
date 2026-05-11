@@ -13,30 +13,20 @@ final class FeedViewModel {
 
   var state = FeedState()
 
-  private let useCase: any FeedListUseCase
+  private let service: any FeedServicing
   private let tokenRefreshCoordinator: (any TokenRefreshCoordinating)?
 
   init(
-    useCase: any FeedListUseCase,
-    tokenRefreshCoordinator: (any TokenRefreshCoordinating)? = nil
-  ) {
-    self.useCase = useCase
-    self.tokenRefreshCoordinator = tokenRefreshCoordinator
-  }
-
-  convenience init(
     service: any FeedServicing,
     tokenRefreshCoordinator: (any TokenRefreshCoordinating)? = nil
   ) {
-    self.init(
-      useCase: LiveFeedListUseCase(service: service),
-      tokenRefreshCoordinator: tokenRefreshCoordinator
-    )
+    self.service = service
+    self.tokenRefreshCoordinator = tokenRefreshCoordinator
   }
 
   convenience init() {
     self.init(
-      useCase: LiveFeedListUseCase(),
+      service: LiveFeedService(),
       tokenRefreshCoordinator: AppTokenRefreshCoordinator.shared
     )
   }
@@ -67,7 +57,7 @@ final class FeedViewModel {
 
     do {
       try await tokenRefreshCoordinator?.prepareValidTokenIfNeeded()
-      let page = try await useCase.loadFilters(
+      let page = try await service.loadFilters(
         nextCursor: nil,
         limit: Self.pageSize,
         category: nil,
@@ -98,7 +88,7 @@ final class FeedViewModel {
     state.paginationErrorMessage = nil
 
     do {
-      let page = try await useCase.loadFilters(
+      let page = try await service.loadFilters(
         nextCursor: nextCursor,
         limit: Self.pageSize,
         category: nil,

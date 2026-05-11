@@ -19,14 +19,14 @@ final class MyViewModel {
   var state = MyState()
 
   private let profileUseCase: any ProfileUseCase
-  private let orderUseCase: any OrderHistoryUseCase
+  private let orderService: any OrderHistoryServicing
 
   init(
     profileUseCase: (any ProfileUseCase)? = nil,
-    orderUseCase: (any OrderHistoryUseCase)? = nil
+    orderService: (any OrderHistoryServicing)? = nil
   ) {
     self.profileUseCase = profileUseCase ?? LiveProfileUseCase()
-    self.orderUseCase = orderUseCase ?? LiveOrderHistoryUseCase()
+    self.orderService = orderService ?? LiveOrderHistoryService()
   }
 
   func send(_ action: MyAction) async {
@@ -42,7 +42,7 @@ final class MyViewModel {
 
     do {
       async let profile = profileUseCase.loadMyProfile()
-      async let orders = orderUseCase.loadOrders()
+      async let orders = orderService.loadOrders()
       state.profile = try await profile
       state.orders = try await orders
     } catch is CancellationError {
