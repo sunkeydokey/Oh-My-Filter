@@ -3,9 +3,14 @@ import SwiftUI
 struct ReceiptView: View {
   @State private var viewModel: ReceiptViewModel
   @Environment(\.dismiss) private var dismiss
+  private let navigate: (ProfileRoute) -> Void
 
-  init(viewModel: ReceiptViewModel? = nil) {
+  init(
+    viewModel: ReceiptViewModel? = nil,
+    navigate: @escaping (ProfileRoute) -> Void = { _ in }
+  ) {
     _viewModel = State(initialValue: viewModel ?? ReceiptViewModel())
+    self.navigate = navigate
   }
 
   var body: some View {
@@ -32,7 +37,9 @@ struct ReceiptView: View {
           emptyView
         } else {
           ForEach(viewModel.state.orders) { order in
-            OrderHistoryCardView(order: order)
+            OrderHistoryCardView(order: order) {
+              navigate(.playground(filter: order.filter))
+            }
           }
         }
 
