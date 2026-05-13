@@ -156,7 +156,7 @@ struct CommunityPostView: View {
           Task { await viewModel.send(.animeConversionDismissed) }
         }
       )
-      .presentationDetents([.medium, .large])
+      .presentationDetents([.large])
       .presentationBackground(ColorToken.brandBlackSprout.color)
     }
     // Detail: AnimeGAN 변환 후 저장 시트
@@ -181,7 +181,7 @@ struct CommunityPostView: View {
           Task { await viewModel.send(.animeConversionDismissed) }
         }
       )
-      .presentationDetents([.medium, .large])
+      .presentationDetents([.large])
       .presentationBackground(ColorToken.brandBlackSprout.color)
     }
   }
@@ -296,7 +296,7 @@ struct CommunityPostView: View {
     if viewModel.state.isDetail {
       Text(viewModel.state.post?.category ?? viewModel.state.draft.category)
         .font(TypographyToken.pretendardCaption1.font.weight(.bold))
-        .foregroundStyle(ColorToken.grayScale15.color)
+        .foregroundStyle(ColorToken.grayScale100.color)
         .padding(.horizontal, 17)
         .frame(height: 28)
         .background(ColorToken.mainAccent.color, in: Capsule())
@@ -605,7 +605,7 @@ struct CommunityPostView: View {
     } label: {
       Text(viewModel.state.submitPhase == .submitting ? "등록" : viewModel.state.primaryActionTitle)
         .font(TypographyToken.pretendardBody1.font.weight(.bold))
-        .foregroundStyle(ColorToken.grayScale15.color)
+        .foregroundStyle(ColorToken.grayScale100.color)
         .frame(maxWidth: .infinity)
         .frame(height: 52)
         .background(
@@ -802,7 +802,7 @@ private struct CommunityLocalImageTileView: View {
         Button(action: onConvert) {
           Image(systemName: "wand.and.sparkles")
             .font(.system(size: 11, weight: .bold))
-            .foregroundStyle(ColorToken.grayScale0.color)
+            .foregroundStyle(isConverting ? ColorToken.grayScale100.color : ColorToken.grayScale0.color)
             .frame(width: 24, height: 24)
             .background(
               isConverting ? ColorToken.mainAccent.color.opacity(0.88) : ColorToken.brandBlackSprout.color.opacity(0.78),
@@ -871,7 +871,8 @@ private struct CommunityReadOnlyAttachmentCarousel: View {
     .overlay(alignment: .bottomLeading) {
       if let onSave = onSaveCurrentImage,
          attachments.indices.contains(currentIndex),
-         case .image(let url) = attachments[currentIndex] {
+         case .image(let url) = attachments[currentIndex]
+      {
         Button { onSave(url) } label: {
           Image(systemName: "arrow.down.to.line")
             .font(.system(size: 12, weight: .semibold))
@@ -886,7 +887,8 @@ private struct CommunityReadOnlyAttachmentCarousel: View {
     .overlay(alignment: .topTrailing) {
       if let onConvert = onConvertCurrentImage,
          attachments.indices.contains(currentIndex),
-         case .image(let url) = attachments[currentIndex] {
+         case .image(let url) = attachments[currentIndex]
+      {
         Button { onConvert(url) } label: {
           Image(systemName: "wand.and.sparkles")
             .font(.system(size: 12, weight: .semibold))
@@ -966,7 +968,7 @@ private struct CommunityPostActionButton: View {
         Text(title)
           .font(TypographyToken.pretendardCaption1.font.weight(.bold))
       }
-      .foregroundStyle(isPrimary ? ColorToken.grayScale15.color : ColorToken.grayScale45.color)
+      .foregroundStyle(isPrimary ? ColorToken.grayScale100.color : ColorToken.grayScale45.color)
       .padding(.horizontal, 14)
       .frame(height: 42)
       .background(isPrimary ? ColorToken.mainAccent.color : ColorToken.brandBlackSprout.color, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -1018,7 +1020,7 @@ private struct CommunityPostErrorView: View {
       Button(action: retry) {
         Text("다시 시도")
           .font(TypographyToken.pretendardBody2.font.weight(.bold))
-          .foregroundStyle(ColorToken.grayScale15.color)
+          .foregroundStyle(ColorToken.grayScale100.color)
           .padding(.horizontal, 16)
           .frame(height: 42)
           .background(ColorToken.mainAccent.color, in: RoundedRectangle(cornerRadius: 14, style: .continuous))

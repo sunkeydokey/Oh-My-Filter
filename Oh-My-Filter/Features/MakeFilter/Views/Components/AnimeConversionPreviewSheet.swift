@@ -65,7 +65,7 @@ struct AnimeConversionPreviewSheet: View {
           Text("변환본 사용")
             .font(TypographyToken.pretendardBody1.font)
             .bold()
-            .foregroundStyle(ColorToken.grayScale60.color)
+            .foregroundStyle(ColorToken.grayScale100.color)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(ColorToken.mainAccent.color, in: RoundedRectangle(cornerRadius: 8, style: .continuous))

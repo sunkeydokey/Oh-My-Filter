@@ -38,7 +38,8 @@ struct ProfileAvatarView: View {
         KFImage(url)
           .requestModifier(AuthenticatedRemoteImageSupport.requestModifier)
           .resizable()
-          .scaledToFill()
+          .scaledToFit()
+          .frame(width: size, height: size)
           .clipShape(.rect(cornerRadius: size * 0.34, style: .continuous))
       } else {
         Text(profile?.avatarInitials ?? "MY")
@@ -200,7 +201,7 @@ struct OrderHistoryCardView: View {
       Button(action: onApply) {
         Label("갤러리에 적용해보기", systemImage: "camera.filters")
           .font(TypographyToken.pretendardBody2.font.weight(.heavy))
-          .foregroundStyle(ColorToken.grayScale60.color)
+          .foregroundStyle(ColorToken.grayScale100.color)
           .frame(maxWidth: .infinity)
           .padding(.vertical, 12)
           .background(ColorToken.mainAccent.color, in: .rect(cornerRadius: 8, style: .continuous))
@@ -226,7 +227,8 @@ struct OrderHistoryCardView: View {
         KFImage(url)
           .requestModifier(AuthenticatedRemoteImageSupport.requestModifier)
           .resizable()
-          .scaledToFill()
+          .scaledToFit()
+          .frame(width: 72, height: 72)
           .clipShape(.rect(cornerRadius: 20, style: .continuous))
       } else {
         Image(systemName: "photo")

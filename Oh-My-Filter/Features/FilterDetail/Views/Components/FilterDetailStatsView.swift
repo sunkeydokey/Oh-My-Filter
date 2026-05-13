@@ -29,7 +29,7 @@ private struct FilterDetailFavoriteButton: View {
         Text("찜하기")
           .font(TypographyToken.pretendardCaption1.font.weight(.bold))
       }
-      .foregroundStyle(isLiked ? ColorToken.grayScale15.color : ColorToken.grayScale45.color)
+      .foregroundStyle(isLiked ? ColorToken.grayScale100.color : ColorToken.grayScale45.color)
       .padding(.horizontal, 14)
       .frame(height: 42)
       .background(
