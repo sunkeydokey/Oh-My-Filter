@@ -58,6 +58,14 @@ struct AuthenticatedRootView: View {
               FilterEditView(draft: draft)
             case let .filterUpdate(draft):
               MakeFilterView(mode: .update(filterID: draft.filterID ?? ""), draft: draft)
+            case let .communityPostCreate(preloadedImages):
+              CommunityPostView(
+                mode: .create,
+                preloadedImages: preloadedImages,
+                mutationStore: communityPostMutationStore
+              ) { route in
+                communityPath.append(route)
+              }
             }
           }
         }
@@ -86,6 +94,14 @@ struct AuthenticatedRootView: View {
               FilterEditView(draft: draft)
             case let .filterUpdate(draft):
               MakeFilterView(mode: .update(filterID: draft.filterID ?? ""), draft: draft)
+            case let .communityPostCreate(preloadedImages):
+              CommunityPostView(
+                mode: .create,
+                preloadedImages: preloadedImages,
+                mutationStore: communityPostMutationStore
+              ) { route in
+                communityPath.append(route)
+              }
             }
           }
         }
@@ -156,7 +172,17 @@ struct AuthenticatedRootView: View {
                 profilePath.append(route)
               }
             case let .playground(filter):
-              PlaygroundView(filter: filter)
+              PlaygroundView(filter: filter) { route in
+                profilePath.append(route)
+              }
+            case let .communityPostCreate(preloadedImages):
+              CommunityPostView(
+                mode: .create,
+                preloadedImages: preloadedImages,
+                mutationStore: communityPostMutationStore
+              ) { route in
+                communityPath.append(route)
+              }
             }
           }
         }

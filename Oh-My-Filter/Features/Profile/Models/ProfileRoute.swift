@@ -5,4 +5,5 @@ nonisolated enum ProfileRoute: Hashable, Sendable {
   case edit
   case receipts
   case playground(filter: OrderHistoryFilter)
+  case communityPostCreate(preloadedImages: [PhotoPickerUploadSelection])
 }

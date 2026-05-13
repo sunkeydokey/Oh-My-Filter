@@ -6,9 +6,14 @@ struct PlaygroundView: View {
   @Environment(\.dismiss) private var dismiss
   @State private var viewModel: PlaygroundViewModel
   @State private var pickerItems: [PhotosPickerItem] = []
+  private let navigate: (ProfileRoute) -> Void
 
-  init(filter: OrderHistoryFilter) {
+  init(
+    filter: OrderHistoryFilter,
+    navigate: @escaping (ProfileRoute) -> Void = { _ in }
+  ) {
     _viewModel = State(initialValue: PlaygroundViewModel(filterID: filter.id))
+    self.navigate = navigate
   }
 
   var body: some View {
@@ -57,7 +62,8 @@ struct PlaygroundView: View {
         onSaveCurrent: { Task { await viewModel.send(.saveCurrent) } },
         onSaveAll: { Task { await viewModel.send(.saveAll) } },
         onDismiss: { Task { await viewModel.send(.dismissApplySheet) } },
-        onIndexChanged: { index in Task { await viewModel.send(.previewIndexChanged(index)) } }
+        onIndexChanged: { index in Task { await viewModel.send(.previewIndexChanged(index)) } },
+        onBoast: navigateToCommunityPostCreate
       )
       .presentationDetents([.medium, .large])
       .presentationDragIndicator(.visible)
@@ -152,5 +158,12 @@ struct PlaygroundView: View {
       kind: isVideo ? .video : .image,
       mimeType: mimeType
     )
+  }
+
+  private func navigateToCommunityPostCreate(preloadedImages: [PhotoPickerUploadSelection]) {
+    Task {
+      await viewModel.send(.dismissApplySheet)
+      navigate(.communityPostCreate(preloadedImages: preloadedImages))
+    }
   }
 }

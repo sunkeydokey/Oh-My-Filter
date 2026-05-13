@@ -120,15 +120,12 @@ struct FilterDetailView: View {
         onSaveCurrent: saveCurrentFilteredImage,
         onSaveAll: saveAllFilteredImages,
         onDismiss: dismissApplySheet,
-        onIndexChanged: previewIndexChanged
+        onIndexChanged: previewIndexChanged,
+        onBoast: navigateToCommunityPostCreate
       )
       .presentationDetents([.medium, .large])
       .presentationDragIndicator(.visible)
     }
-    // 커뮤니티 탭 전환 방식 (추후 취사 선택용, 현재 비활성)
-    // case let .boast(prefilledImages):
-    //   navigate(.communityPostCreate(prefilledImages: prefilledImages))
-    //   Task { await viewModel.send(.boastRouteHandled) }
     .sheet(item: paymentRequestBinding) { paymentRequest in
       PortoneWebView(paymentRequest: paymentRequest) { response in
         Task {
@@ -330,6 +327,13 @@ struct FilterDetailView: View {
 
   private func previewIndexChanged(_ index: Int) {
     Task { await viewModel.send(.previewIndexChanged(index)) }
+  }
+
+  private func navigateToCommunityPostCreate(preloadedImages: [PhotoPickerUploadSelection]) {
+    Task {
+      await viewModel.send(.dismissApplySheet)
+      navigate(.communityPostCreate(preloadedImages: preloadedImages))
+    }
   }
 
   private func dismissApplySheet() {
