@@ -115,7 +115,7 @@ nonisolated struct LiveChatService: ChatServicing {
     preset: ImageUploadPreset
   ) async throws -> [String] {
     do {
-      let fileParts = try imageUploadUseCase.multipartFiles(from: selections, preset: preset)
+      let fileParts = try await imageUploadUseCase.multipartFiles(from: selections, preset: preset)
       let response = try await networkManager.request(
         ChatApiRouter.uploadFiles(roomID: roomID),
         multipartFiles: fileParts

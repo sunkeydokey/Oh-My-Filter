@@ -2,11 +2,14 @@ import Kingfisher
 import PhotosUI
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct CommunityPostView: View {
   @Environment(\.dismiss) private var dismiss
   @State private var viewModel: CommunityPostViewModel
   @FocusState private var focusedField: CommunityPostField?
+  @State private var showLocalSaveToast = false
+  @State private var showDetailSaveToast = false
   let navigate: (CommunityRoute) -> Void
 
   init(
@@ -86,6 +89,25 @@ struct CommunityPostView: View {
         await viewModel.send(.dismissHandled)
       }
     }
+    .onChange(of: viewModel.state.localSaveSucceeded) { _, succeeded in
+      guard succeeded else { return }
+      viewModel.state.localSaveSucceeded = false
+      showLocalSaveToast = true
+      Task { try? await Task.sleep(for: .seconds(2)); showLocalSaveToast = false }
+    }
+    .onChange(of: viewModel.state.detailSavePhase) { _, phase in
+      switch phase {
+      case .saved:
+        viewModel.state.detailSavePhase = .idle
+        showDetailSaveToast = true
+        Task { try? await Task.sleep(for: .seconds(2)); showDetailSaveToast = false }
+      case let .failed(message):
+        viewModel.state.detailSavePhase = .idle
+        viewModel.state.errorMessage = message
+      default:
+        break
+      }
+    }
     .confirmationDialog(
       "수정 내용 저장 전",
       isPresented: Binding(
@@ -116,6 +138,52 @@ struct CommunityPostView: View {
     } message: {
       Text(viewModel.state.errorMessage ?? "")
     }
+    // Create/Edit: AnimeGAN 변환 시트
+    .sheet(
+      isPresented: Binding(
+        get: { viewModel.state.isLocalAnimeSheetPresented },
+        set: { isPresented in
+          if !isPresented { Task { await viewModel.send(.animeConversionDismissed) } }
+        }
+      )
+    ) {
+      AnimeConversionPreviewSheet(
+        state: viewModel.state.localAnimePreviewSheetState,
+        onChoiceMade: { useConverted in
+          Task { await viewModel.send(.animeConversionChoiceMade(useConverted: useConverted)) }
+        },
+        onDismiss: {
+          Task { await viewModel.send(.animeConversionDismissed) }
+        }
+      )
+      .presentationDetents([.medium, .large])
+      .presentationBackground(ColorToken.brandBlackSprout.color)
+    }
+    // Detail: AnimeGAN 변환 후 저장 시트
+    .sheet(
+      isPresented: Binding(
+        get: { viewModel.state.isDetailAnimeSheetPresented },
+        set: { isPresented in
+          if !isPresented { Task { await viewModel.send(.animeConversionDismissed) } }
+        }
+      )
+    ) {
+      AnimeConversionPreviewSheet(
+        state: viewModel.state.detailAnimePreviewSheetState,
+        onChoiceMade: { useConverted in
+          if useConverted {
+            Task { await viewModel.send(.saveAnimeResult) }
+          } else {
+            Task { await viewModel.send(.animeConversionDismissed) }
+          }
+        },
+        onDismiss: {
+          Task { await viewModel.send(.animeConversionDismissed) }
+        }
+      )
+      .presentationDetents([.medium, .large])
+      .presentationBackground(ColorToken.brandBlackSprout.color)
+    }
   }
 
   private var loadedContent: some View {
@@ -144,6 +212,19 @@ struct CommunityPostView: View {
         stickyPrimaryAction
       }
     }
+    .overlay(alignment: .bottom) {
+      if showLocalSaveToast || showDetailSaveToast {
+        Text("사진이 저장되었습니다")
+          .font(TypographyToken.pretendardCaption1.font.weight(.semibold))
+          .foregroundStyle(ColorToken.grayScale0.color)
+          .padding(.horizontal, 16)
+          .frame(height: 40)
+          .background(ColorToken.brandBlackSprout.color.opacity(0.88), in: Capsule())
+          .padding(.bottom, 20)
+          .transition(.move(edge: .bottom).combined(with: .opacity))
+      }
+    }
+    .animation(.easeInOut(duration: 0.25), value: showLocalSaveToast || showDetailSaveToast)
   }
 
   private var navigationBar: some View {
@@ -352,12 +433,21 @@ struct CommunityPostView: View {
     if viewModel.state.isDetail {
       let attachments = viewModel.state.post?.attachments ?? []
       if attachments.isEmpty == false {
-        CommunityReadOnlyAttachmentCarousel(attachments: attachments)
+        CommunityReadOnlyAttachmentCarousel(
+          attachments: attachments,
+          onSaveCurrentImage: { url in
+            Task { await viewModel.send(.saveRemoteImageTapped(url: url)) }
+          },
+          onConvertCurrentImage: { url in
+            Task { await viewModel.send(.convertRemoteImageToAnimeTapped(url: url)) }
+          }
+        )
       }
     } else {
       CommunityEditableImageSectionView(
         existingFilePaths: viewModel.state.draft.existingFilePaths,
         selectedImages: viewModel.state.selectedImages,
+        convertingSelectionID: viewModel.state.convertingLocalSelectionID,
         onSelectionChanged: { selections in
           Task {
             await viewModel.send(.imageSelectionChanged(selections))
@@ -367,6 +457,12 @@ struct CommunityPostView: View {
           Task {
             await viewModel.send(.removeExistingImage(path))
           }
+        },
+        onConvertToAnime: { selectionID in
+          Task { await viewModel.send(.convertLocalImageToAnimeTapped(selectionID: selectionID)) }
+        },
+        onSaveLocalImage: { selectionID in
+          Task { await viewModel.send(.saveLocalImageTapped(selectionID: selectionID)) }
         }
       )
     }
@@ -572,14 +668,17 @@ private struct CommunityPostInputSection<Content: View>: View {
 private struct CommunityEditableImageSectionView: View {
   let existingFilePaths: [String]
   let selectedImages: [PhotoPickerUploadSelection]
+  let convertingSelectionID: UUID?
   let onSelectionChanged: ([PhotoPickerUploadSelection]) -> Void
   let onRemoveExisting: (String) -> Void
+  let onConvertToAnime: (UUID) -> Void
+  let onSaveLocalImage: (UUID) -> Void
 
   @State private var pickerItems: [PhotosPickerItem] = []
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
-      Text("사진 추가")
+      Text("미디어 추가")
         .font(TypographyToken.pretendardCaption1.font.weight(.bold))
         .foregroundStyle(ColorToken.grayScale30.color)
 
@@ -592,18 +691,23 @@ private struct CommunityEditableImageSectionView: View {
           }
 
           ForEach(selectedImages) { selection in
-            CommunityLocalImageTileView(selection: selection)
+            CommunityLocalImageTileView(
+              selection: selection,
+              isConverting: convertingSelectionID == selection.id,
+              onConvert: selection.mediaKind == .image ? { onConvertToAnime(selection.id) } : nil,
+              onSave: selection.mediaKind == .image ? { onSaveLocalImage(selection.id) } : nil
+            )
           }
 
           PhotosPicker(
             selection: $pickerItems,
             maxSelectionCount: ImageUploadPreset.communityPost.maxCount,
-            matching: .images
+            matching: .any(of: [.images, .videos])
           ) {
             VStack(spacing: 8) {
               Image(systemName: "photo.badge.plus")
                 .font(.system(size: 24, weight: .semibold))
-              Text("사진 추가")
+              Text("미디어 추가")
                 .font(TypographyToken.pretendardCaption1.font.weight(.bold))
             }
             .foregroundStyle(ColorToken.grayScale45.color)
@@ -623,7 +727,15 @@ private struct CommunityEditableImageSectionView: View {
         var selections: [PhotoPickerUploadSelection] = []
         for (index, item) in items.prefix(ImageUploadPreset.communityPost.maxCount).enumerated() {
           guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
-          selections.append(PhotoPickerUploadSelection(data: data, fileName: "post-image-\(index + 1).jpg"))
+          let contentType = item.supportedContentTypes.first(where: { $0.conforms(to: .movie) })
+            ?? item.supportedContentTypes.first
+          let isVideo = contentType?.conforms(to: .movie) == true
+          selections.append(PhotoPickerUploadSelection(
+            data: data,
+            baseName: isVideo ? "post-video-\(index + 1)" : "post-image-\(index + 1)",
+            mediaKind: isVideo ? .video : .image,
+            preferredType: contentType
+          ))
         }
         onSelectionChanged(selections)
       }
@@ -662,10 +774,20 @@ private struct CommunityExistingImageTileView: View {
 
 private struct CommunityLocalImageTileView: View {
   let selection: PhotoPickerUploadSelection
+  var isConverting: Bool = false
+  var onConvert: (() -> Void)? = nil
+  var onSave: (() -> Void)? = nil
 
   var body: some View {
     Group {
-      if let image = UIImage(data: selection.data) {
+      if selection.mediaKind == .video {
+        ZStack {
+          CommunityPostImagePlaceholderView()
+          Image(systemName: "play.circle.fill")
+            .font(.system(size: 30, weight: .semibold))
+            .foregroundStyle(ColorToken.grayScale0.color)
+        }
+      } else if let image = UIImage(data: selection.data) {
         Image(uiImage: image)
           .resizable()
           .scaledToFill()
@@ -675,11 +797,43 @@ private struct CommunityLocalImageTileView: View {
     }
     .frame(width: 116, height: 116)
     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    .overlay(alignment: .bottomLeading) {
+      if let onConvert {
+        Button(action: onConvert) {
+          Image(systemName: "wand.and.sparkles")
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(ColorToken.grayScale0.color)
+            .frame(width: 24, height: 24)
+            .background(
+              isConverting ? ColorToken.mainAccent.color.opacity(0.88) : ColorToken.brandBlackSprout.color.opacity(0.78),
+              in: Circle()
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(isConverting)
+        .padding(6)
+      }
+    }
+    .overlay(alignment: .bottomTrailing) {
+      if let onSave {
+        Button(action: onSave) {
+          Image(systemName: "arrow.down.to.line")
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(ColorToken.grayScale0.color)
+            .frame(width: 24, height: 24)
+            .background(ColorToken.brandBlackSprout.color.opacity(0.78), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .padding(6)
+      }
+    }
   }
 }
 
 private struct CommunityReadOnlyAttachmentCarousel: View {
   let attachments: [CommunityAttachment]
+  var onSaveCurrentImage: ((URL) -> Void)? = nil
+  var onConvertCurrentImage: ((URL) -> Void)? = nil
   @State private var currentIndex = 0
 
   var body: some View {
@@ -712,6 +866,36 @@ private struct CommunityReadOnlyAttachmentCarousel: View {
           .frame(height: 26)
           .background(ColorToken.brandBlackSprout.color.opacity(0.72), in: Capsule())
           .padding(10)
+      }
+    }
+    .overlay(alignment: .bottomLeading) {
+      if let onSave = onSaveCurrentImage,
+         attachments.indices.contains(currentIndex),
+         case .image(let url) = attachments[currentIndex] {
+        Button { onSave(url) } label: {
+          Image(systemName: "arrow.down.to.line")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(ColorToken.grayScale0.color)
+            .frame(width: 32, height: 32)
+            .background(ColorToken.brandBlackSprout.color.opacity(0.72), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .padding(10)
+      }
+    }
+    .overlay(alignment: .topTrailing) {
+      if let onConvert = onConvertCurrentImage,
+         attachments.indices.contains(currentIndex),
+         case .image(let url) = attachments[currentIndex] {
+        Button { onConvert(url) } label: {
+          Image(systemName: "wand.and.sparkles")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(ColorToken.grayScale0.color)
+            .frame(width: 32, height: 32)
+            .background(ColorToken.brandBlackSprout.color.opacity(0.72), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .padding(10)
       }
     }
   }

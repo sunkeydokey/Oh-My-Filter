@@ -67,6 +67,24 @@ struct CommunityPostViewModelTests {
     #expect(mutationStore.pendingMutation == .created(.postWithComment))
   }
 
+  @Test("create submit shows server validation message")
+  func createSubmitShowsServerValidationMessage() async {
+    let viewModel = CommunityPostViewModel(
+      mode: .create,
+      service: StubCommunityPostService(
+        post: .postWithComment,
+        createResult: .failure(CommunityServiceError.invalidRequestMessage("유효하지 않은 값 타입입니다."))
+      )
+    )
+
+    await viewModel.send(.categoryChanged("보정"))
+    await viewModel.send(.titleChanged("제목"))
+    await viewModel.send(.contentChanged("내용"))
+    await viewModel.send(.submit)
+
+    #expect(viewModel.state.errorMessage == "유효하지 않은 값 타입입니다.")
+  }
+
   @Test("edit load pre-fills draft and detects dirty state")
   func editLoadPrefillsDraft() async {
     let service = StubCommunityPostService(post: .postWithComment)
@@ -200,10 +218,16 @@ private actor StubCommunityPostService: CommunityServicing {
   private let post: CommunityPost
   private(set) var deletedCommentRequests: [CommunityCommentDeleteRequest] = []
   private(set) var likeStatuses: [Bool] = []
+  private var createResult: Result<CommunityPost, Error>?
   private var likeResults: [Result<Bool, Error>]
 
-  init(post: CommunityPost, likeResults: [Result<Bool, Error>] = []) {
+  init(
+    post: CommunityPost,
+    createResult: Result<CommunityPost, Error>? = nil,
+    likeResults: [Result<Bool, Error>] = []
+  ) {
     self.post = post
+    self.createResult = createResult
     self.likeResults = likeResults
   }
 
@@ -212,7 +236,10 @@ private actor StubCommunityPostService: CommunityServicing {
   }
 
   func createPost(draft: CommunityPostDraft, newImages: [PhotoPickerUploadSelection]) async throws -> CommunityPost {
-    post
+    if let createResult {
+      return try createResult.get()
+    }
+    return post
   }
 
   func uploadPostFiles(selections: [PhotoPickerUploadSelection]) async throws -> [String] {

@@ -204,7 +204,7 @@ private struct StubImageUploadUseCase: ImageUploadUseCase {
   func multipartFiles(
     from selections: [PhotoPickerUploadSelection],
     preset: ImageUploadPreset
-  ) throws -> [MultipartFilePart] {
+  ) async throws -> [MultipartFilePart] {
     selections.map {
       MultipartFilePart(
         fieldName: preset.multipartFieldName,

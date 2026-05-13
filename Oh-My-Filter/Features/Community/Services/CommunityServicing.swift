@@ -19,6 +19,7 @@ nonisolated protocol CommunityServicing: Sendable {
 
 nonisolated enum CommunityServiceError: Error, Equatable, LocalizedError, Sendable {
   case invalidRequest
+  case invalidRequestMessage(String)
   case invalidResponse
   case transport
   case notFound
@@ -29,6 +30,8 @@ nonisolated enum CommunityServiceError: Error, Equatable, LocalizedError, Sendab
     switch self {
     case .invalidRequest:
       "요청 값을 확인해 주세요."
+    case let .invalidRequestMessage(message):
+      message
     case .invalidResponse:
       "응답을 읽을 수 없습니다."
     case .transport:
