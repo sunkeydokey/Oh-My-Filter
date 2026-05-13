@@ -59,7 +59,7 @@ struct PlaygroundView: View {
         onDismiss: { Task { await viewModel.send(.dismissApplySheet) } },
         onIndexChanged: { index in Task { await viewModel.send(.previewIndexChanged(index)) } }
       )
-      .presentationDetents([.medium, .large])
+      .presentationDetents([.large])
       .presentationDragIndicator(.visible)
     }
   }
@@ -87,7 +87,7 @@ struct PlaygroundView: View {
         } label: {
           Label("갤러리에서 선택", systemImage: "photo.on.rectangle")
             .font(TypographyToken.pretendardBody1.font.weight(.heavy))
-            .foregroundStyle(ColorToken.grayScale60.color)
+            .foregroundStyle(ColorToken.grayScale100.color)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 13)
             .background(ColorToken.mainAccent.color, in: .rect(cornerRadius: 8, style: .continuous))

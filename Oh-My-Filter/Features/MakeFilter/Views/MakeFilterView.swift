@@ -91,7 +91,7 @@ struct MakeFilterView: View {
           viewModel.send(.animeConversionDismissed)
         }
       )
-      .presentationDetents([.medium, .large])
+      .presentationDetents([.large])
       .presentationBackground(ColorToken.brandBlackSprout.color)
     }
   }

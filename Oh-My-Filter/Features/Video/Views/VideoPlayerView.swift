@@ -43,9 +43,6 @@ struct VideoPlayerView: View {
     .fullScreenCover(isPresented: fullScreenBinding) {
       fullScreenPlayer
     }
-    .sheet(isPresented: downloadProgressBinding) {
-      downloadProgressSheet
-    }
     .onChange(of: viewModel.isFullScreenPresented) { _, isFullScreen in
       requestOrientation(isFullScreen ? .landscape : .portrait)
     }
@@ -71,50 +68,6 @@ struct VideoPlayerView: View {
       guard isPresented == false else { return }
       Task { await viewModel.send(.exitFullScreen) }
     }
-  }
-
-  private var downloadProgressBinding: Binding<Bool> {
-    Binding {
-      if case .downloading = viewModel.offlineState { return true }
-      return false
-    } set: { _ in
-      // dismissing sheet does not cancel download
-    }
-  }
-
-  private var downloadProgressSheet: some View {
-    VStack(spacing: 20) {
-      Text("오프라인 저장 중")
-        .font(TypographyToken.pretendardTitle1.font)
-        .foregroundStyle(ColorToken.grayScale30.color)
-
-      if case let .downloading(progress) = viewModel.offlineState {
-        VStack(spacing: 8) {
-          ProgressView(value: progress)
-            .tint(ColorToken.mainAccent.color)
-            .frame(maxWidth: .infinity)
-
-          Text("\(Int(progress * 100))%")
-            .font(TypographyToken.pretendardBody2.font)
-            .foregroundStyle(ColorToken.grayScale60.color)
-        }
-      }
-
-      Button {
-        Task { await viewModel.send(.cancelDownload) }
-      } label: {
-        Text("취소")
-          .font(TypographyToken.pretendardBody2.font)
-          .foregroundStyle(ColorToken.grayScale45.color)
-          .padding(.horizontal, 24)
-          .frame(height: 44)
-          .background(ColorToken.brandBlackSprout.color)
-          .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-      }
-    }
-    .padding(32)
-    .presentationDetents([.medium])
-    .background(ColorToken.grayScale100.color)
   }
 
   // MARK: - Navigation Bar
@@ -209,7 +162,7 @@ struct VideoPlayerView: View {
       } label: {
         Text("다시 시도")
           .font(TypographyToken.pretendardBody3.font)
-          .foregroundStyle(ColorToken.grayScale45.color)
+          .foregroundStyle(ColorToken.grayScale100.color)
           .padding(.horizontal, 14)
           .frame(height: 34)
           .background(ColorToken.mainAccent.color)
@@ -484,10 +437,10 @@ struct VideoPlayerView: View {
         HStack(spacing: 8) {
           Image(systemName: viewModel.isLiked ? "heart.fill" : "heart")
             .font(.system(size: 15))
-            .foregroundStyle(viewModel.isLiked ? ColorToken.grayScale45.color : ColorToken.grayScale60.color)
+            .foregroundStyle(viewModel.isLiked ? ColorToken.grayScale100.color : ColorToken.grayScale60.color)
           Text("좋아요 \(viewModel.likeCount.formatted(.number))")
             .font(TypographyToken.pretendardBody3.font)
-            .foregroundStyle(viewModel.isLiked ? ColorToken.grayScale45.color : ColorToken.grayScale60.color)
+            .foregroundStyle(viewModel.isLiked ? ColorToken.grayScale100.color : ColorToken.grayScale60.color)
         }
         .padding(.horizontal, 14)
         .frame(height: 42)
@@ -611,7 +564,7 @@ struct VideoPlayerView: View {
       } label: {
         Image(systemName: viewModel.isSubtitlesEnabled ? "captions.bubble.fill" : "captions.bubble")
           .font(.system(size: 15))
-          .foregroundStyle(viewModel.isSubtitlesEnabled ? ColorToken.grayScale45.color : ColorToken.grayScale60.color)
+          .foregroundStyle(viewModel.isSubtitlesEnabled ? ColorToken.grayScale100.color : ColorToken.grayScale60.color)
           .frame(width: 44, height: 44)
           .background(viewModel.isSubtitlesEnabled ? ColorToken.mainAccent.color : ColorToken.brandBlackSprout.color)
           .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -664,12 +617,12 @@ struct VideoPlayerView: View {
           HStack {
             Text(subtitle.name)
               .font(TypographyToken.pretendardBody2.font)
-              .foregroundStyle(isSelected ? ColorToken.grayScale45.color : ColorToken.grayScale60.color)
+              .foregroundStyle(isSelected ? ColorToken.grayScale100.color : ColorToken.grayScale60.color)
             Spacer()
             if isSelected {
               Image(systemName: "checkmark")
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(ColorToken.grayScale45.color)
+                .foregroundStyle(ColorToken.grayScale100.color)
             }
           }
           .padding(.horizontal, 12)
@@ -761,12 +714,12 @@ struct VideoPlayerView: View {
           HStack {
             Text(quality.label)
               .font(TypographyToken.pretendardBody2.font)
-              .foregroundStyle(isSelected ? ColorToken.grayScale45.color : ColorToken.grayScale60.color)
+              .foregroundStyle(isSelected ? ColorToken.grayScale100.color : ColorToken.grayScale60.color)
             Spacer()
             if isSelected {
               Image(systemName: "checkmark")
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(ColorToken.grayScale45.color)
+                .foregroundStyle(ColorToken.grayScale100.color)
             }
           }
           .padding(.horizontal, 12)

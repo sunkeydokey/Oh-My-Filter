@@ -137,7 +137,7 @@ struct CommunityView: View {
           } label: {
             Text(tab.title)
               .font(TypographyToken.pretendardCaption1.font)
-              .foregroundStyle(ColorToken.grayScale0.color)
+              .foregroundStyle(viewModel.state.selectedTab == tab ? ColorToken.grayScale100.color : ColorToken.grayScale0.color)
               .padding(.horizontal, 16)
               .frame(height: 34)
               .background(tabFill(for: tab), in: Capsule())
@@ -479,7 +479,7 @@ private struct CommunityErrorView: View {
       Button(action: retry) {
         Text("다시 시도")
           .font(TypographyToken.pretendardBody2.font)
-          .foregroundStyle(ColorToken.grayScale0.color)
+          .foregroundStyle(ColorToken.grayScale100.color)
           .padding(.horizontal, 16)
           .frame(height: 40)
           .background(ColorToken.mainAccent.color, in: RoundedRectangle(cornerRadius: 8, style: .continuous))

@@ -87,7 +87,7 @@ struct FilterApplyProgressSheet: View {
                 Text("일괄 저장 (\(outputs.count)개)")
                   .font(TypographyToken.pretendardBody1.font)
                   .bold()
-                  .foregroundStyle(ColorToken.grayScale60.color)
+                  .foregroundStyle(ColorToken.grayScale100.color)
                   .frame(maxWidth: .infinity)
                   .padding(.vertical, 12)
                   .background(
@@ -103,7 +103,7 @@ struct FilterApplyProgressSheet: View {
               Text("저장하기")
                 .font(TypographyToken.pretendardBody1.font)
                 .bold()
-                .foregroundStyle(ColorToken.grayScale60.color)
+                .foregroundStyle(ColorToken.grayScale100.color)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .background(

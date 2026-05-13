@@ -122,7 +122,7 @@ struct FilterDetailView: View {
         onDismiss: dismissApplySheet,
         onIndexChanged: previewIndexChanged
       )
-      .presentationDetents([.medium, .large])
+      .presentationDetents([.large])
       .presentationDragIndicator(.visible)
     }
     // 커뮤니티 탭 전환 방식 (추후 취사 선택용, 현재 비활성)

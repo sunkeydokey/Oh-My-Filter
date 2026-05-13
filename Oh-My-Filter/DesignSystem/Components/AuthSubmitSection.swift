@@ -34,7 +34,7 @@ struct AuthSubmitSection: View {
         Text(title)
           .font(TypographyToken.pretendardBody1.font)
           .bold()
-          .foregroundStyle(ColorToken.grayScale0.color)
+          .foregroundStyle(isEnabled ? ColorToken.grayScale100.color : ColorToken.grayScale0.color)
           .frame(maxWidth: .infinity)
           .padding(.vertical, 15)
           .background(isEnabled ? ColorToken.mainAccent.color : ColorToken.grayScale75.color)

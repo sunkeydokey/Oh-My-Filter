@@ -70,7 +70,7 @@ struct FilterDetailLoadedView: View {
           Text(buttonTitle)
             .font(TypographyToken.pretendardBody1.font)
             .bold()
-            .foregroundStyle(isPaymentProcessing ? ColorToken.grayScale0.color : ColorToken.grayScale60.color)
+            .foregroundStyle(isPaymentProcessing ? ColorToken.grayScale0.color : ColorToken.grayScale100.color)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(
