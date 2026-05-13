@@ -151,6 +151,7 @@ struct ProfileFormField: View {
 
 struct OrderHistoryCardView: View {
   let order: OrderHistoryItem
+  var onApply: () -> Void = {}
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -195,6 +196,17 @@ struct OrderHistoryCardView: View {
       .padding(10)
       .frame(maxWidth: .infinity, alignment: .leading)
       .background(ColorToken.grayScale90.color.opacity(0.38), in: .rect(cornerRadius: 16, style: .continuous))
+
+      Button(action: onApply) {
+        Label("갤러리에 적용해보기", systemImage: "camera.filters")
+          .font(TypographyToken.pretendardBody2.font.weight(.heavy))
+          .foregroundStyle(ColorToken.grayScale60.color)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 12)
+          .background(ColorToken.mainAccent.color, in: .rect(cornerRadius: 8, style: .continuous))
+          .buttonHitArea(RoundedRectangle(cornerRadius: 8, style: .continuous))
+      }
+      .buttonStyle(.plain)
     }
     .profileGlassCard()
   }

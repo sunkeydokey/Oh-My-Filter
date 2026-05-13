@@ -41,7 +41,7 @@ nonisolated struct LiveProfileUseCase: ProfileUseCase {
   }
 
   func uploadProfileImage(selections: [PhotoPickerUploadSelection]) async throws -> String? {
-    let files = try imageUploadUseCase.multipartFiles(from: selections, preset: .profile)
+    let files = try await imageUploadUseCase.multipartFiles(from: selections, preset: .profile)
     guard files.isEmpty == false else { return nil }
     return try await service.uploadProfileImage(multipartFiles: files)
   }

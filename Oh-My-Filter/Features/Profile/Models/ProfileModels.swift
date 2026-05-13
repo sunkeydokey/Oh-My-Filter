@@ -60,7 +60,7 @@ nonisolated struct OrderHistoryItem: Equatable, Identifiable, Sendable {
   let paidAt: Date
 }
 
-nonisolated struct OrderHistoryFilter: Equatable, Identifiable, Sendable {
+nonisolated struct OrderHistoryFilter: Equatable, Hashable, Identifiable, Sendable {
   let id: String
   let category: String
   let title: String
@@ -70,7 +70,7 @@ nonisolated struct OrderHistoryFilter: Equatable, Identifiable, Sendable {
   let creator: OrderHistoryCreator
 }
 
-nonisolated struct OrderHistoryCreator: Equatable, Identifiable, Sendable {
+nonisolated struct OrderHistoryCreator: Equatable, Hashable, Identifiable, Sendable {
   let id: String
   let nick: String
   let name: String?
