@@ -57,7 +57,7 @@ nonisolated struct LiveFilterMakeSubmitUseCase: FilterMakeSubmitting {
       PhotoPickerUploadSelection(data: originalImageData, fileName: "filter-original.jpg"),
       PhotoPickerUploadSelection(data: filteredImageData, fileName: "filter-applied.jpg"),
     ]
-    let fileParts = try imageUploadUseCase.multipartFiles(from: selections, preset: .filter)
+    let fileParts = try await imageUploadUseCase.multipartFiles(from: selections, preset: .filter)
     return try await service.uploadFiles(fileParts)
   }
 

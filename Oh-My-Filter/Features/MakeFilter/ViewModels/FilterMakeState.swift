@@ -1,6 +1,24 @@
 import CoreGraphics
 import Foundation
 
+nonisolated enum AnimeConversionState: Sendable {
+  case idle
+  case converting
+  case awaitingChoice(result: AnimeConversionResult)
+  case failed(message: String)
+}
+
+extension AnimeConversionState: Equatable {
+  static func == (lhs: AnimeConversionState, rhs: AnimeConversionState) -> Bool {
+    switch (lhs, rhs) {
+    case (.idle, .idle), (.converting, .converting): return true
+    case let (.awaitingChoice(l), .awaitingChoice(r)): return l == r
+    case let (.failed(l), .failed(r)): return l == r
+    default: return false
+    }
+  }
+}
+
 nonisolated struct FilterMakeState: Equatable, Sendable {
   var mode: FilterMakeMode = .create
   var name = ""
@@ -13,6 +31,7 @@ nonisolated struct FilterMakeState: Equatable, Sendable {
   var representativeImageData: Data?
   var representativePreviewImage: CGImage?
   var comparisonPreviewState: FilterComparisonPreviewState?
+  var animeConversionState: AnimeConversionState = .idle
   var photoMetadata = FilterDetailMetadata(
     camera: nil,
     lens: nil,
@@ -51,6 +70,7 @@ nonisolated struct FilterMakeState: Equatable, Sendable {
       && lhs.representativeImageData == rhs.representativeImageData
       && lhs.representativePreviewImage === rhs.representativePreviewImage
       && lhs.comparisonPreviewState == rhs.comparisonPreviewState
+      && lhs.animeConversionState == rhs.animeConversionState
       && lhs.photoMetadata == rhs.photoMetadata
       && lhs.filterParameterValues == rhs.filterParameterValues
   }
