@@ -39,8 +39,6 @@ struct ContentView: View {
                   onProfileLater: coordinator.finishAuthentication,
                   onProfileNow: coordinator.showProfileEdit
                 )
-              case .profileEdit:
-                ProfileEditView()
               }
             }
           }

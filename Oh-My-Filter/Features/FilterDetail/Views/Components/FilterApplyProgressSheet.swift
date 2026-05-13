@@ -9,8 +9,7 @@ struct FilterApplyProgressSheet: View {
   let onSaveAll: () -> Void
   let onDismiss: () -> Void
   let onIndexChanged: (Int) -> Void
-
-  @State private var showBoastSheet = false
+  let onBoast: ([PhotoPickerUploadSelection]) -> Void
 
   var body: some View {
     VStack(spacing: 24) {
@@ -116,7 +115,7 @@ struct FilterApplyProgressSheet: View {
           }
 
           Button {
-            showBoastSheet = true
+            onBoast(boastPreloadedImages)
           } label: {
             Text("자랑하기")
               .font(TypographyToken.pretendardBody2.font)
@@ -176,14 +175,6 @@ struct FilterApplyProgressSheet: View {
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(ColorToken.brandBlackSprout.color.ignoresSafeArea())
-    .sheet(isPresented: $showBoastSheet) {
-      NavigationStack {
-        CommunityPostView(
-          mode: .create,
-          preloadedImages: boastPreloadedImages
-        ) { _ in }
-      }
-    }
   }
 }
 

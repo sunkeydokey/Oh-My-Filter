@@ -5,4 +5,5 @@ nonisolated enum MainRoute: Hashable, Sendable {
   case filterMake
   case filterEdit(FilterMakeDraft)
   case filterUpdate(FilterMakeDraft)
+  case communityPostCreate(preloadedImages: [PhotoPickerUploadSelection])
 }

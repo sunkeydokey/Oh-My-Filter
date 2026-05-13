@@ -1,7 +1,7 @@
 import Foundation
 import UniformTypeIdentifiers
 
-nonisolated enum PhotoPickerUploadMediaKind: Equatable, Sendable {
+nonisolated enum PhotoPickerUploadMediaKind: Hashable, Sendable {
   case image
   case video
 
@@ -33,7 +33,7 @@ nonisolated enum PhotoPickerUploadMediaKind: Equatable, Sendable {
   }
 }
 
-nonisolated struct PhotoPickerUploadSelection: Equatable, Identifiable, Sendable {
+nonisolated struct PhotoPickerUploadSelection: Hashable, Identifiable, Sendable {
   let id: UUID
   let data: Data
   let fileName: String

@@ -122,12 +122,13 @@ struct AppCoordinatorTests {
     #expect(coordinator.signupViewModel == nil)
   }
 
-  @Test("successful signup clears auth stack and switches scene")
-  func successfulSignupSwitchesScene() async throws {
-    let coordinator = makeCoordinator()
-    await coordinator.start()?.value
-    coordinator.showSignup()
-    let signupViewModel = try #require(coordinator.signupViewModel)
+  @Test("successful signup stores session and keeps completion alert visible")
+  func successfulSignupStoresSessionAndKeepsAlertVisible() async throws {
+    let userSessionStore = MockUserSessionStore()
+    let coordinatorWithSessionStore = makeCoordinator(userSessionStore: userSessionStore)
+    await coordinatorWithSessionStore.start()?.value
+    coordinatorWithSessionStore.showSignup()
+    let signupViewModel = try #require(coordinatorWithSessionStore.signupViewModel)
 
     await signupViewModel.send(.emailChanged("sesac@sesac.com"))?.value
     signupViewModel.send(.passwordChanged("password123!"))
@@ -135,21 +136,27 @@ struct AppCoordinatorTests {
     signupViewModel.send(.nickChanged("새싹이Abc12"))
     await signupViewModel.send(.submitTapped)?.value
 
-    #expect(coordinator.scene == .authenticated)
-    #expect(coordinator.authPath.isEmpty)
-    #expect(coordinator.loginViewModel == nil)
-    #expect(coordinator.signupViewModel == nil)
+    #expect(coordinatorWithSessionStore.scene == .auth)
+    #expect(coordinatorWithSessionStore.authPath == [.signup])
+    #expect(coordinatorWithSessionStore.loginViewModel != nil)
+    #expect(coordinatorWithSessionStore.signupViewModel != nil)
+    #expect(signupViewModel.state.isShowingSignupCompletionAlert)
+    #expect(userSessionStore.currentUserID() == LoginSession.fixture.userID)
   }
 
-  @Test("show profile edit adds route once")
-  func showProfileEditAddsRouteOnce() async {
+  @Test("show profile edit authenticates and queues profile edit route")
+  func showProfileEditAuthenticatesAndQueuesProfileEditRoute() async {
     let coordinator = makeCoordinator()
     await coordinator.start()?.value
 
     coordinator.showProfileEdit()
     coordinator.showProfileEdit()
 
-    #expect(coordinator.authPath == [.profileEdit])
+    #expect(coordinator.scene == .authenticated)
+    #expect(coordinator.authPath.isEmpty)
+    #expect(coordinator.loginViewModel == nil)
+    #expect(coordinator.signupViewModel == nil)
+    #expect(coordinator.pendingAuthenticatedRoute == .profileEdit)
   }
 
   @Test("logout deletes tokens and recreates auth view models")

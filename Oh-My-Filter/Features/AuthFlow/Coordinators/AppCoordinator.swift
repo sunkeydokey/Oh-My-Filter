@@ -84,8 +84,8 @@ final class AppCoordinator {
   }
 
   func showProfileEdit() {
-    guard authPath.contains(.profileEdit) == false else { return }
-    authPath.append(.profileEdit)
+    pendingAuthenticatedRoute = .profileEdit
+    finishAuthentication()
   }
 
   func finishAuthentication() {
@@ -108,6 +108,11 @@ final class AppCoordinator {
     resetLocalDataIfNeeded(for: session.userID)
     userSessionStore.saveAuthenticatedUserID(session.userID)
     finishAuthentication()
+  }
+
+  private func completeSignup(session: LoginSession) {
+    resetLocalDataIfNeeded(for: session.userID)
+    userSessionStore.saveAuthenticatedUserID(session.userID)
   }
 
   @discardableResult
@@ -145,7 +150,7 @@ final class AppCoordinator {
       self?.finishAuthentication(session: session)
     }
     signupViewModel.onSignupSucceeded = { [weak self] session in
-      self?.finishAuthentication(session: session)
+      self?.completeSignup(session: session)
     }
 
     self.loginViewModel = loginViewModel
