@@ -155,6 +155,89 @@ struct FilterMakeViewModelTests {
     #expect(viewModel.state.filterValues.brightness == 0.25)
   }
 
+  @Test("animeConvertTapped sets state to converting")
+  func animeConvertTappedSetsConverting() {
+    let viewModel = FilterMakeViewModel(animeConverter: MockAnimeGANConverter(result: .success(.sample)))
+    viewModel.send(.representativeImageChanged(Data([0x01])))
+
+    viewModel.send(.animeConvertTapped)
+
+    #expect(viewModel.state.animeConversionState == .converting)
+  }
+
+  @Test("animeConversionProduced sets state to awaitingChoice")
+  func animeConversionProducedSetsAwaitingChoice() async {
+    let converter = MockAnimeGANConverter(result: .success(.sample))
+    let viewModel = FilterMakeViewModel(animeConverter: converter)
+    viewModel.send(.representativeImageChanged(Data([0x01])))
+    viewModel.send(.animeConvertTapped)
+
+    await waitForImageInfo {
+      if case .awaitingChoice = viewModel.state.animeConversionState { return true }
+      return false
+    }
+
+    if case let .awaitingChoice(result) = viewModel.state.animeConversionState {
+      #expect(result == .sample)
+    } else {
+      Issue.record("Expected awaitingChoice state")
+    }
+  }
+
+  @Test("animeConversionFailed sets state to failed")
+  func animeConversionFailedSetsFailed() async {
+    let converter = MockAnimeGANConverter(result: .failure(AnimeGANConversionError.predictionFailed))
+    let viewModel = FilterMakeViewModel(animeConverter: converter)
+    viewModel.send(.representativeImageChanged(Data([0x01])))
+    viewModel.send(.animeConvertTapped)
+
+    await waitForImageInfo {
+      if case .failed = viewModel.state.animeConversionState { return true }
+      return false
+    }
+
+    if case .failed = viewModel.state.animeConversionState {
+    } else {
+      Issue.record("Expected failed state")
+    }
+  }
+
+  @Test("animeConversionChoiceMade useConverted true replaces representativeImageData")
+  func animeConversionChoiceUsesConverted() {
+    let viewModel = FilterMakeViewModel(animeConverter: MockAnimeGANConverter(result: .success(.sample)))
+    viewModel.send(.representativeImageChanged(Data([0x01])))
+    viewModel.send(.animeConversionProduced(.sample))
+
+    viewModel.send(.animeConversionChoiceMade(useConverted: true))
+
+    #expect(viewModel.state.representativeImageData == AnimeConversionResult.sample.convertedData)
+    #expect(viewModel.state.animeConversionState == .idle)
+  }
+
+  @Test("animeConversionChoiceMade useConverted false keeps representativeImageData")
+  func animeConversionChoiceKeepsOriginal() {
+    let originalData = Data([0x01])
+    let viewModel = FilterMakeViewModel(animeConverter: MockAnimeGANConverter(result: .success(.sample)))
+    viewModel.send(.representativeImageChanged(originalData))
+    viewModel.send(.animeConversionProduced(.sample))
+
+    viewModel.send(.animeConversionChoiceMade(useConverted: false))
+
+    #expect(viewModel.state.representativeImageData == originalData)
+    #expect(viewModel.state.animeConversionState == .idle)
+  }
+
+  @Test("new image selection resets anime conversion state")
+  func newImageSelectionResetsAnimeConversionState() {
+    let viewModel = FilterMakeViewModel(animeConverter: MockAnimeGANConverter(result: .success(.sample)))
+    viewModel.send(.representativeImageChanged(Data([0x01])))
+    viewModel.send(.animeConversionProduced(.sample))
+
+    viewModel.send(.representativeImageChanged(Data([0x02])))
+
+    #expect(viewModel.state.animeConversionState == .idle)
+  }
+
   @Test("create submit success emits created route and route handled clears it")
   func createSubmitSuccessEmitsCreatedRoute() async throws {
     let submitUseCase = MockFilterMakeSubmitUseCase(result: .success(.sample))
@@ -255,6 +338,22 @@ private actor MockImageFilterRendererStorage {
   func calledMethods() -> [String] {
     methods
   }
+}
+
+private struct MockAnimeGANConverter: AnimeGANConverting {
+  let result: Result<AnimeConversionResult, Error>
+
+  func convert(imageData: Data, maxPixelSize: Int) async throws -> AnimeConversionResult {
+    try result.get()
+  }
+}
+
+private extension AnimeConversionResult {
+  static let sample = AnimeConversionResult(
+    originalPreview: TestImageFactory.makeCGImage(),
+    convertedPreview: TestImageFactory.makeCGImage(),
+    convertedData: Data([0xAA, 0xBB])
+  )
 }
 
 private extension RenderedFilterImages {

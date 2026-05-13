@@ -7,19 +7,24 @@ final class FilterMakeViewModel {
   private(set) var state: FilterMakeState
   private let submitUseCase: any FilterMakeSubmitting
   private let renderer: any ImageFilterRendering
+  private let animeConverter: any AnimeGANConverting
   private let filterChangeDebounceDuration: Duration
   private var comparisonRenderTask: Task<Void, Never>?
   private var comparisonRenderRequestID = UUID()
+  private var animeConversionTask: Task<Void, Never>?
+  private var animeConversionRequestID = UUID()
 
   init(
     state: FilterMakeState = FilterMakeState(),
     submitUseCase: (any FilterMakeSubmitting)? = nil,
     renderer: any ImageFilterRendering = CoreImageFilterRenderer(),
+    animeConverter: any AnimeGANConverting = LiveAnimeGANConverter(),
     filterChangeDebounceDuration: Duration = .milliseconds(300)
   ) {
     self.state = state
     self.submitUseCase = submitUseCase ?? LiveFilterMakeSubmitUseCase()
     self.renderer = renderer
+    self.animeConverter = animeConverter
     self.filterChangeDebounceDuration = filterChangeDebounceDuration
     if let imageData = state.representativeImageData {
       scheduleComparisonRender(for: imageData, filterValues: state.filterValues)
@@ -46,6 +51,9 @@ final class FilterMakeViewModel {
     case let .representativeImageChanged(data):
       state.representativeImageData = data
       state.representativePreviewImage = nil
+      animeConversionTask?.cancel()
+      animeConversionRequestID = UUID()
+      state.animeConversionState = .idle
       guard let data else {
         comparisonRenderTask?.cancel()
         comparisonRenderRequestID = UUID()
@@ -57,6 +65,9 @@ final class FilterMakeViewModel {
       state.comparisonPreviewState = .rendering
       scheduleComparisonRender(for: data, filterValues: state.filterValues)
     case let .representativeImageInfoChanged(info):
+      animeConversionTask?.cancel()
+      animeConversionRequestID = UUID()
+      state.animeConversionState = .idle
       state.representativeImageData = info.imageData
       state.representativePreviewImage = info.previewImage
       state.photoMetadata = info.metadata
@@ -77,6 +88,26 @@ final class FilterMakeViewModel {
       }
     case .routeHandled:
       state.route = nil
+    case .animeConvertTapped:
+      guard state.representativeImageData != nil,
+            state.animeConversionState != .converting else { return }
+      state.animeConversionState = .converting
+      scheduleAnimeConversion()
+    case let .animeConversionProduced(result):
+      state.animeConversionState = .awaitingChoice(result: result)
+    case let .animeConversionFailed(message):
+      state.animeConversionState = .failed(message: message)
+    case let .animeConversionChoiceMade(useConverted):
+      if useConverted,
+         case let .awaitingChoice(result) = state.animeConversionState {
+        state.representativeImageData = result.convertedData
+        state.representativePreviewImage = result.convertedPreview
+        state.comparisonPreviewState = .rendering
+        scheduleComparisonRender(for: result.convertedData, filterValues: state.filterValues)
+      }
+      state.animeConversionState = .idle
+    case .animeConversionDismissed:
+      state.animeConversionState = .idle
     }
   }
 
@@ -103,6 +134,36 @@ final class FilterMakeViewModel {
       state.isSubmitting = false
       state.submissionMessage = Self.message(for: error)
     }
+  }
+
+  private func scheduleAnimeConversion() {
+    guard let imageData = state.representativeImageData else { return }
+    animeConversionTask?.cancel()
+    let requestID = UUID()
+    animeConversionRequestID = requestID
+    animeConversionTask = Task { [animeConverter, imageData, requestID] in
+      do {
+        let result = try await animeConverter.convert(imageData: imageData, maxPixelSize: 512)
+        guard Task.isCancelled == false, self.animeConversionRequestID == requestID else { return }
+        self.send(.animeConversionProduced(result))
+      } catch is CancellationError {
+      } catch {
+        guard Task.isCancelled == false, self.animeConversionRequestID == requestID else { return }
+        self.send(.animeConversionFailed(Self.animeErrorMessage(for: error)))
+      }
+    }
+  }
+
+  private static func animeErrorMessage(for error: Error) -> String {
+    if let e = error as? AnimeGANConversionError {
+      switch e {
+      case .invalidImageData: return "이미지를 불러올 수 없습니다."
+      case .modelLoadFailed: return "모델을 불러올 수 없습니다."
+      case .predictionFailed: return "변환에 실패했습니다."
+      case .outputDecodingFailed: return "변환 결과를 처리할 수 없습니다."
+      }
+    }
+    return "애니 변환에 실패했습니다. 잠시 후 다시 시도해주세요."
   }
 
   private func scheduleComparisonRender(for imageData: Data, filterValues: FilterValues, debounce: Duration? = nil) {

@@ -74,6 +74,26 @@ struct MakeFilterView: View {
       onSubmitSucceeded(detail)
       viewModel.send(.routeHandled)
     }
+    .sheet(
+      isPresented: Binding(
+        get: { viewModel.state.animeConversionState != .idle },
+        set: { isPresented in
+          if !isPresented { viewModel.send(.animeConversionDismissed) }
+        }
+      )
+    ) {
+      AnimeConversionPreviewSheet(
+        state: viewModel.state.animeConversionState,
+        onChoiceMade: { useConverted in
+          viewModel.send(.animeConversionChoiceMade(useConverted: useConverted))
+        },
+        onDismiss: {
+          viewModel.send(.animeConversionDismissed)
+        }
+      )
+      .presentationDetents([.medium, .large])
+      .presentationBackground(ColorToken.brandBlackSprout.color)
+    }
   }
 
   private var submitButton: some View {
@@ -190,6 +210,19 @@ struct MakeFilterView: View {
               .font(TypographyToken.pretendardBody3.font)
               .foregroundStyle(ColorToken.grayScale60.color)
           }
+
+          Button {
+            viewModel.send(.animeConvertTapped)
+          } label: {
+            Text("변환하기")
+              .font(TypographyToken.pretendardBody3.font)
+              .foregroundStyle(
+                viewModel.state.animeConversionState == .converting
+                  ? ColorToken.sesacFilterDeepTurquoise.color.opacity(0.4)
+                  : ColorToken.sesacFilterDeepTurquoise.color
+              )
+          }
+          .disabled(viewModel.state.animeConversionState == .converting)
         }
       }
 
