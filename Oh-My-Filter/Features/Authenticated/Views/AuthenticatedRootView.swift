@@ -207,6 +207,9 @@ struct AuthenticatedRootView: View {
     case let .chatRoom(roomID):
       selectedTab = .chat
       pendingChatRoomID = roomID
+    case .profileEdit:
+      selectedTab = .profile
+      profilePath = [.edit]
     }
 
     onRouteHandled(route)
