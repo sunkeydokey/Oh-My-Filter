@@ -11,8 +11,17 @@ struct VideoPlayerView: View {
   private static let cardBackground = Color(red: 20 / 255, green: 20 / 255, blue: 26 / 255)
   private static let cardStroke = Color(red: 38 / 255, green: 38 / 255, blue: 43 / 255).opacity(0.5)
 
-  init(video: CommunityVideo) {
-    _viewModel = State(wrappedValue: VideoPlayerViewModel(video: video))
+  init(
+    video: CommunityVideo,
+    offlineStore: any OfflineVideoStoring,
+    downloadManager: any VideoDownloadManaging
+  ) {
+    _viewModel = State(wrappedValue: VideoPlayerViewModel(
+      video: video,
+      service: LiveVideoPlayerService(),
+      offlineStore: offlineStore,
+      downloadManager: downloadManager
+    ))
   }
 
   var body: some View {
@@ -34,6 +43,9 @@ struct VideoPlayerView: View {
     .fullScreenCover(isPresented: fullScreenBinding) {
       fullScreenPlayer
     }
+    .sheet(isPresented: downloadProgressBinding) {
+      downloadProgressSheet
+    }
     .onChange(of: viewModel.isFullScreenPresented) { _, isFullScreen in
       requestOrientation(isFullScreen ? .landscape : .portrait)
     }
@@ -47,7 +59,9 @@ struct VideoPlayerView: View {
         }
       }
     }
-    .task { await viewModel.send(.task) }
+    .task {
+      await viewModel.send(.task)
+    }
   }
 
   private var fullScreenBinding: Binding<Bool> {
@@ -57,6 +71,50 @@ struct VideoPlayerView: View {
       guard isPresented == false else { return }
       Task { await viewModel.send(.exitFullScreen) }
     }
+  }
+
+  private var downloadProgressBinding: Binding<Bool> {
+    Binding {
+      if case .downloading = viewModel.offlineState { return true }
+      return false
+    } set: { _ in
+      // dismissing sheet does not cancel download
+    }
+  }
+
+  private var downloadProgressSheet: some View {
+    VStack(spacing: 20) {
+      Text("오프라인 저장 중")
+        .font(TypographyToken.pretendardTitle1.font)
+        .foregroundStyle(ColorToken.grayScale30.color)
+
+      if case let .downloading(progress) = viewModel.offlineState {
+        VStack(spacing: 8) {
+          ProgressView(value: progress)
+            .tint(ColorToken.mainAccent.color)
+            .frame(maxWidth: .infinity)
+
+          Text("\(Int(progress * 100))%")
+            .font(TypographyToken.pretendardBody2.font)
+            .foregroundStyle(ColorToken.grayScale60.color)
+        }
+      }
+
+      Button {
+        Task { await viewModel.send(.cancelDownload) }
+      } label: {
+        Text("취소")
+          .font(TypographyToken.pretendardBody2.font)
+          .foregroundStyle(ColorToken.grayScale45.color)
+          .padding(.horizontal, 24)
+          .frame(height: 44)
+          .background(ColorToken.brandBlackSprout.color)
+          .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+      }
+    }
+    .padding(32)
+    .presentationDetents([.medium])
+    .background(ColorToken.grayScale100.color)
   }
 
   // MARK: - Navigation Bar
@@ -79,11 +137,31 @@ struct VideoPlayerView: View {
 
       Spacer()
 
-      Image(systemName: "ellipsis")
-        .font(.system(size: 22, weight: .medium))
-        .foregroundStyle(ColorToken.grayScale60.color)
+      offlineBarButton
     }
     .frame(height: 44)
+  }
+
+  @ViewBuilder
+  private var offlineBarButton: some View {
+    switch viewModel.offlineState {
+    case .none:
+      Button {
+        Task { await viewModel.send(.downloadOffline) }
+      } label: {
+        Image(systemName: "arrow.down.circle")
+          .font(.system(size: 22, weight: .medium))
+          .foregroundStyle(ColorToken.grayScale60.color)
+      }
+    case .downloading:
+      ProgressView()
+        .tint(ColorToken.grayScale60.color)
+        .frame(width: 22, height: 22)
+    case .saved:
+      Image(systemName: "checkmark.circle.fill")
+        .font(.system(size: 22, weight: .medium))
+        .foregroundStyle(ColorToken.mainAccent.color)
+    }
   }
 
   // MARK: - Player Container
@@ -382,7 +460,13 @@ struct VideoPlayerView: View {
         Text("·")
         Text(formattedDate(viewModel.video.createdAt))
         Text("·")
-        Text("HLS · \(viewModel.selectedQuality)")
+        if viewModel.offlineState == .saved {
+          Label("오프라인", systemImage: "internaldrive")
+            .font(TypographyToken.pretendardCaption1.font)
+            .foregroundStyle(ColorToken.mainAccent.color)
+        } else {
+          Text("HLS · \(viewModel.selectedQuality)")
+        }
       }
       .font(TypographyToken.pretendardCaption1.font)
       .foregroundStyle(ColorToken.grayScale75.color)

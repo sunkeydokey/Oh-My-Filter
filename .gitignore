@@ -114,6 +114,20 @@ AGENTS.md
 GoogleService-Info.plist
 *.p8
 **/Docs/*
+**/docs/*
 .claude/settings.local.json
 .claude/*
 CLAUDE.md
+
+# AI agent and Codex working files
+.codex/
+.agent/
+.ai/
+.agents/cache/
+.agents/logs/
+.agents/tmp/
+.agents/artifacts/
+.agents/plans/
+.agents/worktrees/
+commit-plan.md
+COMMIT_PLAN.md

@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 private enum AuthenticatedTab: Hashable {
@@ -19,6 +20,9 @@ struct AuthenticatedRootView: View {
   let pendingRoute: AppAuthenticatedRoute?
   let onRouteHandled: (AppAuthenticatedRoute) -> Void
   let onLogout: () -> Void
+  @Environment(PurchasedFilterStore.self) private var purchasedFilterStore
+  @Environment(\.modelContext) private var modelContext
+  @Environment(\.videoDownloadManager) private var videoDownloadManager
 
   init(
     pendingRoute: AppAuthenticatedRoute? = nil,
@@ -107,8 +111,20 @@ struct AuthenticatedRootView: View {
                 communityPath.append(route)
               }
             case let .videoDetail(video):
-              VideoPlayerView(video: video)
+              if let downloadManager = videoDownloadManager {
+                VideoPlayerView(
+                  video: video,
+                  offlineStore: SwiftDataOfflineVideoStore(context: modelContext),
+                  downloadManager: downloadManager
+                )
+              }
             }
+          }
+        }
+        .task {
+          await purchasedFilterStore.load()
+          Task {
+            await purchasedFilterStore.sync()
           }
         }
       }
@@ -136,7 +152,11 @@ struct AuthenticatedRootView: View {
             case .edit:
               ProfileEditView()
             case .receipts:
-              ReceiptView()
+              ReceiptView { route in
+                profilePath.append(route)
+              }
+            case let .playground(filter):
+              PlaygroundView(filter: filter)
             }
           }
         }

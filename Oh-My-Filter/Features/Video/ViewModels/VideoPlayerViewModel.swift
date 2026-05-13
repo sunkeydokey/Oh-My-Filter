@@ -33,6 +33,8 @@ enum VideoPlayerAction {
   case enterBackground
   case enterForeground
   case becomeInactive
+  case downloadOffline
+  case cancelDownload
 }
 
 enum VideoPlayerPhase: Equatable {
@@ -68,11 +70,15 @@ final class VideoPlayerViewModel {
   var isSeeking: Bool = false
   var isControlsVisible: Bool = true
   var isFullScreenPresented: Bool = false
+  var offlineState: OfflineVideoState = .none
   private(set) var player: AVPlayer?
   private var isInactive = false
 
   let video: CommunityVideo
   private let service: any VideoPlayerServicing
+  private let offlineStore: any OfflineVideoStoring
+  private let downloadManager: any VideoDownloadManaging
+  private var downloadObserverTask: Task<Void, Never>?
   private var timeObserver: Any?
   private var statusObservation: NSKeyValueObservation?
   private var itemStatusObservation: NSKeyValueObservation?
@@ -95,19 +101,19 @@ final class VideoPlayerViewModel {
   init(
     video: CommunityVideo,
     service: any VideoPlayerServicing,
+    offlineStore: any OfflineVideoStoring,
+    downloadManager: any VideoDownloadManaging,
     likeDebounceDuration: Duration = .milliseconds(300)
   ) {
     self.video = video
     self.service = service
+    self.offlineStore = offlineStore
+    self.downloadManager = downloadManager
     self.isLiked = video.isLiked
     self.likeCount = video.likeCount
     self.selectedQuality = video.availableQualities.first ?? ""
     self.duration = video.duration
     self.likeCommitter = DebouncedBooleanCommitter(duration: likeDebounceDuration)
-  }
-
-  convenience init(video: CommunityVideo) {
-    self.init(video: video, service: LiveVideoPlayerService())
   }
 
   func send(_ action: VideoPlayerAction) async {
@@ -120,7 +126,7 @@ final class VideoPlayerViewModel {
 
     switch action {
     case .task:
-      await loadStream()
+      await loadStreamOrLocalFile()
     case .retry:
       await loadStream()
     case .togglePlay:
@@ -172,6 +178,10 @@ final class VideoPlayerViewModel {
       isInactive = false
     case .becomeInactive:
       isInactive = true
+    case .downloadOffline:
+      await handleDownloadOffline()
+    case .cancelDownload:
+      handleCancelDownload()
     }
   }
 
@@ -206,6 +216,64 @@ final class VideoPlayerViewModel {
       playerPhase = .error(message: message)
       Self.logger.error("❌ [VideoPlayerViewModel] loadStream failed error=\(String(describing: error), privacy: .public)")
     }
+  }
+
+  private func loadStreamOrLocalFile() async {
+    if let record = try? await offlineStore.load(videoId: video.id) {
+      playerPhase = .loading
+      currentTime = 0
+      try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+      try? AVAudioSession.sharedInstance().setActive(true)
+      setupPlayer(url: record.localURL)
+      playerPhase = .ready(isPlaying: false)
+      isControlsVisible = true
+      offlineState = .saved
+      await enableDefaultSubtitlesIfAvailable()
+    } else {
+      await loadStream()
+    }
+  }
+
+  private func handleDownloadOffline() async {
+    guard offlineState == .none else { return }
+    guard let hlsURL = currentHLSURL else { return }
+
+    offlineState = .downloading(progress: 0)
+    await downloadManager.startDownload(videoId: video.id, hlsURL: hlsURL, title: video.title)
+
+    downloadObserverTask?.cancel()
+    downloadObserverTask = Task { [weak self] in
+      guard let self else { return }
+      let stream = downloadManager.progressStream(for: video.id)
+      for await event in stream {
+        guard !Task.isCancelled else { return }
+        await MainActor.run { [weak self] in
+          guard let self else { return }
+          switch event {
+          case let .progress(value):
+            self.offlineState = .downloading(progress: value)
+          case .completed(let localURL):
+            let wasPlaying: Bool
+            if case .ready(let p) = self.playerPhase { wasPlaying = p } else { wasPlaying = false }
+            self.offlineState = .saved
+            self.swapPlayerItem(url: localURL, resumeTime: self.currentTime, play: wasPlaying)
+          case .failed, .cancelled:
+            self.offlineState = .none
+          }
+        }
+      }
+    }
+  }
+
+  private func handleCancelDownload() {
+    downloadManager.cancelDownload(videoId: video.id)
+    downloadObserverTask?.cancel()
+    downloadObserverTask = nil
+    offlineState = .none
+  }
+
+  private var currentHLSURL: URL? {
+    (player?.currentItem?.asset as? AVURLAsset)?.url
   }
 
   private func handleTogglePlay() {
@@ -528,7 +596,6 @@ final class VideoPlayerViewModel {
     if case .ready(true) = playerPhase {
       currentPlayer.play()
     }
-
     pendingQuality = nil
     pendingQualityLabel = nil
     Self.logger.info("ℹ️ [VideoPlayerViewModel] deferred quality swap executed cutTime=\(cutTime, privacy: .public) label=\(pending.label, privacy: .public)")
@@ -577,7 +644,6 @@ final class VideoPlayerViewModel {
           currentPlayer.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
         }
         if play { currentPlayer.play() }
-
         Self.logger.info("ℹ️ [VideoPlayerViewModel] playerItem swapped resumeTime=\(resumeTime, privacy: .public)")
       }
     }
@@ -606,7 +672,6 @@ final class VideoPlayerViewModel {
       Self.logger.error("❌ [VideoPlayerViewModel] setupPlayer called with nil url")
       return
     }
-
     let asset = AVURLAsset(url: url)
     let playerItem = AVPlayerItem(asset: asset)
     let newPlayer = AVPlayer(playerItem: playerItem)
@@ -664,6 +729,8 @@ final class VideoPlayerViewModel {
   }
 
   private func cleanupPlayer() {
+    downloadObserverTask?.cancel()
+    downloadObserverTask = nil
     cancelPendingQualityChange()
     if let observer = timeObserver {
       player?.removeTimeObserver(observer)

@@ -13,19 +13,27 @@ import iamport_ios
 @main
 struct OhMyFilterApp: App {
   private let modelContainer: ModelContainer
+  private let downloadManager: LiveVideoDownloadManager
   @State private var coordinator: AppCoordinator
+  @State private var purchasedFilterStore: PurchasedFilterStore
 
   @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
   init() {
     do {
-      let modelContainer = try ModelContainer(for: ChatRoomRecord.self, ChatMessageRecord.self)
+      let modelContainer = try ModelContainer(
+        for: ChatRoomRecord.self, ChatMessageRecord.self,
+             PurchasedFilterRecord.self, OfflineVideoRecord.self
+      )
       self.modelContainer = modelContainer
+      let offlineStore = SwiftDataOfflineVideoStore(container: modelContainer)
+      self.downloadManager = LiveVideoDownloadManager(offlineStore: offlineStore)
       _coordinator = State(initialValue: AppCoordinator(
         loginService: LiveLoginService(),
         signupService: LiveSignupService(),
         localSessionDataResetter: SwiftDataLocalSessionDataResetter(container: modelContainer)
       ))
+      _purchasedFilterStore = State(initialValue: PurchasedFilterStore(container: modelContainer))
     } catch {
       fatalError("Failed to create SwiftData model container: \(error)")
     }
@@ -40,6 +48,8 @@ struct OhMyFilterApp: App {
       )
         .preferredColorScheme(.dark)
         .modelContainer(modelContainer)
+        .environment(purchasedFilterStore)
+        .environment(\.videoDownloadManager, downloadManager)
         .onOpenURL { url in
           if url.scheme == SDK.Payment.appScheme {
             Iamport.shared.receivedURL(url)
