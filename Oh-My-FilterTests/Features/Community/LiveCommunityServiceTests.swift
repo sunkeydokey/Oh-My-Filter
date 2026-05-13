@@ -89,7 +89,7 @@ struct LiveCommunityServiceTests {
       _ = try await invalidRequestService.loadPosts(nextCursor: nil, limit: 10, orderBy: "createdAt")
       Issue.record("Expected invalid request")
     } catch let error as CommunityServiceError {
-      #expect(error == .invalidRequest)
+      #expect(error == .invalidRequestMessage("bad"))
     } catch {
       Issue.record("Unexpected error: \(error)")
     }

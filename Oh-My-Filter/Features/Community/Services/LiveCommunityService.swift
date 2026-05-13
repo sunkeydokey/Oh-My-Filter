@@ -47,13 +47,16 @@ actor LiveCommunityService: CommunityServicing {
     guard selections.isEmpty == false else { return [] }
 
     do {
-      let fileParts = try imageUploadUseCase.multipartFiles(from: selections, preset: .communityPost)
+      let fileParts = try await imageUploadUseCase.multipartFiles(from: selections, preset: .communityPost)
+      Self.logger.debug("[CommunityPostUpload] multipart extensions=\(fileParts.fileExtensionsDescription, privacy: .public)")
       let response = try await networkManager.request(CommunityApiRouter.uploadFiles, multipartFiles: fileParts)
-      return try decode(FileResponseDTO.self, from: response).files
+      let files = try decode(FileResponseDTO.self, from: response).files
+      Self.logger.debug("[CommunityPostUpload] uploaded file extensions=\(files.fileExtensionsDescription, privacy: .public)")
+      return files
     } catch let error as CommunityServiceError {
       throw error
-    } catch is ImageCompressionError {
-      throw CommunityServiceError.invalidRequest
+    } catch let error as ImageCompressionError {
+      throw mappedImageCompressionError(error)
     } catch let error as NetworkError {
       throw mappedNetworkError(error)
     } catch {
@@ -230,7 +233,7 @@ actor LiveCommunityService: CommunityServicing {
         throw CommunityServiceError.invalidResponse
       }
     case 400:
-      throw CommunityServiceError.invalidRequest
+      throw mappedServerMessageError(data: response.data)
     case 404:
       throw CommunityServiceError.notFound
     case 445:
@@ -245,7 +248,7 @@ actor LiveCommunityService: CommunityServicing {
     case 200 ..< 300:
       return
     case 400:
-      throw CommunityServiceError.invalidRequest
+      throw mappedServerMessageError(data: response.data)
     case 404:
       throw CommunityServiceError.notFound
     case 445:
@@ -268,6 +271,28 @@ actor LiveCommunityService: CommunityServicing {
     }
 
     return RequestQuery(values)
+  }
+
+  private func mappedServerMessageError(data: Data) -> CommunityServiceError {
+    guard
+      let payload = try? decoder.decode(CommunityErrorResponseDTO.self, from: data),
+      payload.message.isEmpty == false
+    else {
+      return .invalidRequest
+    }
+
+    return .invalidRequestMessage(payload.message)
+  }
+
+  private func mappedImageCompressionError(_ error: ImageCompressionError) -> CommunityServiceError {
+    switch error {
+    case .exceedsMaximumBytes:
+      .invalidRequestMessage("동영상은 최대 5MB까지 업로드할 수 있습니다.")
+    case .unsupportedFileExtension:
+      .invalidRequestMessage("지원하지 않는 파일 형식입니다.")
+    case .invalidImageData, .compressionFailed:
+      .invalidRequest
+    }
   }
 
   private func mappedNetworkError(_ error: NetworkError) -> CommunityServiceError {
@@ -296,5 +321,30 @@ actor LiveCommunityService: CommunityServicing {
     case .transport:
       .transport
     }
+  }
+}
+
+private nonisolated struct CommunityErrorResponseDTO: Decodable, Sendable {
+  let message: String
+}
+
+private extension Array where Element == MultipartFilePart {
+  nonisolated var fileExtensionsDescription: String {
+    map(\.fileName).fileExtensionsDescription
+  }
+}
+
+private extension Array where Element == String {
+  nonisolated var fileExtensionsDescription: String {
+    map(\.lowercasedFileExtensionForLog).joined(separator: ",")
+  }
+}
+
+private extension String {
+  nonisolated var lowercasedFileExtensionForLog: String {
+    guard let dotIndex = lastIndex(of: ".") else { return "(none)" }
+
+    let fileExtension = self[index(after: dotIndex)...].lowercased()
+    return fileExtension.isEmpty ? "(none)" : fileExtension
   }
 }

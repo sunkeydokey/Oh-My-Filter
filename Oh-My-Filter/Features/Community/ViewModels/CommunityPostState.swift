@@ -11,6 +11,47 @@ nonisolated enum CommunityPostSubmitPhase: Equatable, Sendable {
   case submitting
 }
 
+// Create/Edit: 어느 타일에서 AnimeGAN 변환이 진행 중인지 추적
+nonisolated enum CommunityAnimeConversionState: Sendable {
+  case idle
+  case converting(selectionID: UUID)
+  case awaitingChoice(selectionID: UUID, result: AnimeConversionResult)
+  case failed(selectionID: UUID, message: String)
+}
+
+extension CommunityAnimeConversionState: Equatable {
+  nonisolated static func == (lhs: CommunityAnimeConversionState, rhs: CommunityAnimeConversionState) -> Bool {
+    switch (lhs, rhs) {
+    case (.idle, .idle): return true
+    case let (.converting(l), .converting(r)): return l == r
+    case let (.awaitingChoice(lID, lResult), .awaitingChoice(rID, rResult)): return lID == rID && lResult == rResult
+    case let (.failed(lID, lMsg), .failed(rID, rMsg)): return lID == rID && lMsg == rMsg
+    default: return false
+    }
+  }
+}
+
+// Detail: 이미지 저장/AnimeGAN 변환 저장 흐름
+nonisolated enum CommunityDetailSavePhase: Sendable {
+  case idle
+  case converting
+  case awaitingAnimeChoice(result: AnimeConversionResult)
+  case saving
+  case saved
+  case failed(message: String)
+}
+
+extension CommunityDetailSavePhase: Equatable {
+  nonisolated static func == (lhs: CommunityDetailSavePhase, rhs: CommunityDetailSavePhase) -> Bool {
+    switch (lhs, rhs) {
+    case (.idle, .idle), (.converting, .converting), (.saving, .saving), (.saved, .saved): return true
+    case let (.awaitingAnimeChoice(l), .awaitingAnimeChoice(r)): return l == r
+    case let (.failed(l), .failed(r)): return l == r
+    default: return false
+    }
+  }
+}
+
 nonisolated struct CommunityPostState: Equatable, Sendable {
   var mode: CommunityPostMode
   var phase: CommunityLoadPhase
@@ -31,6 +72,14 @@ nonisolated struct CommunityPostState: Equatable, Sendable {
   var shouldDismiss = false
   var showsDiscardConfirmation = false
   var showsDeleteConfirmation = false
+
+  // Create/Edit: AnimeGAN 변환 상태
+  var localAnimeConversionState: CommunityAnimeConversionState = .idle
+  // Create/Edit: 로컬 이미지 저장 성공 트리거
+  var localSaveSucceeded = false
+
+  // Detail: 이미지 저장/변환 저장 흐름
+  var detailSavePhase: CommunityDetailSavePhase = .idle
 
   init(mode: CommunityPostMode) {
     self.mode = mode
@@ -136,6 +185,41 @@ nonisolated struct CommunityPostState: Equatable, Sendable {
 
   func normalized(_ value: String) -> String {
     value.trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+
+  // MARK: - AnimeGAN computed properties
+
+  var isLocalAnimeSheetPresented: Bool {
+    localAnimeConversionState != .idle
+  }
+
+  var localAnimePreviewSheetState: AnimeConversionState {
+    switch localAnimeConversionState {
+    case .idle: .idle
+    case .converting: .converting
+    case let .awaitingChoice(_, result): .awaitingChoice(result: result)
+    case let .failed(_, message): .failed(message: message)
+    }
+  }
+
+  var convertingLocalSelectionID: UUID? {
+    if case let .converting(id) = localAnimeConversionState { return id }
+    return nil
+  }
+
+  var isDetailAnimeSheetPresented: Bool {
+    switch detailSavePhase {
+    case .converting, .awaitingAnimeChoice: return true
+    default: return false
+    }
+  }
+
+  var detailAnimePreviewSheetState: AnimeConversionState {
+    switch detailSavePhase {
+    case .converting: .converting
+    case let .awaitingAnimeChoice(result): .awaitingChoice(result: result)
+    default: .idle
+    }
   }
 
   static let contentLimit = 2_000

@@ -31,6 +31,22 @@ nonisolated enum CommunityPostAction: Sendable {
   case toggleReplies(commentID: String)
   case routeHandled
   case dismissHandled
+
+  // Create/Edit: 이미지 타일 액션
+  case saveLocalImageTapped(selectionID: UUID)
+  case convertLocalImageToAnimeTapped(selectionID: UUID)
+
+  // AnimeGAN 내부 진행 (Create/Edit)
+  case animeConversionProduced(selectionID: UUID, result: AnimeConversionResult)
+  case animeConversionFailed(selectionID: UUID, message: String)
+  case animeConversionChoiceMade(useConverted: Bool)
+  case animeConversionDismissed
+
+  // Detail: 캐러셀 이미지 저장 흐름
+  case saveRemoteImageTapped(url: URL)
+  case convertRemoteImageToAnimeTapped(url: URL)
+  case animeConversionForSaveProduced(result: AnimeConversionResult)
+  case saveAnimeResult
 }
 
 nonisolated enum CommunityPostField: Hashable, Sendable {

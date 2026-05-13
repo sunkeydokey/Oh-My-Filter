@@ -1,4 +1,5 @@
 import Foundation
+import Photos
 
 @MainActor
 @Observable
@@ -9,12 +10,18 @@ final class CommunityPostViewModel {
   private let mutationStore: CommunityPostMutationStore?
   private let likeCommitter: DebouncedBooleanCommitter
   private var pendingLikeRollback: (isLiked: Bool, likeCount: Int)?
+  private let animeConverter: any AnimeGANConverting
+  private let imageDataLoader: any AuthenticatedImageDataLoading
+  private var animeConversionTask: Task<Void, Never>?
+  private var animeConversionRequestID = UUID()
 
   init(
     mode: CommunityPostMode,
     preloadedImages: [PhotoPickerUploadSelection] = [],
     service: any CommunityServicing,
     mutationStore: CommunityPostMutationStore? = nil,
+    animeConverter: any AnimeGANConverting = LiveAnimeGANConverter(),
+    imageDataLoader: any AuthenticatedImageDataLoading = LiveAuthenticatedImageDataLoader(),
     likeDebounceDuration: Duration = .milliseconds(300)
   ) {
     var initialState = CommunityPostState(mode: mode)
@@ -22,6 +29,8 @@ final class CommunityPostViewModel {
     self.state = initialState
     self.service = service
     self.mutationStore = mutationStore
+    self.animeConverter = animeConverter
+    self.imageDataLoader = imageDataLoader
     self.likeCommitter = DebouncedBooleanCommitter(duration: likeDebounceDuration)
   }
 
@@ -72,6 +81,7 @@ final class CommunityPostViewModel {
     case let .contentChanged(content):
       updateContent(content)
     case let .imageSelectionChanged(images):
+      cancelLocalAnimeConversion()
       state.selectedImages = images
     case let .removeExistingImage(path):
       state.draft.existingFilePaths.removeAll { $0 == path }
@@ -131,8 +141,183 @@ final class CommunityPostViewModel {
       state.route = nil
     case .dismissHandled:
       state.shouldDismiss = false
+
+    // MARK: - Create/Edit: 이미지 저장
+    case let .saveLocalImageTapped(selectionID):
+      await saveLocalImage(selectionID: selectionID)
+
+    // MARK: - Create/Edit: AnimeGAN
+    case let .convertLocalImageToAnimeTapped(selectionID):
+      startLocalAnimeConversion(selectionID: selectionID)
+
+    case let .animeConversionProduced(selectionID, result):
+      guard case .converting(selectionID) = state.localAnimeConversionState else { return }
+      state.localAnimeConversionState = .awaitingChoice(selectionID: selectionID, result: result)
+
+    case let .animeConversionFailed(selectionID, message):
+      guard case .converting(selectionID) = state.localAnimeConversionState else { return }
+      state.localAnimeConversionState = .failed(selectionID: selectionID, message: message)
+
+    case let .animeConversionChoiceMade(useConverted):
+      guard case let .awaitingChoice(selectionID, result) = state.localAnimeConversionState else { return }
+      if useConverted { replaceLocalSelection(id: selectionID, with: result.convertedData) }
+      state.localAnimeConversionState = .idle
+      animeConversionTask = nil
+
+    case .animeConversionDismissed:
+      cancelLocalAnimeConversion()
+      if case .converting = state.detailSavePhase { animeConversionTask?.cancel() }
+      state.detailSavePhase = .idle
+
+    // MARK: - Detail: 이미지 저장
+    case let .saveRemoteImageTapped(url):
+      await saveRemoteImage(url: url)
+
+    case let .convertRemoteImageToAnimeTapped(url):
+      await startRemoteAnimeConversionForSave(url: url)
+
+    case let .animeConversionForSaveProduced(result):
+      state.detailSavePhase = .awaitingAnimeChoice(result: result)
+
+    case .saveAnimeResult:
+      guard case let .awaitingAnimeChoice(result) = state.detailSavePhase else { return }
+      await saveImageData(result.convertedData)
     }
   }
+
+  // MARK: - Private: Create/Edit image save
+
+  private func saveLocalImage(selectionID: UUID) async {
+    guard let selection = state.selectedImages.first(where: { $0.id == selectionID }),
+          selection.mediaKind == .image else { return }
+    do {
+      try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+        PHPhotoLibrary.shared().performChanges({
+          let request = PHAssetCreationRequest.forAsset()
+          request.addResource(with: .photo, data: selection.data, options: nil)
+        }) { _, error in
+          if let error { continuation.resume(throwing: error) }
+          else { continuation.resume() }
+        }
+      }
+      state.localSaveSucceeded = true
+    } catch {
+      state.errorMessage = "앨범 저장에 실패했습니다."
+    }
+  }
+
+  // MARK: - Private: Create/Edit AnimeGAN
+
+  private func startLocalAnimeConversion(selectionID: UUID) {
+    guard state.localAnimeConversionState == .idle,
+          let selection = state.selectedImages.first(where: { $0.id == selectionID }),
+          selection.mediaKind == .image else { return }
+
+    animeConversionTask?.cancel()
+    let requestID = UUID()
+    animeConversionRequestID = requestID
+    state.localAnimeConversionState = .converting(selectionID: selectionID)
+
+    animeConversionTask = Task { [animeConverter, data = selection.data, requestID] in
+      do {
+        let result = try await animeConverter.convert(imageData: data, maxPixelSize: 512)
+        guard !Task.isCancelled, self.animeConversionRequestID == requestID else { return }
+        await self.send(.animeConversionProduced(selectionID: selectionID, result: result))
+      } catch is CancellationError {
+      } catch {
+        guard !Task.isCancelled, self.animeConversionRequestID == requestID else { return }
+        await self.send(.animeConversionFailed(selectionID: selectionID, message: Self.animeErrorMessage(for: error)))
+      }
+    }
+  }
+
+  private func cancelLocalAnimeConversion() {
+    animeConversionTask?.cancel()
+    animeConversionRequestID = UUID()
+    state.localAnimeConversionState = .idle
+  }
+
+  private func replaceLocalSelection(id: UUID, with convertedData: Data) {
+    guard let index = state.selectedImages.firstIndex(where: { $0.id == id }) else { return }
+    let original = state.selectedImages[index]
+    state.selectedImages[index] = PhotoPickerUploadSelection(
+      id: original.id,
+      data: convertedData,
+      fileName: original.fileName,
+      mediaKind: .image,
+      mimeType: "image/jpeg"
+    )
+  }
+
+  // MARK: - Private: Detail remote image save
+
+  private func saveRemoteImage(url: URL) async {
+    guard state.detailSavePhase == .idle else { return }
+    state.detailSavePhase = .saving
+    do {
+      let data = try await imageDataLoader.loadImageData(from: url)
+      await saveImageData(data)
+    } catch {
+      state.detailSavePhase = .failed(message: "이미지를 불러올 수 없습니다.")
+    }
+  }
+
+  private func startRemoteAnimeConversionForSave(url: URL) async {
+    guard state.detailSavePhase == .idle else { return }
+    state.detailSavePhase = .converting
+    do {
+      let data = try await imageDataLoader.loadImageData(from: url)
+      animeConversionTask?.cancel()
+      let requestID = UUID()
+      animeConversionRequestID = requestID
+
+      animeConversionTask = Task { [animeConverter, requestID] in
+        do {
+          let result = try await animeConverter.convert(imageData: data, maxPixelSize: 512)
+          guard !Task.isCancelled, self.animeConversionRequestID == requestID else { return }
+          await self.send(.animeConversionForSaveProduced(result: result))
+        } catch is CancellationError {
+        } catch {
+          guard !Task.isCancelled, self.animeConversionRequestID == requestID else { return }
+          self.state.detailSavePhase = .failed(message: Self.animeErrorMessage(for: error))
+        }
+      }
+    } catch {
+      state.detailSavePhase = .failed(message: "이미지를 불러올 수 없습니다.")
+    }
+  }
+
+  private func saveImageData(_ data: Data) async {
+    state.detailSavePhase = .saving
+    do {
+      try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+        PHPhotoLibrary.shared().performChanges({
+          let request = PHAssetCreationRequest.forAsset()
+          request.addResource(with: .photo, data: data, options: nil)
+        }) { _, error in
+          if let error { continuation.resume(throwing: error) }
+          else { continuation.resume() }
+        }
+      }
+      state.detailSavePhase = .saved
+    } catch {
+      state.detailSavePhase = .failed(message: "앨범 저장에 실패했습니다.")
+    }
+  }
+
+  private nonisolated static func animeErrorMessage(for error: Error) -> String {
+    if let e = error as? AnimeGANConversionError {
+      switch e {
+      case .invalidImageData: return "이미지를 불러올 수 없습니다."
+      case .modelLoadFailed: return "모델을 불러올 수 없습니다."
+      case .predictionFailed: return "변환에 실패했습니다."
+      case .outputDecodingFailed: return "변환 결과를 처리할 수 없습니다."
+      }
+    }
+    return "애니 변환에 실패했습니다. 잠시 후 다시 시도해주세요."
+  }
+
+  // MARK: - Private: existing logic
 
   private func loadIfNeeded() async {
     guard state.phase == .initial else { return }
