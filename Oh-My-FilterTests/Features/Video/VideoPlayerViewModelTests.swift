@@ -24,7 +24,7 @@ struct VideoPlayerViewModelTests {
   func taskTransitionsToReady() async {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
 
     await viewModel.send(.task)
 
@@ -39,7 +39,7 @@ struct VideoPlayerViewModelTests {
   func taskFailureTransitionsToError() async {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.failure(VideoPlayerServiceError.notFound))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
 
     await viewModel.send(.task)
 
@@ -55,7 +55,7 @@ struct VideoPlayerViewModelTests {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.failure(VideoPlayerServiceError.serverError))
     await service.enqueueStream(.success(Self.makeStream()))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
 
     await viewModel.send(.task)
     await viewModel.send(.retry)
@@ -74,7 +74,7 @@ struct VideoPlayerViewModelTests {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
     await service.enqueueLike(.success(true))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
 
     #expect(viewModel.isLiked == false)
@@ -91,11 +91,7 @@ struct VideoPlayerViewModelTests {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
     await service.enqueueLike(.failure(VideoPlayerServiceError.serverError))
-    let viewModel = VideoPlayerViewModel(
-      video: Self.video,
-      service: service,
-      likeDebounceDuration: .milliseconds(20)
-    )
+    let viewModel = Self.makeViewModel(service: service, likeDebounceDuration: .milliseconds(20))
     await viewModel.send(.task)
 
     await viewModel.send(.toggleLike)
@@ -113,11 +109,7 @@ struct VideoPlayerViewModelTests {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
     await service.enqueueLike(.success(false))
-    let viewModel = VideoPlayerViewModel(
-      video: Self.video,
-      service: service,
-      likeDebounceDuration: .milliseconds(20)
-    )
+    let viewModel = Self.makeViewModel(service: service, likeDebounceDuration: .milliseconds(20))
     await viewModel.send(.task)
 
     await viewModel.send(.toggleLike)
@@ -136,7 +128,7 @@ struct VideoPlayerViewModelTests {
   @Test("toggleDescription flips isDescriptionExpanded")
   func toggleDescriptionFlips() async {
     let service = MockVideoPlayerService()
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
 
     #expect(viewModel.isDescriptionExpanded == false)
     await viewModel.send(.toggleDescription)
@@ -150,7 +142,7 @@ struct VideoPlayerViewModelTests {
   @Test("toggleQualityMenu flips isQualityMenuVisible")
   func toggleQualityMenuFlips() async {
     let service = MockVideoPlayerService()
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
 
     #expect(viewModel.isQualityMenuVisible == false)
     await viewModel.send(.toggleQualityMenu)
@@ -164,7 +156,7 @@ struct VideoPlayerViewModelTests {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
     await service.enqueueStream(.success(Self.makeStream()))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
     await viewModel.send(.toggleQualityMenu)
 
@@ -181,7 +173,7 @@ struct VideoPlayerViewModelTests {
   func enterBackgroundPausesPlayingVideo() async {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
     viewModel.playerPhase = .ready(isPlaying: true)
 
@@ -194,7 +186,7 @@ struct VideoPlayerViewModelTests {
   func enterBackgroundWhilePausedIsNoOp() async {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
 
     await viewModel.send(.enterBackground)
@@ -206,7 +198,7 @@ struct VideoPlayerViewModelTests {
   func enterBackgroundTwiceIsIdempotent() async {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
     viewModel.playerPhase = .ready(isPlaying: true)
 
@@ -220,7 +212,7 @@ struct VideoPlayerViewModelTests {
   func enterForegroundDoesNotAutoResume() async {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
     viewModel.playerPhase = .ready(isPlaying: true)
 
@@ -234,7 +226,7 @@ struct VideoPlayerViewModelTests {
   func becomeInactiveBlocksTogglePlay() async {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
 
     await viewModel.send(.becomeInactive)
@@ -247,7 +239,7 @@ struct VideoPlayerViewModelTests {
   func enterForegroundReEnablesInput() async {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
 
     await viewModel.send(.becomeInactive)
@@ -262,7 +254,7 @@ struct VideoPlayerViewModelTests {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
     await service.enqueueStream(.success(Self.makeStream()))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
     await viewModel.send(.selectQuality("720p"))
 
@@ -278,7 +270,7 @@ struct VideoPlayerViewModelTests {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream(subtitles: Self.makeSubtitles())))
     await service.enqueueSubtitle(language: "ko", cues: Self.makeKoreanCues())
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
 
     await viewModel.send(.task)
 
@@ -292,7 +284,7 @@ struct VideoPlayerViewModelTests {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream(subtitles: Self.makeSubtitles())))
     await service.enqueueSubtitle(language: "ko", cues: Self.makeKoreanCues())
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
 
     await viewModel.send(.seek(to: 1.5))
@@ -306,7 +298,7 @@ struct VideoPlayerViewModelTests {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream(subtitles: Self.makeSubtitles())))
     await service.enqueueSubtitle(language: "ko", cues: Self.makeKoreanCues())
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
     await viewModel.send(.seek(to: 1.5))
 
@@ -321,7 +313,7 @@ struct VideoPlayerViewModelTests {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream(subtitles: Self.makeSubtitles())))
     await service.enqueueSubtitle(language: "ko", cues: Self.makeKoreanCues())
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
 
     await viewModel.send(.seek(to: 4.5))
@@ -337,7 +329,7 @@ struct VideoPlayerViewModelTests {
     await service.enqueueSubtitle(language: "en", cues: [
       VideoSubtitleCue(startTime: 0, endTime: 3, text: "First caption")
     ])
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
     await viewModel.send(.seek(to: 1))
 
@@ -351,7 +343,7 @@ struct VideoPlayerViewModelTests {
   func toggleSubtitlesWithoutTracksIsIgnored() async {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
 
     await viewModel.send(.toggleSubtitles)
@@ -366,7 +358,7 @@ struct VideoPlayerViewModelTests {
   func fullScreenActionsUpdatePresentationState() async {
     let service = MockVideoPlayerService()
     await service.enqueueStream(.success(Self.makeStream()))
-    let viewModel = VideoPlayerViewModel(video: Self.video, service: service)
+    let viewModel = Self.makeViewModel(service: service)
     await viewModel.send(.task)
 
     guard let player = viewModel.player else {
@@ -383,11 +375,144 @@ struct VideoPlayerViewModelTests {
     #expect(viewModel.isFullScreenPresented == false)
     #expect(viewModel.player.map { $0 === player } == true)
   }
+
+  // MARK: - Offline
+
+  @Test("task sets offlineState to saved when local record exists")
+  func taskSetsSavedWhenLocalRecordExists() async {
+    let service = MockVideoPlayerService()
+    let store = MockOfflineVideoStore()
+    store.stubbedRecord = Self.makeOfflineRecord()
+    let viewModel = Self.makeViewModel(service: service, offlineStore: store)
+
+    await viewModel.send(.task)
+
+    #expect(viewModel.offlineState == .saved)
+  }
+
+  @Test("task sets offlineState to none when no local record")
+  func taskSetsNoneWhenNoLocalRecord() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    let viewModel = Self.makeViewModel(service: service)
+
+    await viewModel.send(.task)
+
+    #expect(viewModel.offlineState == .none)
+  }
+
+  @Test("downloadOffline transitions to downloading state")
+  func downloadOfflineTransitionsToDownloading() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    let manager = MockVideoDownloadManager()
+    let viewModel = Self.makeViewModel(service: service, downloadManager: manager)
+    await viewModel.send(.task)
+
+    await viewModel.send(.downloadOffline)
+
+    if case .downloading = viewModel.offlineState {
+      // pass
+    } else {
+      Issue.record("Expected downloading state, got \(viewModel.offlineState)")
+    }
+  }
+
+  @Test("downloadOffline progress events update offlineState")
+  func downloadOfflineProgressUpdatesState() async throws {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    let manager = MockVideoDownloadManager()
+    manager.eventToEmit = .progress(0.5)
+    let viewModel = Self.makeViewModel(service: service, downloadManager: manager)
+    await viewModel.send(.task)
+
+    await viewModel.send(.downloadOffline)
+    try await Task.sleep(for: .milliseconds(50))
+
+    #expect(viewModel.offlineState == .downloading(progress: 0.5))
+  }
+
+  @Test("downloadOffline completed event transitions to saved")
+  func downloadOfflineCompletedTransitionsToSaved() async throws {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    let manager = MockVideoDownloadManager()
+    let localURL = URL.documentsDirectory.appending(path: "test-video.movpkg")
+    manager.eventToEmit = .completed(localURL: localURL)
+    let viewModel = Self.makeViewModel(service: service, downloadManager: manager)
+    await viewModel.send(.task)
+
+    await viewModel.send(.downloadOffline)
+    try await Task.sleep(for: .milliseconds(50))
+
+    #expect(viewModel.offlineState == .saved)
+  }
+
+  @Test("downloadOffline failed event resets offlineState to none")
+  func downloadOfflineFailedResetsState() async throws {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    let manager = MockVideoDownloadManager()
+    manager.eventToEmit = .failed(VideoPlayerServiceError.serverError)
+    let viewModel = Self.makeViewModel(service: service, downloadManager: manager)
+    await viewModel.send(.task)
+
+    await viewModel.send(.downloadOffline)
+    try await Task.sleep(for: .milliseconds(50))
+
+    #expect(viewModel.offlineState == .none)
+  }
+
+  @Test("cancelDownload resets offlineState to none")
+  func cancelDownloadResetsState() async {
+    let service = MockVideoPlayerService()
+    await service.enqueueStream(.success(Self.makeStream()))
+    let manager = MockVideoDownloadManager()
+    let viewModel = Self.makeViewModel(service: service, downloadManager: manager)
+    await viewModel.send(.task)
+    await viewModel.send(.downloadOffline)
+
+    await viewModel.send(.cancelDownload)
+
+    #expect(viewModel.offlineState == .none)
+  }
+
+  @Test("downloadOffline is ignored when already saved")
+  func downloadOfflineIgnoredWhenAlreadySaved() async {
+    let service = MockVideoPlayerService()
+    let store = MockOfflineVideoStore()
+    store.stubbedRecord = Self.makeOfflineRecord()
+    let viewModel = Self.makeViewModel(service: service, offlineStore: store)
+    await viewModel.send(.task)
+    #expect(viewModel.offlineState == .saved)
+
+    await viewModel.send(.downloadOffline)
+
+    #expect(viewModel.offlineState == .saved)
+  }
+
 }
 
 // MARK: - Helpers
 
 private extension VideoPlayerViewModelTests {
+  static func makeViewModel(
+    video: CommunityVideo = VideoPlayerViewModelTests.video,
+    service: any VideoPlayerServicing,
+    offlineStore: any OfflineVideoStoring = MockOfflineVideoStore(),
+    downloadManager: any VideoDownloadManaging = MockVideoDownloadManager(),
+    likeDebounceDuration: Duration = .milliseconds(300)
+  ) -> VideoPlayerViewModel {
+    VideoPlayerViewModel(
+      video: video,
+      service: service,
+      offlineStore: offlineStore,
+      downloadManager: downloadManager,
+      likeDebounceDuration: likeDebounceDuration
+    )
+  }
+
   static func makeStream(subtitles: [VideoSubtitle] = []) -> VideoStream {
     VideoStream(
       videoId: "video-1",
@@ -422,6 +547,42 @@ private extension VideoPlayerViewModelTests {
       VideoSubtitleCue(startTime: 1, endTime: 3, text: "첫 번째 자막"),
       VideoSubtitleCue(startTime: 4, endTime: 6, text: "두 번째 자막"),
     ]
+  }
+
+  static func makeOfflineRecord(localPath: String = "video-1.movpkg") -> OfflineVideoRecord {
+    OfflineVideoRecord(
+      videoId: "video-1",
+      localPath: localPath,
+      title: "테스트 영상",
+      savedAt: Date()
+    )
+  }
+
+}
+
+// MARK: - Mock Offline Store
+
+private final class MockOfflineVideoStore: OfflineVideoStoring, @unchecked Sendable {
+  var stubbedRecord: OfflineVideoRecord?
+  func save(_ record: OfflineVideoRecord) async throws {}
+  func load(videoId: String) async throws -> OfflineVideoRecord? { stubbedRecord }
+  func delete(videoId: String) async throws {}
+}
+
+// MARK: - Mock Download Manager
+
+private final class MockVideoDownloadManager: VideoDownloadManaging, @unchecked Sendable {
+  var eventToEmit: VideoDownloadEvent?
+  func startDownload(videoId: String, hlsURL: URL, title: String) async {}
+  func cancelDownload(videoId: String) {}
+  func progressStream(for videoId: String) -> AsyncStream<VideoDownloadEvent> {
+    let event = eventToEmit
+    return AsyncStream { continuation in
+      if let event {
+        continuation.yield(event)
+      }
+      continuation.finish()
+    }
   }
 }
 

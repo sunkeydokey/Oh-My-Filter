@@ -24,12 +24,6 @@
 	<string>$(HTTP_PORT)</string>
 	<key>KAKAO_API_KEY</key>
 	<string>$(KAKAO_API_KEY)</string>
-	<key>REAL_NAME</key>
-	<string>$(REAL_NAME)</string>
-	<key>PG_ID</key>
-	<string>$(PG_ID)</string>
-	<key>PAYMENT_USER_CODE</key>
-	<string>$(PAYMENT_USER_CODE)</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>kakaokompassauth</string>
@@ -75,27 +69,27 @@
 		<string>supertoss</string>
 		<string>newsmartpib</string>
 	</array>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>필터가 적용된 사진을 앨범에 저장합니다.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>PAYMENT_USER_CODE</key>
+	<string>$(PAYMENT_USER_CODE)</string>
+	<key>PG_ID</key>
+	<string>$(PG_ID)</string>
+	<key>REAL_NAME</key>
+	<string>$(REAL_NAME)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>pretendard.ttf</string>
 		<string>mulgyeol.ttf</string>
 	</array>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>이미지를 사진 앱에 저장하기 위해 사용됩니다.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
-	</array>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 </dict>
 </plist>

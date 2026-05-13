@@ -78,7 +78,7 @@ nonisolated struct FilterDetailMetadata: Equatable, Hashable, Sendable {
   }
 }
 
-nonisolated struct FilterValues: Equatable, Sendable {
+nonisolated struct FilterValues: Equatable, Sendable, Codable {
   let brightness: Double
   let contrast: Double
   let saturation: Double

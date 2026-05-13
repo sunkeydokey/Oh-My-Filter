@@ -355,16 +355,6 @@ private struct MainRedesignedBannerSectionView: View {
               startPoint: .leading,
               endPoint: .trailing
             )
-
-            Text(banner.title)
-              .font(.custom(TypographyToken.pretendardTitle1.fontName, size: 12, relativeTo: .caption))
-              .fontWeight(.bold)
-              .lineSpacing(3)
-              .foregroundStyle(ColorToken.grayScale15.color)
-              .lineLimit(2)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(.leading, 16)
-              .padding(.trailing, 96)
           }
           .frame(maxWidth: .infinity)
           .frame(height: 110)
