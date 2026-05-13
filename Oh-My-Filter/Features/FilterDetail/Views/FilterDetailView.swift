@@ -1,6 +1,7 @@
 import Kingfisher
 import PhotosUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct FilterDetailView: View {
   @Environment(\.dismiss) private var dismiss
@@ -93,15 +94,15 @@ struct FilterDetailView: View {
     .onChange(of: pickerItems) { _, items in
       guard items.isEmpty == false else { return }
       Task {
-        var dataList: [Data] = []
-        for item in items {
+        var inputs: [FilterMediaInput] = []
+        for (index, item) in items.enumerated() {
           if let data = try? await item.loadTransferable(type: Data.self) {
-            dataList.append(data)
+            inputs.append(mediaInput(from: item, data: data, index: index))
           }
         }
         pickerItems = []
-        if dataList.isEmpty == false {
-          await viewModel.send(.photosSelected(dataList))
+        if inputs.isEmpty == false {
+          await viewModel.send(.mediaSelected(inputs))
         }
       }
     }
@@ -110,7 +111,7 @@ struct FilterDetailView: View {
       selection: $pickerItems,
       maxSelectionCount: 5,
       selectionBehavior: .ordered,
-      matching: .images
+      matching: .any(of: [.images, .videos])
     )
     .sheet(isPresented: isApplySheetPresented) {
       FilterApplyProgressSheet(
@@ -163,11 +164,22 @@ struct FilterDetailView: View {
   }
 
   private var currentBoastPreloadedImages: [PhotoPickerUploadSelection] {
-    guard case let .readyToSave(images, _) = viewModel.state.applyPhotoPhase else { return [] }
-    return images.enumerated().compactMap { index, cgImage -> PhotoPickerUploadSelection? in
-      guard let data = UIImage(cgImage: cgImage).jpegData(compressionQuality: 0.9) else { return nil }
-      return PhotoPickerUploadSelection(data: data, fileName: "filtered-\(index + 1).jpg")
-    }
+    guard case let .readyToSave(outputs, _) = viewModel.state.applyPhotoPhase else { return [] }
+    return outputs.map(\.uploadSelection)
+  }
+
+  private func mediaInput(from item: PhotosPickerItem, data: Data, index: Int) -> FilterMediaInput {
+    let contentType = item.supportedContentTypes.first(where: { $0.conforms(to: .movie) })
+      ?? item.supportedContentTypes.first
+    let isVideo = contentType?.conforms(to: .movie) == true
+    let fileExtension = contentType?.preferredFilenameExtension ?? (isVideo ? "mov" : "jpg")
+    let mimeType = contentType?.preferredMIMEType ?? (isVideo ? "video/quicktime" : "image/jpeg")
+    return FilterMediaInput(
+      data: data,
+      fileName: "selected-\(index + 1).\(fileExtension)",
+      kind: isVideo ? .video : .image,
+      mimeType: mimeType
+    )
   }
 
   private var paymentRequestBinding: Binding<PortonePaymentRequest?> {

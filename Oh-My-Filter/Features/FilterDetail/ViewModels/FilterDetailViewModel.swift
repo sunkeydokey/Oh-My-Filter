@@ -18,6 +18,7 @@ final class FilterDetailViewModel {
   private let service: any FilterDetailServicing
   private let purchaseUseCase: any FilterPurchaseUseCase
   private let renderer: any ImageFilterRendering
+  private let mediaApplyUseCase: any FilterMediaApplying
   private let imageDataLoader: any AuthenticatedImageDataLoading
   private let likeCommitter: DebouncedBooleanCommitter
   private var pendingLikeRollback: (isLiked: Bool, likeCount: Int)?
@@ -27,6 +28,7 @@ final class FilterDetailViewModel {
     service: any FilterDetailServicing,
     purchaseUseCase: (any FilterPurchaseUseCase)? = nil,
     renderer: any ImageFilterRendering,
+    mediaApplyUseCase: (any FilterMediaApplying)? = nil,
     imageDataLoader: any AuthenticatedImageDataLoading = LiveAuthenticatedImageDataLoader(),
     likeDebounceDuration: Duration = .milliseconds(300)
   ) {
@@ -34,6 +36,7 @@ final class FilterDetailViewModel {
     self.service = service
     self.purchaseUseCase = purchaseUseCase ?? LiveFilterPurchaseUseCase()
     self.renderer = renderer
+    self.mediaApplyUseCase = mediaApplyUseCase ?? LiveFilterMediaApplyUseCase(renderer: renderer)
     self.imageDataLoader = imageDataLoader
     self.likeCommitter = DebouncedBooleanCommitter(duration: likeDebounceDuration)
   }
@@ -105,15 +108,15 @@ final class FilterDetailViewModel {
       }
     case .tapApply:
       await handleTapApply()
-    case let .photosSelected(dataList):
-      await renderUserPhotos(dataList: dataList)
+    case let .mediaSelected(inputs):
+      await renderUserMedia(inputs: inputs)
     case .saveCurrentFilteredImage:
       await saveCurrentFilteredImage()
     case .saveAllFilteredImages:
       await saveAllFilteredImages()
     case let .previewIndexChanged(index):
-      if case let .readyToSave(images, _) = state.applyPhotoPhase {
-        state.applyPhotoPhase = .readyToSave(images: images, currentIndex: index)
+      if case let .readyToSave(outputs, _) = state.applyPhotoPhase {
+        state.applyPhotoPhase = .readyToSave(outputs: outputs, currentIndex: index)
       }
     case .dismissApplySheet:
       state.applyPhotoPhase = .idle
@@ -367,47 +370,51 @@ final class FilterDetailViewModel {
     state.applyPhotoPhase = .picking
   }
 
-  private func renderUserPhotos(dataList: [Data]) async {
+  private func renderUserMedia(inputs: [FilterMediaInput]) async {
     guard let detail = state.detail else { return }
-    var rendered: [CGImage] = []
-    for (index, data) in dataList.enumerated() {
-      state.applyPhotoPhase = .rendering(progress: index, total: dataList.count)
+    var outputs: [FilterMediaOutput] = []
+    for (index, input) in inputs.enumerated() {
+      state.applyPhotoPhase = .rendering(progress: index, total: inputs.count)
       do {
-        let images = try await renderer.render(originalImageData: data, filterValues: detail.filterValues)
-        rendered.append(images.filtered)
+        outputs.append(try await mediaApplyUseCase.apply(input: input, filterValues: detail.filterValues))
       } catch {
         state.applyPhotoPhase = .failed("필터 적용에 실패했습니다.")
-        Self.logger.error("❌ [FilterDetailViewModel] renderUserPhotos failed at index \(index): \(String(describing: error), privacy: .public)")
+        Self.logger.error("❌ [FilterDetailViewModel] renderUserMedia failed at index \(index): \(String(describing: error), privacy: .public)")
         return
       }
     }
-    state.applyPhotoPhase = .readyToSave(images: rendered, currentIndex: 0)
+    state.applyPhotoPhase = .readyToSave(outputs: outputs, currentIndex: 0)
   }
 
   private func saveCurrentFilteredImage() async {
-    guard case let .readyToSave(images, currentIndex) = state.applyPhotoPhase,
-          images.indices.contains(currentIndex) else { return }
-    await persistImages([images[currentIndex]])
+    guard case let .readyToSave(outputs, currentIndex) = state.applyPhotoPhase,
+          outputs.indices.contains(currentIndex) else { return }
+    await persistOutputs([outputs[currentIndex]])
   }
 
   private func saveAllFilteredImages() async {
-    guard case let .readyToSave(images, _) = state.applyPhotoPhase else { return }
-    await persistImages(images)
+    guard case let .readyToSave(outputs, _) = state.applyPhotoPhase else { return }
+    await persistOutputs(outputs)
   }
 
-  private func persistImages(_ images: [CGImage]) async {
-    let total = images.count
-    for (index, cgImage) in images.enumerated() {
+  private func persistOutputs(_ outputs: [FilterMediaOutput]) async {
+    let total = outputs.count
+    for (index, output) in outputs.enumerated() {
       state.applyPhotoPhase = .saving(progress: index, total: total)
       do {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
           PHPhotoLibrary.shared().performChanges({
             let request = PHAssetCreationRequest.forAsset()
-            request.addResource(
-              with: .photo,
-              data: UIImage(cgImage: cgImage).jpegData(compressionQuality: 0.95) ?? Data(),
-              options: nil
-            )
+            switch output {
+            case let .image(_, cgImage, _):
+              request.addResource(
+                with: .photo,
+                data: UIImage(cgImage: cgImage).jpegData(compressionQuality: 0.95) ?? Data(),
+                options: nil
+              )
+            case let .video(_, fileURL, _):
+              request.addResource(with: .video, fileURL: fileURL, options: nil)
+            }
           }) { _, error in
             if let error {
               continuation.resume(throwing: error)
@@ -417,8 +424,8 @@ final class FilterDetailViewModel {
           }
         }
       } catch {
-        state.applyPhotoPhase = .failed("사진 저장에 실패했습니다.")
-        Self.logger.error("❌ [FilterDetailViewModel] persistImages failed at index \(index): \(String(describing: error), privacy: .public)")
+        state.applyPhotoPhase = .failed("앨범 저장에 실패했습니다.")
+        Self.logger.error("❌ [FilterDetailViewModel] persistOutputs failed at index \(index): \(String(describing: error), privacy: .public)")
         return
       }
     }

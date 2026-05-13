@@ -7,7 +7,7 @@ nonisolated enum FilterDetailAction: Equatable, Sendable {
   case tapDownload
   case tapApply
   case tapPurchaseRequired
-  case photosSelected([Data])
+  case mediaSelected([FilterMediaInput])
   case saveCurrentFilteredImage
   case saveAllFilteredImages
   case previewIndexChanged(Int)

@@ -1,4 +1,3 @@
-import CoreGraphics
 import Foundation
 
 nonisolated struct FilterDetailState: Sendable {
@@ -58,14 +57,14 @@ nonisolated enum ApplyPhotoPhase: Sendable {
   case idle
   case picking
   case rendering(progress: Int, total: Int)
-  case readyToSave(images: [CGImage], currentIndex: Int)
+  case readyToSave(outputs: [FilterMediaOutput], currentIndex: Int)
   case saving(progress: Int, total: Int)
   case saved
   case failed(String)
 }
 
 extension ApplyPhotoPhase: Equatable {
-  static func == (lhs: ApplyPhotoPhase, rhs: ApplyPhotoPhase) -> Bool {
+  nonisolated static func == (lhs: ApplyPhotoPhase, rhs: ApplyPhotoPhase) -> Bool {
     switch (lhs, rhs) {
     case (.idle, .idle), (.picking, .picking), (.saved, .saved):
       true
@@ -73,8 +72,8 @@ extension ApplyPhotoPhase: Equatable {
       lp == rp && lt == rt
     case let (.saving(lp, lt), .saving(rp, rt)):
       lp == rp && lt == rt
-    case let (.readyToSave(li, lIdx), .readyToSave(ri, rIdx)):
-      lIdx == rIdx && li.count == ri.count && zip(li, ri).allSatisfy { $0 === $1 }
+    case let (.readyToSave(lo, lIdx), .readyToSave(ro, rIdx)):
+      lIdx == rIdx && lo == ro
     case let (.failed(l), .failed(r)):
       l == r
     default:

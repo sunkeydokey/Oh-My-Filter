@@ -1,3 +1,4 @@
+import AVKit
 import CoreGraphics
 import SwiftUI
 
@@ -41,39 +42,35 @@ struct FilterApplyProgressSheet: View {
             .foregroundStyle(ColorToken.grayScale45.color)
         }
 
-      case let .readyToSave(images, currentIndex):
+      case let .readyToSave(outputs, currentIndex):
         TabView(selection: Binding(
           get: { currentIndex },
           set: { onIndexChanged($0) }
         )) {
-          ForEach(Array(images.enumerated()), id: \.offset) { index, cgImage in
-            Image(decorative: cgImage, scale: 1)
-              .resizable()
-              .scaledToFit()
-              .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-              .padding(.horizontal, 20)
+          ForEach(Array(outputs.enumerated()), id: \.element.id) { index, output in
+            FilterAppliedMediaPreview(output: output)
               .tag(index)
           }
         }
-        .tabViewStyle(.page(indexDisplayMode: images.count > 1 ? .automatic : .never))
+        .tabViewStyle(.page(indexDisplayMode: outputs.count > 1 ? .automatic : .never))
         .frame(height: 300)
 
-        if images.count > 1 {
-          Text("\(currentIndex + 1) / \(images.count)")
+        if outputs.count > 1 {
+          Text("\(currentIndex + 1) / \(outputs.count)")
             .font(TypographyToken.pretendardCaption2.font)
             .foregroundStyle(ColorToken.grayScale45.color)
         }
 
-        Text("필터가 적용된 사진을 저장하시겠어요?")
+        Text("필터가 적용된 미디어를 저장하시겠어요?")
           .font(TypographyToken.pretendardBody2.font)
           .foregroundStyle(ColorToken.grayScale45.color)
           .multilineTextAlignment(.center)
 
         VStack(spacing: 12) {
-          if images.count > 1 {
+          if outputs.count > 1 {
             HStack(spacing: 12) {
               Button(action: onSaveCurrent) {
-                Text("현재 사진만 저장")
+                Text("현재 항목만 저장")
                   .font(TypographyToken.pretendardBody1.font)
                   .bold()
                   .foregroundStyle(ColorToken.mainAccent.color)
@@ -87,7 +84,7 @@ struct FilterApplyProgressSheet: View {
               }
 
               Button(action: onSaveAll) {
-                Text("일괄 저장 (\(images.count)장)")
+                Text("일괄 저장 (\(outputs.count)개)")
                   .font(TypographyToken.pretendardBody1.font)
                   .bold()
                   .foregroundStyle(ColorToken.grayScale60.color)
@@ -135,7 +132,7 @@ struct FilterApplyProgressSheet: View {
         Image(systemName: "checkmark.circle.fill")
           .font(.system(size: 52))
           .foregroundStyle(ColorToken.mainAccent.color)
-        Text("사진 앨범에 저장되었습니다!")
+        Text("앨범에 저장되었습니다!")
           .font(TypographyToken.pretendardBody1.font)
           .bold()
           .foregroundStyle(ColorToken.grayScale0.color)
@@ -187,5 +184,24 @@ struct FilterApplyProgressSheet: View {
         ) { _ in }
       }
     }
+  }
+}
+
+private struct FilterAppliedMediaPreview: View {
+  let output: FilterMediaOutput
+
+  var body: some View {
+    Group {
+      switch output {
+      case let .image(_, cgImage, _):
+        Image(decorative: cgImage, scale: 1)
+          .resizable()
+          .scaledToFit()
+      case let .video(_, fileURL, _):
+        VideoPlayer(player: AVPlayer(url: fileURL))
+      }
+    }
+    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    .padding(.horizontal, 20)
   }
 }
