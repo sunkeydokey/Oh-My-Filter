@@ -36,6 +36,82 @@ struct ImageCompressionUseCaseTests {
     }
   }
 
+  @Test("community post video uses upload byte limit")
+  func communityPostVideoUsesUploadByteLimit() async throws {
+    let useCase = LiveImageUploadUseCase(movConversionUseCase: StubMOVToMP4ConversionUseCase())
+    let underLimit = Data(repeating: 0, count: ImageUploadPreset.communityPost.maxBytes)
+
+    let parts = try await useCase.multipartFiles(
+      from: [
+        PhotoPickerUploadSelection(
+          data: underLimit,
+          fileName: "clip.mp4",
+          mediaKind: .video,
+          mimeType: "video/mp4"
+        ),
+      ],
+      preset: .communityPost
+    )
+
+    #expect(parts.first?.data.count == underLimit.count)
+
+    await #expect(throws: ImageCompressionError.exceedsMaximumBytes) {
+      _ = try await useCase.multipartFiles(
+        from: [
+          PhotoPickerUploadSelection(
+            data: Data(repeating: 0, count: ImageUploadPreset.communityPost.maxBytes + 1),
+            fileName: "clip.mp4",
+            mediaKind: .video,
+            mimeType: "video/mp4"
+          ),
+        ],
+        preset: .communityPost
+      )
+    }
+  }
+
+  @Test("MOV video is converted to MP4 data and filename")
+  func movVideoIsConvertedToMP4() async throws {
+    let convertedData = Data("converted-mp4".utf8)
+    let useCase = LiveImageUploadUseCase(
+      movConversionUseCase: StubMOVToMP4ConversionUseCase(output: convertedData)
+    )
+    let selection = PhotoPickerUploadSelection(
+      data: Data("mov-raw".utf8),
+      fileName: "clip.mov",
+      mediaKind: .video,
+      mimeType: "video/quicktime"
+    )
+
+    let parts = try await useCase.multipartFiles(from: [selection], preset: .communityPost)
+
+    #expect(parts.first?.fileName == "clip.mp4")
+    #expect(parts.first?.mimeType == "video/mp4")
+    #expect(parts.first?.data == convertedData)
+  }
+
+  @Test("community post video upload normalizes extensions to mp4")
+  func communityPostVideoUploadNormalizesExtensions() async throws {
+    let useCase = LiveImageUploadUseCase(movConversionUseCase: StubMOVToMP4ConversionUseCase())
+
+    for fileExtension in ["mp4", "avi", "mkv", "wmv"] {
+      let parts = try await useCase.multipartFiles(
+        from: [
+          PhotoPickerUploadSelection(
+            data: Data("video".utf8),
+            fileName: "clip.\(fileExtension)",
+            mediaKind: .video,
+            mimeType: "video/mp4"
+          ),
+        ],
+        preset: .communityPost
+      )
+
+      #expect(parts.first?.fileName == "clip.mp4")
+      #expect(parts.first?.mimeType == "video/mp4")
+    }
+  }
+
   private func makeJPEGData(width: Int, height: Int, quality: Double) throws -> Data {
     let colorSpace = CGColorSpaceCreateDeviceRGB()
     guard let context = CGContext(
@@ -78,5 +154,17 @@ struct ImageCompressionUseCaseTests {
     }
 
     return data as Data
+  }
+}
+
+private struct StubMOVToMP4ConversionUseCase: MOVToMP4ConversionUseCase {
+  let output: Data
+
+  init(output: Data = Data("converted".utf8)) {
+    self.output = output
+  }
+
+  func mp4Data(from movData: Data) async throws -> Data {
+    output
   }
 }

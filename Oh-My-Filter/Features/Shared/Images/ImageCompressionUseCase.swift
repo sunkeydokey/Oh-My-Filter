@@ -11,6 +11,7 @@ nonisolated enum ImageCompressionError: Error, Equatable, Sendable {
   case invalidImageData
   case compressionFailed
   case exceedsMaximumBytes
+  case unsupportedFileExtension
 }
 
 nonisolated struct LiveImageCompressionUseCase: ImageCompressionUseCase {

@@ -20,10 +20,6 @@ struct ImageUploadPresetTests {
       "gif",
       "webp",
       "mp4",
-      "mov",
-      "avi",
-      "mkv",
-      "wmv",
     ])
     #expect(ImageUploadPreset.communityPost.maxBytes == 5_000_000)
     #expect(ImageUploadPreset.communityPost.maxCount == 5)

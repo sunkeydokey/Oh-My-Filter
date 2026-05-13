@@ -37,7 +37,7 @@ nonisolated enum ImageUploadPreset: Equatable, Sendable {
     case .chat:
       ["jpg", "png", "jpeg", "gif", "pdf"]
     case .communityPost:
-      ["jpg", "png", "jpeg", "gif", "webp", "mp4", "mov", "avi", "mkv", "wmv"]
+      ["jpg", "png", "jpeg", "gif", "webp", "mp4", "mov"]
     case .profile, .filter:
       ["jpg", "png", "jpeg"]
     }
