@@ -219,7 +219,7 @@ final class CommunityViewModel {
 
   private func loadMoreVideosIfNeeded(currentVideo: CommunityVideo) async {
     guard state.canLoadMoreVideos,
-          state.videos.suffix(4).contains(currentVideo),
+          shouldLoadMoreVideos(for: currentVideo),
           let nextCursor = state.videosNextCursor else {
       return
     }
@@ -237,6 +237,16 @@ final class CommunityViewModel {
       state.isLoadingMoreVideos = false
       state.paginationErrorMessage = Self.fallbackMessage(for: error)
     }
+  }
+
+  private func shouldLoadMoreVideos(for currentVideo: CommunityVideo) -> Bool {
+    guard let index = state.videos.firstIndex(of: currentVideo) else { return false }
+
+    if state.videos.count <= 4 {
+      return index == state.videos.index(before: state.videos.endIndex)
+    }
+
+    return index >= state.videos.index(state.videos.endIndex, offsetBy: -4)
   }
 
   private func loadMoreLikedPostsIfNeeded(currentPost: CommunityPost) async {

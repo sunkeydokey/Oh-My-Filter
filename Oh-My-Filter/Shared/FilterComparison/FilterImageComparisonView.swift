@@ -41,6 +41,7 @@ struct FilterImageComparisonView: View {
         )
       }
       .aspectRatio(350.0 / 384.0, contentMode: .fit)
+      .clipShape(.rect(cornerRadius: 24))
 
       FilterComparisonControlView(splitRatio: $splitRatio)
     }

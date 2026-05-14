@@ -110,8 +110,8 @@ nonisolated enum CommunityFeedItem: Equatable, Identifiable, Sendable {
       "post-\(post.id)"
     case let .video(video):
       "video-\(video.id)"
-    case let .videoRail(videos):
-      "video-rail-\(videos.map(\.id).joined(separator: "-"))"
+    case .videoRail:
+      "video-rail"
     }
   }
 }

@@ -296,7 +296,7 @@ private struct CommunityPostMediaSection: View {
           case .image(let url):
             CommunityPostRemoteImage(url: url)
           case .video(let url):
-            PostVideoPreviewView(url: url)
+            PostVideoPreviewView(url: url, isActive: index == currentIndex)
           }
         }
         .tag(index)
@@ -365,7 +365,7 @@ private struct CommunityVideoRailView: View {
 
       ScrollView(.horizontal) {
         LazyHStack(spacing: 12) {
-          ForEach(videos) { video in
+          ForEach(Array(videos.enumerated()), id: \.element.id) { index, video in
             Button {
               onTap(video)
             } label: {
@@ -373,6 +373,7 @@ private struct CommunityVideoRailView: View {
             }
             .buttonStyle(.plain)
             .task {
+              guard shouldRequestMoreVideos(index: index, count: videos.count) else { return }
               onScrollNearEnd(video)
             }
           }
@@ -380,6 +381,14 @@ private struct CommunityVideoRailView: View {
       }
       .scrollIndicators(.hidden)
     }
+  }
+
+  private func shouldRequestMoreVideos(index: Int, count: Int) -> Bool {
+    if count <= 4 {
+      return index == count - 1
+    }
+
+    return index >= count - 4
   }
 }
 

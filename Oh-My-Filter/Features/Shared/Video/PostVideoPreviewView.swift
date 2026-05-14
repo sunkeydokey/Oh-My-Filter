@@ -3,8 +3,11 @@ import SwiftUI
 
 struct PostVideoPreviewView: View {
   let url: URL
+  let isActive: Bool
 
   @State private var player: AVPlayer?
+  @State private var playbackEndObserver: (any NSObjectProtocol)?
+  @State private var pauseTask: Task<Void, Never>?
 
   var body: some View {
     ZStack {
@@ -18,8 +21,12 @@ struct PostVideoPreviewView: View {
           .foregroundStyle(ColorToken.grayScale60.color)
       }
     }
-    .task {
-      await setupPlayer()
+    .task(id: isActive) {
+      if isActive {
+        await setupPlayer()
+      } else {
+        teardownPlayer()
+      }
     }
     .onDisappear {
       teardownPlayer()
@@ -27,12 +34,16 @@ struct PostVideoPreviewView: View {
   }
 
   private func setupPlayer() async {
+    guard isActive, player == nil else { return }
+
     let asset = await AuthenticatedVideoAssetBuilder.makeAsset(url: url)
+    guard isActive, Task.isCancelled == false else { return }
+
     let item = AVPlayerItem(asset: asset)
     let newPlayer = AVPlayer(playerItem: item)
     newPlayer.isMuted = true
 
-    NotificationCenter.default.addObserver(
+    playbackEndObserver = NotificationCenter.default.addObserver(
       forName: .AVPlayerItemDidPlayToEndTime,
       object: item,
       queue: .main
@@ -44,9 +55,9 @@ struct PostVideoPreviewView: View {
     player = newPlayer
     newPlayer.play()
 
-    // 15초 후 정지
-    Task {
+    pauseTask = Task {
       try? await Task.sleep(for: .seconds(15))
+      guard Task.isCancelled == false else { return }
       await MainActor.run {
         newPlayer.pause()
       }
@@ -54,6 +65,14 @@ struct PostVideoPreviewView: View {
   }
 
   private func teardownPlayer() {
+    pauseTask?.cancel()
+    pauseTask = nil
+
+    if let playbackEndObserver {
+      NotificationCenter.default.removeObserver(playbackEndObserver)
+      self.playbackEndObserver = nil
+    }
+
     player?.pause()
     player = nil
   }

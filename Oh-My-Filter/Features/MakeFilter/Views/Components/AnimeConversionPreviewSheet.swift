@@ -6,6 +6,13 @@ struct AnimeConversionPreviewSheet: View {
   let onChoiceMade: (Bool) -> Void
   let onDismiss: () -> Void
 
+  private var previewColumns: [GridItem] {
+    [
+      GridItem(.flexible(minimum: 0), spacing: 12),
+      GridItem(.flexible(minimum: 0), spacing: 0),
+    ]
+  }
+
   var body: some View {
     VStack(spacing: 24) {
       Spacer()
@@ -53,7 +60,7 @@ struct AnimeConversionPreviewSheet: View {
 
   private func choiceView(result: AnimeConversionResult) -> some View {
     VStack(spacing: 20) {
-      HStack(spacing: 12) {
+      LazyVGrid(columns: previewColumns, spacing: 0) {
         imagePreviewCard(image: result.originalPreview, label: "원본")
         imagePreviewCard(image: result.convertedPreview, label: "변환본")
       }
@@ -93,11 +100,14 @@ struct AnimeConversionPreviewSheet: View {
 
   private func imagePreviewCard(image: CGImage, label: String) -> some View {
     VStack(spacing: 8) {
-      Image(decorative: image, scale: 1)
-        .resizable()
-        .scaledToFill()
-        .frame(maxWidth: .infinity)
+      Color.clear
         .aspectRatio(1, contentMode: .fit)
+        .overlay {
+          Image(decorative: image, scale: 1)
+            .resizable()
+            .scaledToFill()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay {
           RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -108,6 +118,7 @@ struct AnimeConversionPreviewSheet: View {
         .font(TypographyToken.pretendardCaption1.font)
         .foregroundStyle(ColorToken.grayScale45.color)
     }
+    .frame(maxWidth: .infinity)
   }
 
   private func failedView(message: String) -> some View {

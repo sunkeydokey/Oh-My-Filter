@@ -38,7 +38,7 @@ struct ProfileAvatarView: View {
         KFImage(url)
           .requestModifier(AuthenticatedRemoteImageSupport.requestModifier)
           .resizable()
-          .scaledToFit()
+          .scaledToFill()
           .frame(width: size, height: size)
           .clipShape(.rect(cornerRadius: size * 0.34, style: .continuous))
       } else {
@@ -48,6 +48,7 @@ struct ProfileAvatarView: View {
       }
     }
     .frame(width: size, height: size)
+    .clipShape(.rect(cornerRadius: size * 0.34, style: .continuous))
   }
 }
 
@@ -227,7 +228,7 @@ struct OrderHistoryCardView: View {
         KFImage(url)
           .requestModifier(AuthenticatedRemoteImageSupport.requestModifier)
           .resizable()
-          .scaledToFit()
+          .scaledToFill()
           .frame(width: 72, height: 72)
           .clipShape(.rect(cornerRadius: 20, style: .continuous))
       } else {
@@ -237,6 +238,7 @@ struct OrderHistoryCardView: View {
       }
     }
     .frame(width: 72, height: 72)
+    .clipShape(.rect(cornerRadius: 20, style: .continuous))
   }
 
   private var creatorText: String {

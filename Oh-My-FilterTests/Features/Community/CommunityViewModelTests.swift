@@ -108,6 +108,21 @@ struct CommunityViewModelTests {
     #expect(viewModel.state.videosNextCursor == "0")
   }
 
+  @Test("video rail scroll ignores non-terminal item in short page")
+  func videoRailScrollIgnoresNonTerminalItemInShortPage() async {
+    let service = QueueCommunityService()
+    await service.enqueuePosts(.success(CommunityPostPage(posts: [], nextCursor: "0")))
+    await service.enqueueVideos(.success(CommunityVideoPage(videos: [.first, .second], nextCursor: "next-video")))
+    let viewModel = CommunityViewModel(service: service)
+
+    await viewModel.send(.task)
+    await viewModel.send(.scroll(.videoRailItemAppeared(.first)))
+
+    #expect(await service.videoNextCursors == [nil])
+    #expect(viewModel.state.videos == [.first, .second])
+    #expect(viewModel.state.videosNextCursor == "next-video")
+  }
+
   @Test("video rail scroll ignores terminal cursor and search")
   func videoRailScrollIgnoresTerminalCursorAndSearch() async {
     let terminalService = QueueCommunityService()

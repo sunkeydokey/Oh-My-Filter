@@ -182,17 +182,22 @@ private struct FilterAppliedMediaPreview: View {
   let output: FilterMediaOutput
 
   var body: some View {
-    Group {
-      switch output {
-      case let .image(_, cgImage, _):
-        Image(decorative: cgImage, scale: 1)
-          .resizable()
-          .scaledToFit()
-      case let .video(_, fileURL, _):
-        VideoPlayer(player: AVPlayer(url: fileURL))
+    GeometryReader { proxy in
+      Group {
+        switch output {
+        case let .image(_, cgImage, _):
+          Image(decorative: cgImage, scale: 1)
+            .resizable()
+            .scaledToFit()
+            .frame(width: proxy.size.width, height: proxy.size.height)
+        case let .video(_, fileURL, _):
+          VideoPlayer(player: AVPlayer(url: fileURL))
+            .frame(width: proxy.size.width, height: proxy.size.height)
+        }
       }
+      .frame(width: proxy.size.width, height: proxy.size.height)
+      .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
-    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     .padding(.horizontal, 20)
   }
 }
