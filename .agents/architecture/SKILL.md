@@ -5,16 +5,27 @@ description: "Indicates Project's UI Logic Architecture Rules"
 
 # Architecture instructions
 
-This project uses a feature-oriented SwiftUI architecture built on top of MVVM, with unidirectional presentation flow.
+This project uses a feature-oriented SwiftUI architecture with Store-like unidirectional presentation flow.
+
+Types may keep the `ViewModel` suffix for naming continuity, but a screen-level ViewModel acts as the feature Store:
+
+- owns screen state
+- receives user and lifecycle input as `Action`
+- performs side effects
+- dispatches follow-up actions for side-effect results
+- applies state transitions
+- exposes state for SwiftUI rendering
+
+This is not traditional two-way-binding MVVM. It is a pragmatic, lightweight MVI-style architecture using SwiftUI and Observation.
 
 ## Core architecture principles
 
-- Use **MVVM** for the presentation layer.
-- However, avoid traditional loosely-structured MVVM where inputs are scattered across many methods and bindings.
+- Use Store-like screen ViewModels for the presentation layer.
+- Avoid traditional loosely-structured MVVM where inputs are scattered across many methods and bindings.
 - Prefer a **unidirectional presentation flow**:
   - View emits user input
   - ViewModel receives input as `Action`
-  - ViewModel updates a single `State`
+  - ViewModel updates owned `State`
   - View renders from `State`
 - Keep business logic in **UseCases**, not in Views.
 
@@ -32,10 +43,10 @@ This project uses a feature-oriented SwiftUI architecture built on top of MVVM, 
 
 ## ViewModel rules
 
-- Each screen-level ViewModel must expose a **single screen State**.
+- Each screen-level ViewModel must own the screen State.
 - Each screen-level ViewModel must receive user input through a single entry point:
   - `send(_ action: Action)`
-- Prefer defining one `Action` enum and one `State` struct per screen.
+- Prefer defining one `Action` enum and one logical `State` model per screen.
 - ViewModels are responsible for:
   - handling actions
   - calling UseCases
@@ -50,6 +61,8 @@ This project uses a feature-oriented SwiftUI architecture built on top of MVVM, 
 - Prefer explicit state transitions over scattered booleans when complexity grows.
 - Use enum-based state for flows such as loading, payment, upload, streaming, connection, and authentication where it improves clarity.
 - Keep route emission explicit. A ViewModel may expose a route intent in state, but should not directly manipulate global navigation state unless the feature is intentionally designed that way.
+- Side effects may dispatch follow-up actions through `send(_:)`, especially for async result handling.
+- Prefer explicit result actions such as `.postsLoaded(...)` or `.loadingFailed(...)` when that improves traceability.
 
 ## Action and State conventions
 
@@ -68,7 +81,12 @@ This project uses a feature-oriented SwiftUI architecture built on top of MVVM, 
   - payment start
   - web bridge event
 - Purely local UI-only input may still use direct binding when appropriate.
-- Keep `State` as the single source of truth for rendering.
+- Keep `State` as the source of truth for rendering.
+- A single `State` struct is the default modeling unit, not a mandatory storage unit for every performance-sensitive screen.
+- Do not split every state field into separate ViewModel properties only for Observation granularity.
+- Prefer splitting large screens into focused subviews that receive only the state slice they render.
+- If high-frequency state such as text input invalidates expensive content such as large lists, first introduce a subview boundary.
+- Split ViewModel state storage into multiple logical state slices only when subview boundaries are insufficient or profiling shows measurable cost.
 - Keep one-off presentation concerns explicit, such as:
   - `alert`
   - `toast`
@@ -143,9 +161,9 @@ This project uses a feature-oriented SwiftUI architecture built on top of MVVM, 
 
 For any new non-trivial screen, prefer this template:
 
-- one `State` struct
+- one logical `State` model
 - one `Action` enum
-- one ViewModel
+- one Store-like ViewModel
 - one View
 - optional `Route` enum
 - optional feature Coordinator if the flow spans multiple screens
