@@ -27,7 +27,13 @@ struct VideoPlayerView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
-        navigationBar
+        VideoPlayerNavigationBarView(
+          offlineState: viewModel.offlineState,
+          onBack: { dismiss() },
+          onDownloadOffline: {
+            Task { await viewModel.send(.downloadOffline) }
+          }
+        )
         playerContainer
         coreMetadata
         actionRow
@@ -67,53 +73,6 @@ struct VideoPlayerView: View {
     } set: { isPresented in
       guard isPresented == false else { return }
       Task { await viewModel.send(.exitFullScreen) }
-    }
-  }
-
-  // MARK: - Navigation Bar
-
-  private var navigationBar: some View {
-    HStack {
-      Button {
-        dismiss()
-      } label: {
-        Image(systemName: "chevron.left")
-          .font(.system(size: 22, weight: .medium))
-          .foregroundStyle(ColorToken.grayScale30.color)
-      }
-
-      Spacer()
-
-      Text("Video")
-        .font(TypographyToken.mulgyeolBody1.font)
-        .foregroundStyle(ColorToken.grayScale60.color)
-
-      Spacer()
-
-      offlineBarButton
-    }
-    .frame(height: 44)
-  }
-
-  @ViewBuilder
-  private var offlineBarButton: some View {
-    switch viewModel.offlineState {
-    case .none:
-      Button {
-        Task { await viewModel.send(.downloadOffline) }
-      } label: {
-        Image(systemName: "arrow.down.circle")
-          .font(.system(size: 22, weight: .medium))
-          .foregroundStyle(ColorToken.grayScale60.color)
-      }
-    case .downloading:
-      ProgressView()
-        .tint(ColorToken.grayScale60.color)
-        .frame(width: 22, height: 22)
-    case .saved:
-      Image(systemName: "checkmark.circle.fill")
-        .font(.system(size: 22, weight: .medium))
-        .foregroundStyle(ColorToken.mainAccent.color)
     }
   }
 
