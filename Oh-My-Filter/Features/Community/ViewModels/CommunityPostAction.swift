@@ -31,6 +31,10 @@ nonisolated enum CommunityPostAction: Sendable {
   case toggleReplies(commentID: String)
   case routeHandled
   case dismissHandled
+  case localSaveSucceededHandled
+  case detailSavePhaseHandled
+  case errorPresented(String)
+  case errorDismissed
 
   // Create/Edit: 이미지 타일 액션
   case saveLocalImageTapped(selectionID: UUID)

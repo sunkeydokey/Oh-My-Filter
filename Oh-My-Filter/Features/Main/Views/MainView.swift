@@ -18,37 +18,17 @@ struct MainView: View {
 
   var body: some View {
     ScrollView {
-      VStack(alignment: .leading, spacing: 0) {
-        MainRedesignedTodayFilterSectionView(
-          state: viewModel.state.todayFilter,
-          retryAction: retryTodayFilter,
-          selectionAction: showFilterDetail
-        )
-
-        VStack(alignment: .leading, spacing: 14) {
-          MainRedesignedBannerSectionView(
-            state: viewModel.state.mainBanners,
-            retryAction: retryMainBanners
-          )
-
-          MainRedesignedHotTrendSectionView(
-            state: viewModel.state.hotTrendFilters,
-            retryAction: retryHotTrendFilters,
-            selectionAction: showFilterDetail
-          )
-
-          MainRedesignedTodayAuthorSectionView(
-            state: viewModel.state.todayAuthor,
-            retryAction: retryTodayAuthor
-          )
-        }
-        .padding(.top, 14)
-        .padding(.horizontal, MainViewLayout.contentHorizontalInset)
-        .frame(maxWidth: .infinity, alignment: .leading)
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(.top, 12)
-      .padding(.bottom, 14)
+      MainHomeContentView(
+        todayFilter: viewModel.state.todayFilter,
+        mainBanners: viewModel.state.mainBanners,
+        hotTrendFilters: viewModel.state.hotTrendFilters,
+        todayAuthor: viewModel.state.todayAuthor,
+        retryTodayFilter: retryTodayFilter,
+        retryMainBanners: retryMainBanners,
+        retryHotTrendFilters: retryHotTrendFilters,
+        retryTodayAuthor: retryTodayAuthor,
+        selectFilter: showFilterDetail
+      )
     }
     .scrollIndicators(.hidden)
     .background(ColorToken.grayScale100.color.ignoresSafeArea())
@@ -90,6 +70,52 @@ struct MainView: View {
   private func showFilterDetail(filterID: String) {
     Self.logger.debug("➡️ [MainView] navigate filter detail filterID=\(filterID, privacy: .public)")
     navigate(.filterDetail(filterID: filterID))
+  }
+}
+
+private struct MainHomeContentView: View {
+  let todayFilter: MainSectionState<MainTodayFilter>
+  let mainBanners: MainSectionState<[MainBanner]>
+  let hotTrendFilters: MainSectionState<[MainHotTrendFilter]>
+  let todayAuthor: MainSectionState<MainTodayAuthor>
+  let retryTodayFilter: () -> Void
+  let retryMainBanners: () -> Void
+  let retryHotTrendFilters: () -> Void
+  let retryTodayAuthor: () -> Void
+  let selectFilter: (String) -> Void
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      MainRedesignedTodayFilterSectionView(
+        state: todayFilter,
+        retryAction: retryTodayFilter,
+        selectionAction: selectFilter
+      )
+
+      VStack(alignment: .leading, spacing: 14) {
+        MainRedesignedBannerSectionView(
+          state: mainBanners,
+          retryAction: retryMainBanners
+        )
+
+        MainRedesignedHotTrendSectionView(
+          state: hotTrendFilters,
+          retryAction: retryHotTrendFilters,
+          selectionAction: selectFilter
+        )
+
+        MainRedesignedTodayAuthorSectionView(
+          state: todayAuthor,
+          retryAction: retryTodayAuthor
+        )
+      }
+      .padding(.top, 14)
+      .padding(.horizontal, MainViewLayout.contentHorizontalInset)
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.top, 12)
+    .padding(.bottom, 14)
   }
 }
 
