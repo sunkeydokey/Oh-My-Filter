@@ -21,7 +21,6 @@ struct FilterDetailView: View {
     ZStack {
       content
         .background(ColorToken.brandBlackSprout.color.ignoresSafeArea())
-        .screenCaptureProtected(!viewModel.state.isOwned)
         .safeAreaInset(edge: .top) {
           FilterDetailHeaderView(
             title: viewModel.state.detail?.title ?? "",
