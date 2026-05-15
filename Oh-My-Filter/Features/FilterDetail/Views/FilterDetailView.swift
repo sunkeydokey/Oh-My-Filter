@@ -1,4 +1,3 @@
-import Kingfisher
 import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
@@ -24,55 +23,26 @@ struct FilterDetailView: View {
         .background(ColorToken.brandBlackSprout.color.ignoresSafeArea())
         .screenCaptureProtected(!viewModel.state.isOwned)
         .safeAreaInset(edge: .top) {
-          CustomStackNavigationHeader(
+          FilterDetailHeaderView(
             title: viewModel.state.detail?.title ?? "",
-            onBack: { dismiss() }
-          ) {
-            if viewModel.state.isMine {
-              Menu {
-                Button("수정", action: edit)
-                Button("삭제", role: .destructive, action: deleteFilter)
-              } label: {
-                Image(systemName: "ellipsis")
-                  .font(.system(size: 20, weight: .semibold))
-                  .foregroundStyle(ColorToken.grayScale45.color)
-              }
-            } else {
-              Color.clear
-            }
-          }
-          .padding(.horizontal, 20)
-          .background(ColorToken.brandBlackSprout.color)
+            isMine: viewModel.state.isMine,
+            onBack: { dismiss() },
+            onEdit: edit,
+            onDelete: deleteFilter
+          )
         }
 
-      if viewModel.state.showsDeleteFilterConfirmation {
-        CustomAlertView(
-          title: "필터 삭제",
-          message: "필터를 삭제할까요?",
-          cancelTitle: "취소",
-          confirmTitle: "삭제",
-          onCancel: dismissDeleteConfirmation,
-          onConfirm: confirmDelete
-        )
-      } else if viewModel.state.pendingDeleteCommentTarget != nil {
-        CustomAlertView(
-          title: "댓글 삭제",
-          message: "댓글을 삭제할까요?",
-          cancelTitle: "취소",
-          confirmTitle: "삭제",
-          onCancel: dismissDeleteCommentConfirmation,
-          onConfirm: confirmDeleteComment
-        )
-      } else if let alert = viewModel.state.alert {
-        CustomAlertView(
-          title: alert.title,
-          message: alert.message,
-          cancelTitle: alert.cancelTitle,
-          confirmTitle: alert.confirmTitle,
-          onCancel: dismissAlert,
-          onConfirm: confirmAlert
-        )
-      }
+      FilterDetailConfirmationOverlayView(
+        showsDeleteFilterConfirmation: viewModel.state.showsDeleteFilterConfirmation,
+        hasPendingDeleteCommentTarget: viewModel.state.pendingDeleteCommentTarget != nil,
+        alert: viewModel.state.alert,
+        onDismissDeleteFilter: dismissDeleteConfirmation,
+        onConfirmDeleteFilter: confirmDelete,
+        onDismissDeleteComment: dismissDeleteCommentConfirmation,
+        onConfirmDeleteComment: confirmDeleteComment,
+        onDismissAlert: dismissAlert,
+        onConfirmAlert: confirmAlert
+      )
     }
     .toolbar(.hidden, for: .navigationBar)
     .swipeBackEnabled()
