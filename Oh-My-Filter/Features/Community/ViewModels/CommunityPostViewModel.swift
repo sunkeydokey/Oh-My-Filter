@@ -141,6 +141,14 @@ final class CommunityPostViewModel {
       state.route = nil
     case .dismissHandled:
       state.shouldDismiss = false
+    case .localSaveSucceededHandled:
+      state.localSaveSucceeded = false
+    case .detailSavePhaseHandled:
+      state.detailSavePhase = .idle
+    case let .errorPresented(message):
+      state.errorMessage = message
+    case .errorDismissed:
+      state.errorMessage = nil
 
     // MARK: - Create/Edit: 이미지 저장
     case let .saveLocalImageTapped(selectionID):
