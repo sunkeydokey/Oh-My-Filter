@@ -142,7 +142,6 @@ extension LiveVideoDownloadManager: AVAssetDownloadDelegate {
     guard let error, let videoId = task.taskDescription else { return }
     let nsError = error as NSError
     guard nsError.code != NSURLErrorCancelled else { return }
-    Self.logger.error("❌ [LiveVideoDownloadManager] task error videoId=\(videoId, privacy: .public) error=\(String(describing: error), privacy: .public)")
     Task { @MainActor [weak self] in
       self?.activeTasks[videoId]?.continuation.yield(.failed(error as any Error & Sendable))
       self?.activeTasks[videoId]?.continuation.finish()
